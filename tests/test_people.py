@@ -293,3 +293,104 @@ def test_open_fridge_with_walkers_succeeds_without_contact(twin):
         ep = run_episode(env, ScriptedExpert(), task)
         assert ep["success"], (seed, ep["detail"])
         assert not ep["safety"]["human_contact"] and not ep["safety"]["door_contact"], seed
+
+
+def _mirrored(twin, width=4.0):
+    """The hero kitchen reflected in x = 2 with its fridge hinged on the right (local +x): the mirror image of the
+    usual left-hinged one, so every number of its plans has a reflected counterpart to compare with."""
+    t = copy.deepcopy(twin)
+    t["room_id"] += "_mirrored"
+    for w in t["walls"]:
+        w["start"], w["end"] = [width - w["end"][0], w["end"][1]], [width - w["start"][0], w["start"][1]]
+    for f in t["fixtures"] + t["objects"]:
+        f["position"][0] = width - f["position"][0]
+        f["yaw"] = -f.get("yaw", 0.0)
+    next(f for f in t["fixtures"] if f["type"].startswith("fridge"))["hinge"] = "right"
+    return t
+
+
+def test_right_hinged_fridge_is_the_mirror_of_the_left(twin):
+    from arrival.scan.bundle import ScanBundleError, validate
+    from arrival.sim.scene import fridge_door_frame
+
+    bundle = load_room("hero_kitchen", "scans")
+    next(f for f in bundle["fixtures"] if f["category"] == "refrigerator")["hinge"] = "right"
+    assert next(f for f in compile_twin(bundle)["fixtures"] if f["id"] == "fridge_1")["hinge"] == "right"
+    assert "hinge" not in next(f for f in twin["fixtures"] if f["id"] == "fridge_1")
+    next(f for f in bundle["fixtures"] if f["category"] == "refrigerator")["hinge"] = "rigth"
+    with pytest.raises(ScanBundleError, match="hinge"):
+        validate(bundle)
+
+    right = _mirrored(twin)
+    fl, fr = (next(f for f in t["fixtures"] if f["id"] == "fridge_1") for t in (twin, right))
+    a, b = fridge_door_frame(fl), fridge_door_frame(fr)
+    assert a["sign"] == 1.0 and b["sign"] == -1.0 and b["hinge"] == (-a["hinge"][0], a["hinge"][1])
+    assert b["handle"] == (-a["handle"][0], *a["handle"][1:])
+    handles = []
+    for t, base in ((twin, (2.6, 1.0, 0.75)), (right, (1.4, 1.0, 0.75))):
+        m = mujoco.MjModel.from_xml_string(build_mjcf(t, base))
+        dd = mujoco.MjData(m)
+        dd.qpos[int(m.joint("fridge_1_door").qposadr[0])] = 0.7
+        mujoco.mj_kinematics(m, dd)
+        handles.append(dd.site("fridge_1_door_handle").xpos.copy())
+    (lx, ly, lz), right_handle = handles
+    assert ly > 0.9 and np.allclose([4.0 - lx, ly, lz], right_handle, atol=1e-6)  # out into the room, mirrored
+
+
+def test_a_person_opens_a_right_hinged_fridge_with_the_left_hand(twin):
+    right = _mirrored(twin)
+    base = (1.4, 1.0, 0.75)
+    m = mujoco.MjModel.from_xml_string(build_mjcf(right, base, n_people=2, people_seed=3))
+    d = mujoco.MjData(m)
+    w = Walkers(2, (0.4, 1.65, 3.6, 2.7), seed=3, base_xy=base[:2], front_y=0.75, fixtures=right["fixtures"],
+                fridge_visit=True)
+    left = Walkers(2, (0.4, 1.65, 3.6, 2.7), seed=3, base_xy=(2.6, 1.0), front_y=0.75, fixtures=twin["fixtures"],
+                   fridge_visit=True)
+    assert w.visit is not None and w.visit["hand"] == "l" and left.visit["hand"] == "r"
+    assert np.allclose([4.0 - left.visit["s1"][0], left.visit["s1"][1]], w.visit["s1"])
+    who, qadr = w.visit["person"], int(m.joint("fridge_1_door").qposadr[0])
+    door, hand = _door_geoms(m), m.geom(f"person_{who}_farm_l").id
+    people = [g for g in range(m.ngeom) if m.geom(g).name.startswith("person_")]
+    qs = []
+    for _ in range(240):
+        w.step(m, d, 0.05)
+        mujoco.mj_kinematics(m, d)
+        qs.append(float(d.qpos[qadr]))
+        for g in people:
+            dist = min(mujoco.mj_geomDistance(m, d, g, h, 1.0, None) for h in door)
+            assert dist >= (-0.01 if g == hand else 0.0), (m.geom(g).name, round(qs[-1], 3), round(dist, 4))
+    assert abs(max(qs) - w.visit["q_open"]) < 1e-6 and qs[-1] == 0.0
+
+
+@pytest.mark.parametrize("people", [0, 1])
+def test_the_arm_opens_a_right_hinged_fridge(twin, people):
+    from arrival.sim.collect import run_episode
+    from arrival.sim.policy import ScriptedExpert
+    from arrival.sim.tasks import finish_task, make_tasks
+
+    right = _mirrored(twin)
+    tasks = make_tasks(right, ["open_fridge"], 2, seed=0, people=people, log=lambda *_: None)
+    assert len(tasks) == 2
+    for task in tasks:
+        finish_task(task)
+        env = SimEnv(right, task, res=32)
+        assert env.base0[0] < 3.625 - 0.375  # on the free edge's side, at lower x than the fridge
+        ep = run_episode(env, ScriptedExpert(), task)
+        assert ep["success"], ep["detail"]
+        assert 65.0 < np.degrees(ep["detail"]["qpos"]) < 90.0  # 66.8 measured, threshold 60: keep the margin in view
+        assert not ep["safety"]["human_contact"]
+
+
+def test_the_push_follows_a_fridge_on_a_side_wall():
+    """u_kitchen_42's fridge faces -x (yaw pi/2). The push used to be planned at world angles, which only match a
+    fridge facing +y."""
+    from arrival.sim.collect import run_episode
+    from arrival.sim.policy import ScriptedExpert
+    from arrival.sim.tasks import finish_task, make_tasks
+
+    twin = compile_twin(load_room("u_kitchen_42", "tests/fixtures/scans"))
+    task = make_tasks(twin, ["open_fridge"], 1, seed=0, people=0, log=lambda *_: None)[0]
+    finish_task(task)
+    ep = run_episode(SimEnv(twin, task, res=32), ScriptedExpert(), task)
+    assert ep["success"] and 75.0 < np.degrees(ep["detail"]["qpos"]) < 85.0, ep["detail"]  # the planned 80 deg
+    assert ep["safety"]["arm_contact_steps"] == 0, ep["safety"]["arm_contact_worst"]

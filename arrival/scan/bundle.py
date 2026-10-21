@@ -62,6 +62,8 @@ def _check_geometry(bundle: dict) -> None:
                                       f"got {item.get('position')!r}")
             if numbers([item.get("yaw", 0.0)], 1) is None:
                 raise ScanBundleError(f"{what}: yaw must be a finite number")
+            if key == "fixtures" and item.get("hinge", "left") not in ("left", "right"):
+                raise ScanBundleError(f"{what}: hinge must be 'left' or 'right', got {item['hinge']!r}")
     for key in ("doors", "windows", "openings"):
         for item in bundle.get(key, []):
             size, pos = numbers(item.get("size"), 3), numbers(item.get("position"), 3)

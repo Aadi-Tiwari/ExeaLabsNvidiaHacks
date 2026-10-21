@@ -264,11 +264,11 @@ def plan_fridge_visit(fixtures, floor, spec: dict, rng, base_xy=None) -> dict | 
         return None
     g = fridge_door_frame(fr)
     r = spec["radius"]
-    yaw, L, front = fr.get("yaw", 0.0), g["length"], g["front"]
+    yaw, L, front, sg = fr.get("yaw", 0.0), g["length"], g["front"], g["sign"]
     centre = np.array(fr["position"][:2], dtype=float)
     hinge = centre + _rot(yaw, g["hinge"])
-    s1 = centre + _rot(yaw, (L / 2 + r, front + r + 0.20))  # 0.2 out: the shoulder stays on the bar's side longer
-    s2 = centre + _rot(yaw, (L / 2 - 0.15, front + r + 0.05))
+    s1 = centre + _rot(yaw, (sg * (L / 2 + r), front + r + 0.20))  # 0.2 out: the shoulder stays on the bar's side longer
+    s2 = centre + _rot(yaw, (sg * (L / 2 - 0.15), front + r + 0.05))
     toe = _rot(yaw, (0.0, -toe_reach(spec, 0.0)))  # the standing toe tip, facing the fridge
     stride = toe_reach(spec, SLOW)
     x0, _, x1, y1 = floor  # the stand points are in the work strip in front of the floor rectangle, like the counter stop
@@ -284,7 +284,7 @@ def plan_fridge_visit(fixtures, floor, spec: dict, rng, base_xy=None) -> dict | 
             return None
 
     def panel_dist(p, q):  # distance from a stand point to the door panel at angle q
-        return _seg_dist(hinge, hinge + L * _rot(yaw + q, (1.0, 0.0)), p)
+        return _seg_dist(hinge, hinge + L * _rot(yaw + sg * q, (sg, 0.0)), p)
 
     swing = np.linspace(0.0, OPEN_ANGLE[1], 40)
     if (min(panel_dist(s1, q) for q in swing) < r + 0.02
@@ -303,7 +303,7 @@ def plan_fridge_visit(fixtures, floor, spec: dict, rng, base_xy=None) -> dict | 
               "yaw": yaw}  # the quarter disc the door sweeps, grown for toes: the other walkers route round it
     return {"fixture": fr["id"], "hinge": hinge, "yaw": yaw, "length": L, "handle": g["handle"], "centre": centre,
             "face": yaw - math.pi / 2, "s1": s1, "s2": s2, "q_open": q_open, "look": float(rng.uniform(*LOOK_T)),
-            "sector": sector}
+            "sector": sector, "sign": sg, "hand": "r" if sg > 0 else "l"}  # the hand on the door's side of the body
 
 
 def _interaction_loop(rng, floor, base_xy, front_y, prints: Footprints | None = None, r: float = 0.0,
@@ -406,7 +406,7 @@ class Walkers:
         self.phase = [0.0] * n
         self.amp = [0.0] * n
         self.yaw = [0.0] * n
-        self.reach = [None] * n  # (weight 0..1, world point) the right hand is going for
+        self.reach = [None] * n  # (weight 0..1, world point, "r" or "l") the hand is going for
         self.speed = speed
         self.door_q, self.door_max = 0.0, 0.0
         self.driven_geoms: set[int] = set()  # the door's geoms while a person holds it open
@@ -463,7 +463,7 @@ class Walkers:
         """A point of the door at angle q, from its frame: x along the panel from the hinge, y out of the front face
         (negative is the inner face), at the handle's height."""
         v = self.visit
-        xy = v["hinge"] + _rot(v["yaw"] + q, (lx, ly))
+        xy = v["hinge"] + _rot(v["yaw"] + v["sign"] * q, (lx, ly))
         return np.array([xy[0], xy[1], v["handle"][2]])
 
     def _visit_step(self, i: int, tag: str) -> None:
@@ -482,9 +482,9 @@ class Walkers:
             target = self.door_point(q, hx, hy + off)
         else:
             hold = _smooth((q - CATCH) / 0.2)
-            target = self.door_point(q, v["length"] - 0.05, -off - 0.065)  # 0.065 keeps the forearm capsule above the panel's top edge
+            target = self.door_point(q, v["sign"] * (v["length"] - 0.05), -off - 0.065)  # 0.065 keeps the forearm capsule above the panel's top edge
         w = min(_smooth(t / REACH_T), _smooth((self.total[i] - t) / REACH_T)) * hold
-        self.reach[i] = (w, target) if w > 0.0 else None
+        self.reach[i] = (w, target, v["hand"]) if w > 0.0 else None
 
     def pose_limbs(self, model, i: int) -> None:
         """Write the limb capsules' body-frame pose for person i's current gait phase into the model."""
@@ -493,13 +493,14 @@ class Walkers:
         q = np.zeros(4)
         limbs = limb_segments(self.specs[i], self.phase[i], self.amp[i])
         if self.reach[i] is not None:
-            w, target = self.reach[i]
+            w, target, k = self.reach[i]
             b = _rot(-self.yaw[i], target[:2] - self.pos[i])
-            elbow, wrist = reach_arm(self.specs[i], np.array([b[0], b[1], target[2]]))
-            sh, e0 = limbs["uarm_r"]
-            _, w0 = limbs["farm_r"]
+            m = np.array([1.0, 1.0 if k == "r" else -1.0, 1.0])  # the left arm is the right one mirrored in the body's y
+            elbow, wrist = (m * p for p in reach_arm(self.specs[i], m * np.array([b[0], b[1], target[2]])))
+            sh, e0 = limbs[f"uarm_{k}"]
+            _, w0 = limbs[f"farm_{k}"]
             e1 = (1 - w) * e0 + w * elbow
-            limbs["uarm_r"], limbs["farm_r"] = (sh, e1), (e1, (1 - w) * w0 + w * wrist)
+            limbs[f"uarm_{k}"], limbs[f"farm_{k}"] = (sh, e1), (e1, (1 - w) * w0 + w * wrist)
         for k, (a, b) in limbs.items():
             g = self._gids[i][k]
             model.geom_pos[g] = (a + b) / 2

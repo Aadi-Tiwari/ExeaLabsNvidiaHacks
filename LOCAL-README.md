@@ -26,7 +26,6 @@ Setup note: this machine has a stray `tests` package in `~/miniconda3/lib/python
 
 - Open-door is not 100% with default eval settings: 3/4 and 1/2 in the last check, with walker contacts on `counter_a_door`.
 - 5 of 28 episodes in a 224 px dataset are flagged by the quality check for joints at a limit (close_door and open_oven).
-- The mirrored right-hinged fridge plan is not built; the scene only has a left hinge.
 - The memory cap (`ARRIVAL_MAX_JOB_MB`) was not measured on Linux.
 - `site/data` was not re-exported after the merged PRs, so its numbers are from the earlier pipeline run.
 
