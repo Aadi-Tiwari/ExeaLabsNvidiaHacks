@@ -377,7 +377,7 @@ def test_the_arm_opens_a_right_hinged_fridge(twin, people):
         assert env.base0[0] < 3.625 - 0.375  # on the free edge's side, at lower x than the fridge
         ep = run_episode(env, ScriptedExpert(), task)
         assert ep["success"], ep["detail"]
-        assert 65.0 < np.degrees(ep["detail"]["qpos"]) < 90.0  # 66.8 measured, threshold 60: keep the margin in view
+        assert 75.0 < np.degrees(ep["detail"]["qpos"]) < 90.0  # 79.8 measured, the same as the left-hinged door
         assert not ep["safety"]["human_contact"]
 
 
