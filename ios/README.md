@@ -72,3 +72,7 @@ reference photos without EXIF, writes the notes and tape measurements and runs t
   is unchecked; with no depth the recorder keeps nothing and the scan page says so.
 - Command-line compile check without signing:
   `xcodebuild -project ios/ArrivalCapture/ArrivalCapture.xcodeproj -target ArrivalCapture -sdk iphoneos CODE_SIGNING_ALLOWED=NO SYMROOT=ios/build build`
+
+Server addresses must use HTTP or HTTPS. A bare LAN address such as `192.168.1.20:8000` defaults to
+HTTP; surrounding whitespace and trailing slashes are removed. HTTPS and server path prefixes are
+preserved. Other schemes, such as `ftp://`, are rejected before a connection is attempted.
