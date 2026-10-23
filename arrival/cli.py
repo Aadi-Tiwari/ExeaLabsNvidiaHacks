@@ -204,6 +204,9 @@ def cmd_sim(a) -> int:
         print(args, file=sys.stderr)
         return EXIT_USAGE
     fams, twin = args
+    if a.seed < 0:  # numpy refuses it in every task, after the writer has cleared the old dataset
+        print("--seed must be >= 0", file=sys.stderr)
+        return EXIT_USAGE
     from arrival.jobs.shards import ShardError, parse_shard
 
     try:

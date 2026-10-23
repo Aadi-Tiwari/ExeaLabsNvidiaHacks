@@ -19,15 +19,16 @@ def test_sim_missing_room_is_usage_error(tmp_path, capsys):
     assert "no scan for room" in capsys.readouterr().err
 
 
-def test_sim_negative_people_is_a_usage_error_and_keeps_the_old_dataset(tmp_path, capsys, monkeypatch):
+@pytest.mark.parametrize("flag", ["--people", "--seed"])
+def test_sim_negative_people_or_seed_is_a_usage_error_and_keeps_the_old_dataset(tmp_path, capsys, monkeypatch, flag):
     pytest.importorskip("mujoco")
     monkeypatch.chdir(tmp_path)  # resolve_scans falls back to the repo's scans/
     old = tmp_path / "datasets" / "hero_kitchen_sim" / "meta" / "info.json"
     old.parent.mkdir(parents=True)
     old.write_text("{}")
-    assert cli.main(["sim", "--people", "-1", "--episodes", "1", "--families", "open_drawer",
+    assert cli.main(["sim", flag, "-1", "--episodes", "1", "--families", "open_drawer",
                      "--out", str(tmp_path)]) == cli.EXIT_USAGE
-    assert "--people must be >= 0" in capsys.readouterr().err
+    assert f"{flag} must be >= 0" in capsys.readouterr().err
     assert old.is_file()
 
 
