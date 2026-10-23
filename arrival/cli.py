@@ -168,6 +168,8 @@ def _sim_args(a):
         return "mujoco is not installed: pip install -e '.[sim]'"
     from arrival.sim.tasks import SIM_FAMILIES
 
+    if getattr(a, "people", None) is not None and a.people < 0:  # before the writer clears the old dataset
+        return "--people must be >= 0"
     if getattr(a, "arm", "procedural") == "menagerie":
         from arrival.sim import menagerie
 
