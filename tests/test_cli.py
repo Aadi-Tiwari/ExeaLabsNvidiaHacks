@@ -41,3 +41,17 @@ def test_mobile_base_with_a_served_policy_is_a_usage_error(tmp_path, capsys, mon
     ns = _ns(tmp_path, room="hero_kitchen", policy="vla", base="mobile")
     assert getattr(cli, cmd)(ns) == cli.EXIT_USAGE
     assert "--base mobile needs --policy scripted" in capsys.readouterr().err
+
+@pytest.mark.parametrize("cmd", ["cmd_sim", "cmd_eval"])
+@pytest.mark.parametrize("kw,expected_err", [
+    ({"people": -1}, "--people must be >= 0"),
+    ({"seed": -1}, "--seed must be >= 0"),
+    ({"res": 50}, "--res must be a positive multiple of 16"),
+    ({"res": 0}, "--res must be a positive multiple of 16"),
+])
+def test_sim_eval_numerical_bounds(tmp_path, capsys, cmd, kw, expected_err):
+    pytest.importorskip("mujoco")
+    ns = _ns(tmp_path, **kw)
+    assert getattr(cli, cmd)(ns) == cli.EXIT_USAGE
+    assert expected_err in capsys.readouterr().err
+

@@ -96,7 +96,8 @@ def test_run_id_cannot_escape_scratch_or_storage(run_id):
 @pytest.mark.parametrize("patch,name", [
     ({"shards": 0}, "shards"), ({"shards": 1.5}, "shards"),
     ({"episodes": 0}, "episodes"), ({"people": -1}, "people"),
-    ({"res": True}, "res"), ({"seed": 1.2}, "seed"),
+    ({"res": True}, "res"), ({"res": 50}, "res"), ({"res": 0}, "res"),
+    ({"seed": 1.2}, "seed"), ({"seed": -1}, "seed"),
     ({"room": " "}, "room"), ({"families": "open_drawer,"}, "families"),
     ({"scans": " "}, "scans"),
 ])

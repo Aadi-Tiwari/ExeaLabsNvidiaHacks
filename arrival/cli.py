@@ -87,6 +87,9 @@ def cmd_demo(a) -> int:
     if a.episodes < 1:
         print("--episodes must be >= 1", file=sys.stderr)
         return EXIT_USAGE
+    if getattr(a, "seed", 0) < 0:
+        print("--seed must be >= 0", file=sys.stderr)
+        return EXIT_USAGE
     videos = a.videos or "all"
     res = run_demo(a.room, a.episodes, videos, a.out, a.scans, from_roomplan=a.from_roomplan)
     r = res["report_data"]
@@ -178,6 +181,12 @@ def _sim_args(a):
     bad = [f for f in fams if f not in SIM_FAMILIES]
     if bad or a.episodes < 1:
         return f"unknown families {bad} (choose from {', '.join(SIM_FAMILIES)})" if bad else "--episodes must be >= 1"
+    if getattr(a, "people", 0) is not None and getattr(a, "people", 0) < 0:
+        return "--people must be >= 0"
+    if getattr(a, "seed", 0) is not None and getattr(a, "seed", 0) < 0:
+        return "--seed must be >= 0"
+    if getattr(a, "res", 16) is not None and (getattr(a, "res", 16) <= 0 or getattr(a, "res", 16) % 16 != 0):
+        return "--res must be a positive multiple of 16"
     if getattr(a, "base", "fixed") == "mobile" and getattr(a, "policy", "scripted") != "scripted":
         return ("--base mobile needs --policy scripted: the policy server wire format carries no base pose yet "
                 "(8-float arm only), so a served policy could not drive the base")
@@ -462,6 +471,12 @@ def cmd_work(a) -> int:
         print(f"unknown families {bad} (choose from {', '.join(SIM_FAMILIES)})" if bad else "--episodes must be >= 1",
               file=sys.stderr)
         return EXIT_USAGE
+    if a.people < 0 or a.seed < 0:
+        print("--people and --seed must be >= 0", file=sys.stderr)
+        return EXIT_USAGE
+    if a.res <= 0 or a.res % 16 != 0:
+        print("--res must be a positive multiple of 16", file=sys.stderr)
+        return EXIT_USAGE
     if a.retries is not None and a.retries < 0:
         print("--retries must be >= 0", file=sys.stderr)
         return EXIT_USAGE
@@ -506,6 +521,12 @@ def cmd_summary(a) -> int:
     if bad or a.episodes < 1:
         print(f"unknown families {bad} (choose from {', '.join(SIM_FAMILIES)})" if bad else "--episodes must be >= 1",
               file=sys.stderr)
+        return EXIT_USAGE
+    if a.people < 0 or a.seed < 0:
+        print("--people and --seed must be >= 0", file=sys.stderr)
+        return EXIT_USAGE
+    if a.res <= 0 or a.res % 16 != 0:
+        print("--res must be a positive multiple of 16", file=sys.stderr)
         return EXIT_USAGE
     rooms = [r.strip() for r in a.rooms.split(",") if r.strip()] if a.rooms else None
     kw = {"rooms": rooms} if rooms else {}

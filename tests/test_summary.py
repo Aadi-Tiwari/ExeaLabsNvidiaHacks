@@ -122,3 +122,17 @@ def test_cli_summary_writes_json_and_markdown(tmp_path, capsys):
     assert [r["room"] for r in data["rooms"]] == ["hero_kitchen"] and data["settings"]["res"] == 64
     assert (tmp_path / "summary.md").read_text().startswith("# Room summary")
     assert cli.main(["summary", "--families", "bogus", "--out", str(tmp_path)]) == cli.EXIT_USAGE
+
+@pytest.mark.parametrize("flag,val,expected_err", [
+    ("--people", "-1", "--people and --seed must be >= 0"),
+    ("--seed", "-1", "--people and --seed must be >= 0"),
+    ("--res", "50", "--res must be a positive multiple of 16"),
+    ("--res", "0", "--res must be a positive multiple of 16"),
+    ("--episodes", "0", "--episodes must be >= 1"),
+])
+def test_cli_summary_numerical_bounds(tmp_path, capsys, flag, val, expected_err):
+    pytest.importorskip("mujoco")
+    rc = cli.main(["summary", flag, val, "--out", str(tmp_path)])
+    assert rc == cli.EXIT_USAGE
+    assert expected_err in capsys.readouterr().err
+
