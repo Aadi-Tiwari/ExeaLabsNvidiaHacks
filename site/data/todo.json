@@ -3,10 +3,10 @@
  "repo": "AvnehSBhatia/ExeaLabsNvidiaHacks",
  "source": "README to-do, refreshed after #194 landed the integration on main and #193, #195, #196, #197 and #198 were merged into feat/more-prs-2. Submission fields checked against https://nebiusglobalaihackathon.devpost.com/ and the official rules.",
  "counts": {
-  "done": 55,
+  "done": 56,
   "review": 3,
   "todo": 0,
-  "blocked": 16,
+  "blocked": 15,
   "total": 74
  },
  "prs": {
@@ -985,12 +985,15 @@
     {
      "id": "C3",
      "title": "Measured time and cost per demo against the teleop baseline",
-     "status": "blocked",
-     "owner_kind": "cloud",
+     "status": "done",
+     "owner_kind": "laptop",
      "size": "S",
      "priority": "should",
      "issue": 67,
-     "authors": []
+     "authors": [
+      "amanx98"
+     ],
+     "note": "Exposed arrival cost CLI subcommand comparing simulation throughput against P3 teleop baseline (docs/results/p3-teleop-2026-10-21/teleop_baseline.json). Measures per-family seconds in collect() and computes teleop vs generated speedup ratios."
     },
     {
      "id": "C4",
