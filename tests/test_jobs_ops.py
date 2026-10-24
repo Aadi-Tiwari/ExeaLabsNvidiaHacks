@@ -804,7 +804,6 @@ GRANDCHILD_ALLOCATES = ("import subprocess, sys, time; "
                         "time.sleep(60)")
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="tree_rss reads /proc or ps; not measured on Windows")
 def test_tree_rss_counts_the_processes_a_child_starts():
     p = subprocess.Popen([sys.executable, "-c", GRANDCHILD_ALLOCATES.format(MB=200)])
     try:
@@ -824,7 +823,6 @@ STAGE_THEN_ALLOCATE = ("import sys, json, time; from pathlib import Path; p = Pa
                        "b = b'x' * (300 << 20); time.sleep(120)")
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="tree_rss reads /proc or ps; not measured on Windows")
 def test_job_over_memory_limit_is_killed_and_recorded_with_its_stage(tmp_path):
     out = tmp_path / "out"
     job = create_job(jobs_of(out), "big.json", data=b"{}")

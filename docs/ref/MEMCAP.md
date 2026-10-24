@@ -44,7 +44,7 @@ None of these is the `MemoryError` that `child.py` described. The native librari
 
 ## The limit now: resident memory, checked by the worker
 
-`ARRIVAL_MAX_JOB_MB` now limits resident memory. Every 0.5 s (`MEM_TICK`), `run_isolated` reads the resident memory of the child and every process under it with `arrival.jobs.worker.tree_rss` (`/proc` on Linux, `ps` elsewhere). Past the limit it kills the child, records `MemoryLimitError: the job used N MB resident, over the M MB limit (ARRIVAL_MAX_JOB_MB), during stage '...'` and does not retry, the same as a timeout. `child.py` no longer sets `RLIMIT_AS`.
+`ARRIVAL_MAX_JOB_MB` now limits resident memory. Every 0.5 s (`MEM_TICK`), `run_isolated` reads the resident memory of the child and every process under it with `arrival.jobs.worker.tree_rss` (`/proc` on Linux, `Toolhelp32`/`psapi` on Windows, `ps` elsewhere). Past the limit it kills the child, records `MemoryLimitError: the job used N MB resident, over the M MB limit (ARRIVAL_MAX_JOB_MB), during stage '...'` and does not retry, the same as a timeout. `child.py` no longer sets `RLIMIT_AS`.
 
 The same job and image, with the new limit:
 
@@ -62,4 +62,4 @@ The job uses the same memory on both hosts, so one value works on both. Leave he
 
 - It samples every 0.5 s, so a spike shorter than that can pass unseen. The check stops runaway growth; it does not guarantee a hard ceiling.
 - It needs the child process: with `max_job_seconds` 0 (`isolate` off) the job runs in the worker and nothing is checked.
-- Windows was not measured; `tree_rss` uses `ps` there, which a stock Windows doesn't have, so the check reads nothing and never kills.
+- On Windows, `tree_rss` uses Toolhelp32 process snapshots and `psapi.GetProcessMemoryInfo` (WorkingSetSize) via standard library `ctypes`.

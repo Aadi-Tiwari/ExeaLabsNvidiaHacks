@@ -232,7 +232,7 @@ Nebius x NVIDIA Global AI Hackathon, https://nebiusglobalaihackathon.devpost.com
 - A 28-episode run at 64 px after the door joint-limit fix (#152) succeeds 28 of 28 with 0 episodes flagged by the quality check. It was not rerun at 224 px.
 - With a fixed base, drawers and `close_door` on the U-kitchen's corner cabinet and the rotated kitchen's fridge stay unreachable and are skipped. Only the corner cabinet's `open_door` takes a shifted stand spot. The reach planner checks the arm's IK, not collisions.
 - The expert's fridge push heading ignores the fixture's yaw, and walker yield ignores the arm links.
-- The job memory limit (`ARRIVAL_MAX_JOB_MB`) counts resident memory and was measured on Ubuntu 24.04 and macOS, not on Windows (`docs/ref/MEMCAP.md`).
+- The job memory limit (`ARRIVAL_MAX_JOB_MB`) counts resident memory across the process tree (`/proc` on Linux, `Toolhelp32`/`psapi` on Windows, `ps` on macOS; `docs/ref/MEMCAP.md`).
 - The static demo page was checked in a browser at desktop and phone width (#195, on this branch, not on main). The upload page's buttons were checked in headless Chromium. There is no public URL yet. Uploads are processed by local workers that share one `out/` folder.
 - No real kitchen has been scanned and run end to end. GR00T has trained on the simulated data; the scores are the small paired trials above.
 
