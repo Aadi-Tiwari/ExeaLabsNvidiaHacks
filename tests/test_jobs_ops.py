@@ -33,7 +33,13 @@ def jobs_of(out):
 
 
 def status_of(out, job):
-    return json.loads((jobs_of(out) / job["id"] / "status.json").read_text(encoding="utf-8"))
+    sp = jobs_of(out) / job["id"] / "status.json"
+    for _ in range(5):
+        try:
+            return json.loads(sp.read_text(encoding="utf-8"))
+        except OSError:
+            time.sleep(0.01)
+    return json.loads(sp.read_text(encoding="utf-8"))
 
 
 def fake_running(out, job, pid=None, age=0.0):
