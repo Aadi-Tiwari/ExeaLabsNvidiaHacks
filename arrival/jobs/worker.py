@@ -625,9 +625,11 @@ def _tree_rss_windows(pid: int) -> int | None:
             ]
 
         def get_proc_rss(p: int) -> int:
+            PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
             PROCESS_QUERY_INFORMATION = 0x0400
-            PROCESS_VM_READ = 0x0010
-            h = kernel32.OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, False, p)
+            h = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, p)
+            if not h:
+                h = kernel32.OpenProcess(PROCESS_QUERY_INFORMATION, False, p)
             if not h:
                 return 0
             try:
