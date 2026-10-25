@@ -141,3 +141,18 @@ def test_load_dotenv_reads_every_file(monkeypatch, tmp_path):
         assert os.environ["TAVILY_KEY_TEST"] == "real"
     monkeypatch.delenv("TAVILY_KEY_TEST", raising=False)
     os.environ.pop("UNRELATED", None)
+
+
+def test_shipped_cache_does_not_shadow_the_api(monkeypatch):
+    # the cache that ships in the package must not answer the standard appliance queries,
+    # or a run with a TAVILY_API_KEY never calls Tavily for them
+    from arrival.tasks.tavily_research import DEFAULT_CACHE
+
+    calls = []
+    monkeypatch.setattr("arrival.tasks.tavily_research.tavily_search",
+                        lambda q, **k: calls.append(q) or {"answer": "live", "results": []})
+    agent = TavilyResearchAgent(log=lambda *_: None, cache_path=DEFAULT_CACHE)
+    monkeypatch.setattr(agent, "_save_cache", lambda: None)
+    for fixture in ("dishwasher", "stove", "fridge", "microwave", "sink"):
+        assert agent.research_appliance(fixture)["source"] == "tavily_api"
+    assert len(calls) == 5
