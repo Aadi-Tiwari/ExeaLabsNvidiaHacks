@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 import time
 from pathlib import Path
@@ -297,9 +296,6 @@ def cmd_subset(a) -> int:
     from arrival.export.validate import validate
     from arrival.sim.tasks import SIM_FAMILIES
 
-    if a.min_drawer_opening is not None and (not math.isfinite(a.min_drawer_opening) or a.min_drawer_opening < 0):
-        print("--min-drawer-opening must be a finite, nonnegative distance in metres", file=sys.stderr)
-        return EXIT_USAGE
     if a.families:
         fams = list(SIM_FAMILIES) if a.families == "all" else [f.strip() for f in a.families.split(",") if f.strip()]
         bad = [f for f in fams if f not in SIM_FAMILIES]

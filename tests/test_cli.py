@@ -46,7 +46,7 @@ def test_mobile_base_with_a_served_policy_is_a_usage_error(tmp_path, capsys, mon
 def test_subset_drawer_bounds(tmp_path, capsys, threshold):
     ns = argparse.Namespace(src=str(tmp_path), out=str(tmp_path / "o"), families="", min_drawer_opening=threshold)
     assert cli.cmd_subset(ns) == cli.EXIT_USAGE
-    assert "--min-drawer-opening must be a finite, nonnegative distance in metres" in capsys.readouterr().err
+    assert "min_drawer_opening must be a finite, nonnegative distance in metres" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("bad_family", ["bad_family", "counter_to_sink,unknown_family"])
