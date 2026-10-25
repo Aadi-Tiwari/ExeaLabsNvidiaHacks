@@ -41,3 +41,13 @@ def test_mobile_base_with_a_served_policy_is_a_usage_error(tmp_path, capsys, mon
     ns = _ns(tmp_path, room="hero_kitchen", policy="vla", base="mobile")
     assert getattr(cli, cmd)(ns) == cli.EXIT_USAGE
     assert "--base mobile needs --policy scripted" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("kw,expected", [({"shards": 0}, "shards must be"), ({"run_id": "../x"}, "run_id must be")])
+def test_fanout_bad_config_is_usage_error(tmp_path, capsys, kw, expected):
+    """FanoutConfig checks its settings in __post_init__; that error is a usage message, not a traceback."""
+    ns = _ns(tmp_path, backend="local", **{"run_id": "r", "shards": 1, **kw})
+    assert cli.cmd_fanout(ns) == cli.EXIT_USAGE
+    err = capsys.readouterr().err
+    assert err.startswith("fanout: ") and expected in err
+    assert not (tmp_path / "fanout_store").exists()
