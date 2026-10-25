@@ -261,8 +261,8 @@ def merge_shards(sources: list[str | Path], out_dir: str | Path = "out", log=pri
 
     root = Path(out_dir) / "datasets" / f"{room}_sim"
     for s in shards:
-        if root.resolve() in (s["root"].resolve(), *s["root"].resolve().parents):
-            raise ShardError(f"the output {root} would overwrite shard {s['root']}; pick another --out")
+        if root.resolve().is_relative_to(s["root"].resolve()) or s["root"].resolve().is_relative_to(root.resolve()):
+            raise ShardError(f"the output {root} would overwrite or be inside shard {s['root']}; pick another --out")
         for row in s["episodes"]:
             data, videos = episode_files(s, row)
             for source in (data, *videos.values()):
