@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 import time
 from pathlib import Path
@@ -208,6 +209,10 @@ def cmd_sim(a) -> int:
         shard = parse_shard(a.shard) if getattr(a, "shard", None) else None
     except ShardError as e:
         print(e, file=sys.stderr)
+        return EXIT_USAGE
+    dart = getattr(a, "dart", 0.0)
+    if not (math.isfinite(dart) and dart >= 0):  # -1 and nan ran with no noise but were written to info.json
+        print("--dart must be a finite number >= 0 (0 = off)", file=sys.stderr)
         return EXIT_USAGE
     if getattr(a, "tavily", False):
         from arrival.tasks.tavily_research import TavilyResearchAgent
