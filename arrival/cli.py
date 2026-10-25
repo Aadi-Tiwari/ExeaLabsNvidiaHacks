@@ -175,6 +175,8 @@ def _sim_args(a):
             return menagerie.FETCH_HINT
 
     fams = list(SIM_FAMILIES) if a.families == "all" else [f.strip() for f in a.families.split(",") if f.strip()]
+    if not fams:
+        return "--families is empty: give at least one family name, or all"
     bad = [f for f in fams if f not in SIM_FAMILIES]
     if bad or a.episodes < 1:
         return f"unknown families {bad} (choose from {', '.join(SIM_FAMILIES)})" if bad else "--episodes must be >= 1"
@@ -457,6 +459,9 @@ def cmd_work(a) -> int:
     from arrival.sim.tasks import SIM_FAMILIES
 
     fams = list(SIM_FAMILIES) if a.families == "all" else [f.strip() for f in a.families.split(",") if f.strip()]
+    if not fams:
+        print("--families is empty: give at least one family name, or all", file=sys.stderr)
+        return EXIT_USAGE
     bad = [f for f in fams if f not in SIM_FAMILIES]
     if bad or a.episodes < 1:
         print(f"unknown families {bad} (choose from {', '.join(SIM_FAMILIES)})" if bad else "--episodes must be >= 1",
@@ -502,6 +507,9 @@ def cmd_summary(a) -> int:
     from arrival.sim.tasks import SIM_FAMILIES
 
     fams = list(SIM_FAMILIES) if a.families == "all" else [f.strip() for f in a.families.split(",") if f.strip()]
+    if not fams:
+        print("--families is empty: give at least one family name, or all", file=sys.stderr)
+        return EXIT_USAGE
     bad = [f for f in fams if f not in SIM_FAMILIES]
     if bad or a.episodes < 1:
         print(f"unknown families {bad} (choose from {', '.join(SIM_FAMILIES)})" if bad else "--episodes must be >= 1",

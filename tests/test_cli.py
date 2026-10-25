@@ -24,6 +24,18 @@ def test_research_missing_room_is_usage_error(tmp_path, capsys, monkeypatch):
     assert cli.cmd_research(_ns(tmp_path)) == cli.EXIT_USAGE
 
 
+@pytest.mark.parametrize("cmd", ["sim", "work", "summary"])
+def test_empty_families_is_a_usage_error(tmp_path, capsys, monkeypatch, cmd):
+    """`--families ,` parsed to no families: sim replaced the old dataset with an empty, invalid one and exited 0."""
+    pytest.importorskip("mujoco")
+    monkeypatch.chdir(tmp_path)  # resolve_scans falls back to the repo's scans/
+    argv = [cmd, "--families", " , ", "--out", str(tmp_path)]
+    argv += {"sim": ["--room", "hero_kitchen"], "work": ["--once"]}.get(cmd, [])
+    assert cli.main(argv) == cli.EXIT_USAGE
+    assert "--families is empty" in capsys.readouterr().err
+    assert not (tmp_path / "datasets").exists()
+
+
 def test_sim_vla_not_configured_is_usage_error(tmp_path, capsys, monkeypatch):
     pytest.importorskip("mujoco")
     monkeypatch.delenv("GR00T_POLICY_URL", raising=False)
