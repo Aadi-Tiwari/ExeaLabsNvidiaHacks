@@ -141,7 +141,10 @@ def _load(root: Path) -> tuple[dict, list[dict]]:
     meta = root / "meta"
     if not (root.is_dir() and (meta / "info.json").is_file() and (meta / "episodes.jsonl").is_file()):
         raise QualityError(f"{root} is not a LeRobot dataset folder (needs meta/info.json and meta/episodes.jsonl)")
-    return json.loads((meta / "info.json").read_text()), _jsonl(meta / "episodes.jsonl")
+    try:
+        return json.loads((meta / "info.json").read_text()), _jsonl(meta / "episodes.jsonl")
+    except ValueError as e:
+        raise QualityError(f"{root}: meta/info.json or meta/episodes.jsonl is not valid JSON ({e})") from e
 
 
 def check_episodes(root: str | Path, frames: bool = False) -> dict:

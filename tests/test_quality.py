@@ -8,7 +8,8 @@ import pytest
 
 from arrival import cli
 from arrival.export import quality
-from arrival.export.validate import validate
+from arrival.export.loader_check import check_loader
+from arrival.export.validate import META, validate
 from arrival.sim.export import SimDatasetWriter
 from arrival.sim.robot import RANGES
 
@@ -206,6 +207,20 @@ def test_drop_refuses_existing_output_inside_source_and_all_flagged(ds, tmp_path
 def test_not_a_dataset_is_a_typed_error(tmp_path):
     with pytest.raises(quality.QualityError):
         quality.check_episodes(tmp_path)
+
+
+@pytest.mark.parametrize("name", META)
+def test_truncated_meta_file_is_reported_not_a_traceback(tmp_path, capsys, name):
+    root = tmp_path / "ds"
+    build(root, {})
+    path = root / "meta" / name
+    path.write_text(path.read_text()[:-5])  # what a run killed mid-write leaves behind
+    errors = validate(root)
+    assert len(errors) == 1 and errors[0].startswith(f"meta/{name} is not valid JSON")
+    assert cli.main(["validate", str(root), "--episodes"]) == cli.EXIT_INVALID
+    assert f"meta/{name} is not valid JSON" in capsys.readouterr().err
+    res = check_loader(root)
+    assert not res["ok"] and [e["code"] for e in res["errors"]] == ["meta_unreadable"]
 
 
 def test_cli_plain_validate_ignores_quality(tmp_path):
