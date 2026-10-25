@@ -225,3 +225,10 @@ def test_cli_episodes_exit_codes_and_drop(ds, tmp_path, capsys):
     assert cli.main(["validate", str(root), "--drop", str(tmp_path / "clean")]) == cli.EXIT_OK
     assert cli.main(["validate", str(tmp_path / "clean"), "--episodes"]) == cli.EXIT_OK
     assert cli.main(["validate", str(tmp_path / "missing"), "--episodes"]) == cli.EXIT_INVALID
+
+
+def test_cli_json_report_goes_into_a_folder_that_does_not_exist_yet(tmp_path):
+    build(tmp_path / "ds", {})
+    report = tmp_path / "reports" / "q.json"
+    assert cli.main(["validate", str(tmp_path / "ds"), "--episodes", "--json", str(report)]) == cli.EXIT_OK
+    assert json.loads(report.read_text())["kept"] == 6
