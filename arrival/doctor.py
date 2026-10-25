@@ -23,15 +23,24 @@ MIN_PYTHON = (3, 11)
 CORE = {"numpy": "numpy", "pyarrow": "pyarrow", "yaml": "pyyaml", "PIL": "pillow", "imageio": "imageio",
         "imageio_ffmpeg": "imageio-ffmpeg"}
 # (variable, what it unlocks). Every one is optional: the demo, the sim and the tests need none of them.
+from arrival.jobs.nebius import JOB_SETTINGS, STORE_SETTINGS
+
+NEBIUS_PURPOSES = {
+    "NEBIUS_IAM_TOKEN": "Nebius Serverless AI Jobs access token (fanout --backend nebius)",
+    "NEBIUS_PROJECT_ID": "Nebius project for fanout jobs",
+    "NEBIUS_JOB_IMAGE": "Nebius job container image",
+    "NEBIUS_JOB_S3_SECRET_ID": "Nebius MysteryBox secret ID for fanout storage",
+    "NEBIUS_BUCKET": "Nebius Object Storage bucket for fanout artifacts",
+    "NEBIUS_ACCESS_KEY_ID": "Nebius Object Storage access key ID",
+    "NEBIUS_SECRET_ACCESS_KEY": "Nebius Object Storage secret access key",
+}
+
 OPTIONAL_ENV = (
     ("TOKEN_FACTORY_API_KEY", "Nemotron planner and instruction wordings (sim --planner vlm, --instructions nemotron)"),
     ("TAVILY_API_KEY", "appliance research (research, sim --tavily)"),
     ("GR00T_POLICY_URL", "a GR00T policy server (--policy vla)"),
     ("COSMOS_URL", "Cosmos appearance restyle"),
-    ("NEBIUS_IAM_TOKEN", "Nebius Serverless AI Jobs (fanout --backend nebius)"),
-    ("NEBIUS_PROJECT_ID", "Nebius project for fanout jobs"),
-    ("NEBIUS_BUCKET", "Nebius Object Storage bucket for fanout artifacts"),
-    ("NEBIUS_JOB_IMAGE", "Nebius job container image"),
+    *((k, NEBIUS_PURPOSES.get(k, "Nebius Cloud fanout")) for k in (*JOB_SETTINGS, *STORE_SETTINGS)),
 )
 FREE_WARN_GIB, FREE_FAIL_GIB = 2.0, 0.25
 GIB = 1024 ** 3

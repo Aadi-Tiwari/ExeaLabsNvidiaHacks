@@ -124,8 +124,8 @@ def test_cli_summary_writes_json_and_markdown(tmp_path, capsys):
     assert cli.main(["summary", "--families", "bogus", "--out", str(tmp_path)]) == cli.EXIT_USAGE
 
 @pytest.mark.parametrize("flag,val,expected_err", [
-    ("--people", "-1", "--people and --seed must be >= 0"),
-    ("--seed", "-1", "--people and --seed must be >= 0"),
+    ("--people", "-1", "--people must be >= 0"),
+    ("--seed", "-1", "--seed must be >= 0"),
     ("--res", "50", "--res must be a positive multiple of 16"),
     ("--res", "0", "--res must be a positive multiple of 16"),
     ("--episodes", "0", "--episodes must be >= 1"),

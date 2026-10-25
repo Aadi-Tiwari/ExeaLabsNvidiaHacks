@@ -87,9 +87,6 @@ def cmd_demo(a) -> int:
     if a.episodes < 1:
         print("--episodes must be >= 1", file=sys.stderr)
         return EXIT_USAGE
-    if getattr(a, "seed", 0) < 0:
-        print("--seed must be >= 0", file=sys.stderr)
-        return EXIT_USAGE
     videos = a.videos or "all"
     res = run_demo(a.room, a.episodes, videos, a.out, a.scans, from_roomplan=a.from_roomplan)
     r = res["report_data"]
@@ -471,8 +468,11 @@ def cmd_work(a) -> int:
         print(f"unknown families {bad} (choose from {', '.join(SIM_FAMILIES)})" if bad else "--episodes must be >= 1",
               file=sys.stderr)
         return EXIT_USAGE
-    if a.people < 0 or a.seed < 0:
-        print("--people and --seed must be >= 0", file=sys.stderr)
+    if a.people < 0:
+        print("--people must be >= 0", file=sys.stderr)
+        return EXIT_USAGE
+    if a.seed < 0:
+        print("--seed must be >= 0", file=sys.stderr)
         return EXIT_USAGE
     if a.res <= 0 or a.res % 16 != 0:
         print("--res must be a positive multiple of 16", file=sys.stderr)
@@ -522,8 +522,11 @@ def cmd_summary(a) -> int:
         print(f"unknown families {bad} (choose from {', '.join(SIM_FAMILIES)})" if bad else "--episodes must be >= 1",
               file=sys.stderr)
         return EXIT_USAGE
-    if a.people < 0 or a.seed < 0:
-        print("--people and --seed must be >= 0", file=sys.stderr)
+    if a.people < 0:
+        print("--people must be >= 0", file=sys.stderr)
+        return EXIT_USAGE
+    if a.seed < 0:
+        print("--seed must be >= 0", file=sys.stderr)
         return EXIT_USAGE
     if a.res <= 0 or a.res % 16 != 0:
         print("--res must be a positive multiple of 16", file=sys.stderr)
