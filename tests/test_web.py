@@ -855,6 +855,17 @@ def test_serve_hardening_flags_parse_and_validate():
     assert main(["serve", "--rate-limit", "-1"]) == EXIT_USAGE
 
 
+def test_serve_refuses_a_port_bind_cannot_take(monkeypatch, capsys):
+    from arrival.cli import EXIT_USAGE, main
+
+    for port in ("-1", "65536", "70000"):
+        assert main(["serve", "--port", port]) == EXIT_USAGE
+        assert "--port must be 0-65535" in capsys.readouterr().err
+    seen = {}
+    monkeypatch.setattr("arrival.web.app.serve", lambda **kw: seen.update(kw))
+    assert main(["serve", "--port", "0"]) == 0 and seen["port"] == 0
+
+
 def test_doctor_reports_keys_without_values(tmp_path, monkeypatch, capsys):
     from arrival import doctor
     from arrival.cli import main

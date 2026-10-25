@@ -140,6 +140,9 @@ def cmd_validate(a) -> int:
 
 
 def cmd_serve(a) -> int:
+    if not 0 <= a.port <= 65535:
+        print("--port must be 0-65535 (0 = any free port)", file=sys.stderr)
+        return EXIT_USAGE
     from arrival.web.app import serve
 
     if a.max_upload_mb <= 0 or a.rate_limit < 0 or a.max_queued < 0:
