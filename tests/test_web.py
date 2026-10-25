@@ -843,6 +843,20 @@ def test_frames_member_count_cap(make, monkeypatch):
 
 # -- CLI flags and the doctor
 
+def test_a_port_already_served_cannot_be_bound_again(make):
+    """On Windows SO_REUSEADDR let a second `arrival serve` bind the port the first one was serving."""
+    srv, out = make()
+    with pytest.raises(OSError):
+        make_server(port=srv.server_address[1], out_dir=out, scans_dir=REPO / "scans").server_close()
+
+
+def test_serve_reports_an_address_it_cannot_listen_on(capsys):
+    from arrival.cli import EXIT_USAGE, main
+
+    assert main(["serve", "--host", "no-such-host.invalid", "--port", "0"]) == EXIT_USAGE
+    assert "serve: cannot listen on no-such-host.invalid:0" in capsys.readouterr().err
+
+
 def test_serve_hardening_flags_parse_and_validate():
     from arrival.cli import EXIT_USAGE, build_parser, main
 

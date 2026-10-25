@@ -145,9 +145,13 @@ def cmd_serve(a) -> int:
     if a.max_upload_mb <= 0 or a.rate_limit < 0 or a.max_queued < 0:
         print("--max-upload-mb must be > 0; --rate-limit and --max-queued must be >= 0 (0 = off)", file=sys.stderr)
         return EXIT_USAGE
-    serve(port=a.port, out_dir=Path(a.out), scans_dir=resolve_scans(a.scans), host=a.host,
-          max_upload_mb=a.max_upload_mb, rate_limit=a.rate_limit, max_queued=a.max_queued,
-          public=a.public, behind_proxy=a.behind_proxy)
+    try:
+        serve(port=a.port, out_dir=Path(a.out), scans_dir=resolve_scans(a.scans), host=a.host,
+              max_upload_mb=a.max_upload_mb, rate_limit=a.rate_limit, max_queued=a.max_queued,
+              public=a.public, behind_proxy=a.behind_proxy)
+    except OSError as e:  # the bind: port in use, or a host that does not resolve
+        print(f"serve: cannot listen on {a.host}:{a.port}: {e}", file=sys.stderr)
+        return EXIT_USAGE
     return EXIT_OK
 
 
