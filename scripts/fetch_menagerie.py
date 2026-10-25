@@ -8,6 +8,7 @@ arrival/assets/menagerie/franka_emika_panda (gitignored); the LICENSE and README
 
 from __future__ import annotations
 
+import argparse
 import shutil
 import subprocess
 import sys
@@ -40,4 +41,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter).parse_args()
     sys.exit(main())

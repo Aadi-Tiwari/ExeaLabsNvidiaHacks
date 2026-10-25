@@ -1,6 +1,7 @@
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -91,3 +92,15 @@ def test_docker_image_builds_and_runs():
     r = subprocess.run(["docker", "run", "--rm", "arrival-test", "python", "-m", "arrival", "validate", "--help"],
                        capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
+
+
+@pytest.mark.parametrize("script", ["fetch_menagerie", "make_demo_video", "make_detection_fixture", "render_contributors"])
+def test_generator_scripts_answer_help_instead_of_running(script):
+    """These take no options and rewrite tracked files (docs/media, test fixtures, README) or clone 34 MB when run."""
+    if script in ("make_demo_video", "make_detection_fixture"):
+        pytest.importorskip("mujoco")
+    path = ROOT / "scripts" / f"{script}.py"
+    h = subprocess.run([sys.executable, str(path), "--help"], cwd=ROOT, capture_output=True, text=True, timeout=60)
+    assert h.returncode == 0 and h.stdout.startswith("usage:")
+    bad = subprocess.run([sys.executable, str(path), "--bogus"], cwd=ROOT, capture_output=True, text=True, timeout=60)
+    assert bad.returncode == 2 and "unrecognized arguments" in bad.stderr
