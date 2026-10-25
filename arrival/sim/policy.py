@@ -49,8 +49,8 @@ FRIDGE_PUSH_ROLL = np.array([[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]
 # for the push, so the hand is narrow along the panel and its far finger stays off the edge
 FRIDGE_PULL_STEPS = 10  # control steps per quarter of the hooked pull and per sixth of the push
 FRIDGE_SETTLE_STEPS = 6  # held after sliding off the bar, so the door has stopped when its angle is read
-FRIDGE_REPLAN_IK = 0.02  # m: the push is re-planned only when the planned hook is reachable; past this (the
-# U kitchen's side-wall fridge plans 1.70 m) re-planning made the flailing arm fling the door open and count a success
+FRIDGE_REPLAN_IK = 0.02  # m: the push is re-planned only when the planned hook is reachable; past this re-planning
+# made a flailing arm fling the door open and count a success
 DOOR_SWITCH = np.radians(40)  # close_door: door angle where the push from the side hands over to the push from in front
 DOOR_SIDE_YAWS = (0.0, -0.4, 0.4)  # rad the hand turns from the panel's direction for the side push, chosen per task
 FLAP_OUT = 0.12  # m: how far out along the door normal the hand backs off after letting a flap door go
@@ -267,8 +267,10 @@ class ScriptedExpert(Policy):
             hinge, h, _ = env.door_geometry(task)
             r = np.linalg.norm((h - hinge)[:2])
             a0 = np.arctan2(*(h - hinge)[[1, 0]])
-            m = fridge_mirror(env.fx[task["fixture"]])  # -1: right-hinged, the whole plan is the mirror image
-            qa = lambda q: (np.pi if m < 0 else 0.0) + m * q  # heading of the panel at door angle q
+            fridge = env.fx[task["fixture"]]
+            m = fridge_mirror(fridge)  # -1: right-hinged, the whole plan is the mirror image
+            yaw = float(fridge.get("yaw", 0.0))  # the closed panel runs along the fixture's local +x
+            qa = lambda q: yaw + (np.pi if m < 0 else 0.0) + m * q  # heading of the panel at door angle q
             s, up = self.seg_steps, np.array([0, 0, 1.0])
 
             def along(a):  # from the hinge toward the free edge, panel heading a
