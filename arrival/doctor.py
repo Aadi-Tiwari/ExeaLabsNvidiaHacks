@@ -22,7 +22,6 @@ MIN_PYTHON = (3, 11)
 # import name -> distribution name, for the dependencies in pyproject.toml
 CORE = {"numpy": "numpy", "pyarrow": "pyarrow", "yaml": "pyyaml", "PIL": "pillow", "imageio": "imageio",
         "imageio_ffmpeg": "imageio-ffmpeg"}
-# (variable, what it unlocks). Every one is optional: the demo, the sim and the tests need none of them.
 from arrival.jobs.nebius import JOB_SETTINGS, STORE_SETTINGS
 
 NEBIUS_PURPOSES = {
@@ -35,6 +34,7 @@ NEBIUS_PURPOSES = {
     "NEBIUS_SECRET_ACCESS_KEY": "Nebius Object Storage secret access key",
 }
 
+# (variable, what it unlocks). Every one is optional: the demo, the sim and the tests need none of them.
 OPTIONAL_ENV = (
     ("TOKEN_FACTORY_API_KEY", "Nemotron planner and instruction wordings (sim --planner vlm, --instructions nemotron)"),
     ("TAVILY_API_KEY", "appliance research (research, sim --tavily)"),
