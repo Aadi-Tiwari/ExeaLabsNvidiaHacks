@@ -88,3 +88,13 @@ def test_merged_shards_keep_the_noise_level_and_refuse_a_mix(twin, tmp_path):
     shards(tmp_path / "c", lambda i: 0.0)  # a clean run is unchanged: no key at all
     clean = merge_shards([str(tmp_path / "c")], tmp_path / "merged_c")
     assert "arrival_exec_noise_rad" not in clean["info"]
+
+
+@pytest.mark.parametrize("dart", ["-0.02", "nan", "inf"])
+def test_sim_refuses_a_dart_that_is_not_a_finite_number_at_least_0(tmp_path, monkeypatch, capsys, dart):
+    """-0.02 and nan ran with no noise and still wrote that value to info.json (nan as NaN, which is not JSON)."""
+    from arrival import cli
+
+    monkeypatch.setattr("arrival.sim.collect.collect", lambda *a, **k: pytest.fail("collect ran"))
+    assert cli.main(["sim", "--room", "hero_kitchen", "--dart", dart, "--out", str(tmp_path)]) == cli.EXIT_USAGE
+    assert "--dart must be a finite number >= 0" in capsys.readouterr().err
