@@ -314,9 +314,18 @@ def cmd_subset(a) -> int:
     from arrival.export.subset import SubsetError, subset_dataset
     from arrival.export.validate import validate
     from arrival.jobs.shards import ShardError
+    from arrival.sim.tasks import SIM_FAMILIES
 
+    if a.families:
+        fams = list(SIM_FAMILIES) if a.families == "all" else [f.strip() for f in a.families.split(",") if f.strip()]
+        bad = [f for f in fams if f not in SIM_FAMILIES]
+        if bad:
+            print(f"unknown families {bad} (choose from {', '.join(SIM_FAMILIES)})", file=sys.stderr)
+            return EXIT_USAGE
+    else:
+        fams = None
     try:
-        res = subset_dataset(a.src, a.out, families=[f for f in a.families.split(",") if f] if a.families else None,
+        res = subset_dataset(a.src, a.out, families=fams,
                              min_drawer_opening=a.min_drawer_opening)
     except (SubsetError, ShardError) as e:
         print(f"subset: {e}", file=sys.stderr)
@@ -333,6 +342,11 @@ def cmd_merge_shards(a) -> int:
     from arrival.export.validate import validate
     from arrival.jobs.shards import ShardError, merge_shards
 
+    out_p = Path(a.out).resolve()
+    for s in a.shards:
+        if Path(s).resolve() == out_p:
+            print(f"--out cannot be an input shard directory: {a.out}", file=sys.stderr)
+            return EXIT_USAGE
     try:
         res = merge_shards(a.shards, a.out)
     except ShardError as e:
