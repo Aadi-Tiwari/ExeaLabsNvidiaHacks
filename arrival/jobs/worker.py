@@ -588,9 +588,102 @@ def process(job_dir: Path, status: dict, out_dir: Path, episodes: int = 8, famil
     return status
 
 
+def _tree_rss_windows(pid: int) -> int | None:
+    """Resident bytes on Windows: process tree from Toolhelp32, resident set size (WorkingSetSize) from psapi."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.windll.kernel32
+        psapi = ctypes.windll.psapi
+
+        class PROCESSENTRY32(ctypes.Structure):
+            _fields_ = [
+                ("dwSize", wintypes.DWORD),
+                ("cntUsage", wintypes.DWORD),
+                ("th32ProcessID", wintypes.DWORD),
+                ("th32DefaultHeapID", ctypes.c_size_t),
+                ("th32ModuleID", wintypes.DWORD),
+                ("cntThreads", wintypes.DWORD),
+                ("th32ParentProcessID", wintypes.DWORD),
+                ("pcPriClassBase", ctypes.c_long),
+                ("dwFlags", wintypes.DWORD),
+                ("szExeFile", ctypes.c_char * 260),
+            ]
+
+        class PROCESS_MEMORY_COUNTERS(ctypes.Structure):
+            _fields_ = [
+                ("cb", wintypes.DWORD),
+                ("PageFaultCount", wintypes.DWORD),
+                ("PeakWorkingSetSize", ctypes.c_size_t),
+                ("WorkingSetSize", ctypes.c_size_t),
+                ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                ("PagefileUsage", ctypes.c_size_t),
+                ("PeakPagefileUsage", ctypes.c_size_t),
+            ]
+
+        def get_proc_rss(p: int) -> int:
+            PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+            PROCESS_QUERY_INFORMATION = 0x0400
+            h = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, p)
+            if not h:
+                h = kernel32.OpenProcess(PROCESS_QUERY_INFORMATION, False, p)
+            if not h:
+                return 0
+            try:
+                counters = PROCESS_MEMORY_COUNTERS()
+                counters.cb = ctypes.sizeof(PROCESS_MEMORY_COUNTERS)
+                if psapi.GetProcessMemoryInfo(h, ctypes.byref(counters), counters.cb):
+                    return int(counters.WorkingSetSize)
+                return 0
+            finally:
+                kernel32.CloseHandle(h)
+
+        TH32CS_SNAPPROCESS = 0x00000002
+        h_snap = kernel32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
+        INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
+        if h_snap == INVALID_HANDLE_VALUE:
+            return None
+
+        rows: dict[int, tuple[int, int]] = {}
+        try:
+            pe = PROCESSENTRY32()
+            pe.dwSize = ctypes.sizeof(PROCESSENTRY32)
+            if kernel32.Process32First(h_snap, ctypes.byref(pe)):
+                while True:
+                    p = int(pe.th32ProcessID)
+                    pp = int(pe.th32ParentProcessID)
+                    rows[p] = (pp, get_proc_rss(p))
+                    if not kernel32.Process32Next(h_snap, ctypes.byref(pe)):
+                        break
+        finally:
+            kernel32.CloseHandle(h_snap)
+
+        if pid not in rows:
+            return None
+
+        kids: dict[int, list[int]] = {}
+        for p, (pp, _) in rows.items():
+            kids.setdefault(pp, []).append(p)
+        total, todo = 0, [pid]
+        while todo:
+            p = todo.pop()
+            total += rows[p][1]
+            todo += kids.get(p, [])
+        return total
+    except Exception:
+        return None
+
+
 def tree_rss(pid: int) -> int | None:
     """Resident bytes of process ``pid`` and every process under it (the video encoder it starts, for one): from /proc on
-    Linux, from ``ps`` elsewhere. None when the process table cannot be read or ``pid`` is gone."""
+    Linux, from Toolhelp32/psapi on Windows, from ``ps`` elsewhere. None when the process table cannot be read or
+    ``pid`` is gone."""
+    if sys.platform == "win32":
+        return _tree_rss_windows(pid)
     rows: dict[int, tuple[int, int]] = {}  # pid -> (parent pid, resident bytes)
     try:
         if sys.platform == "linux":
