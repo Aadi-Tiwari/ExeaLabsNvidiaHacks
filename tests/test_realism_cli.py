@@ -237,6 +237,14 @@ def test_explicit_twin_json_is_used(twin, scan_dir, tmp_path):
     assert rep["twin_source"] == str(p) and rep["realism"]["depth_l1_m"] < 1e-3
 
 
+@pytest.mark.parametrize("body", ['{"room_id": "hero_kitchen"', "[]", '"twin"', "{}", '{"walls": [], "fixtures": []}'])
+def test_bad_twin_json_is_a_readable_error(scan_dir, tmp_path, capsys, body):
+    p = tmp_path / "twin.json"
+    p.write_text(body)
+    code, rep = _run(scan_dir, tmp_path, "--twin", str(p))
+    assert code == 1 and rep is None and "--twin" in capsys.readouterr().err
+
+
 def test_evaluate_frames_still_refuses_a_train_id(twin):
     """The library-level guard the command relies on."""
     with pytest.raises(ValueError, match="train_0"):

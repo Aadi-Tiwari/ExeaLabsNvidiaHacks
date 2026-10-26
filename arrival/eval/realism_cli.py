@@ -75,7 +75,16 @@ def load_twin(scan_dir: Path, twin_path: str | Path | None = None) -> tuple[dict
         p = Path(twin_path)
         if not p.is_file():
             raise RealismError(f"--twin {p} does not exist")
-        return json.loads(p.read_text(encoding="utf-8")), str(p)
+        try:
+            twin = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            raise RealismError(f"--twin {p} is not readable JSON: {e}") from e
+        missing = [k for k in ("walls", "fixtures", "objects")
+                   if not isinstance(twin, dict) or not isinstance(twin.get(k), list)]
+        if missing:
+            raise RealismError(f"--twin {p} is not a compiled twin (no {', '.join(missing)} list); pass "
+                               f"out/twins/<room_id>/twin.json")
+        return twin, str(p)
     for name, load in (("roomplan.json", lambda p: roomplan.load(p, room)), ("scan.json", scan_bundle.load)):
         p = scan_dir / name
         if p.is_file():
