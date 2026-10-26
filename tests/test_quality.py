@@ -223,6 +223,18 @@ def test_truncated_meta_file_is_reported_not_a_traceback(tmp_path, capsys, name)
     assert not res["ok"] and [e["code"] for e in res["errors"]] == ["meta_unreadable"]
 
 
+@pytest.mark.parametrize("name,text,msg", [(m, "[]", ("line 1 " if m.endswith(".jsonl") else "") + "is a JSON list, not an object") for m in META] + [
+    ("episodes.jsonl", '{"episode_index": 0}', "line 1 has no length"),
+    ("tasks.jsonl", '{"task": "x"}', "line 1 has no task_index")])
+def test_wrong_shape_meta_file_is_reported_not_a_traceback(tmp_path, capsys, name, text, msg):
+    root = tmp_path / "ds"
+    build(root, {})
+    (root / "meta" / name).write_text(text)
+    assert validate(root) == [f"meta/{name} {msg}"]
+    assert cli.main(["validate", str(root), "--episodes"]) == cli.EXIT_INVALID
+    assert f"meta/{name} {msg}" in capsys.readouterr().err
+
+
 def test_cli_plain_validate_ignores_quality(tmp_path):
     s, a = trace()
     build(tmp_path / "ds", {"zero_motion": episode(np.repeat(s[:1], 64, 0), a)})

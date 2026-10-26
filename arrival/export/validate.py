@@ -12,6 +12,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 META = ("info.json", "tasks.jsonl", "episodes.jsonl", "episodes_stats.jsonl", "stats.json", "modality.json", "embodiment.json")
+ROW_KEYS = {"episodes.jsonl": ("episode_index", "length"), "tasks.jsonl": ("task_index", "task")}
 DTYPES = {
     "observation.state": pa.list_(pa.float32()), "action": pa.list_(pa.float32()), "timestamp": pa.float32(),
     "annotation.human.task_description": pa.int64(), "task_index": pa.int64(), "episode_index": pa.int64(),
@@ -68,9 +69,16 @@ def validate(root: str | Path) -> list[str]:
         return [f"missing meta/{m}" for m in missing]
     for m in META:  # a run killed while writing meta leaves truncated JSON; report it instead of a traceback
         try:
-            _jsonl(root / "meta" / m) if m.endswith(".jsonl") else json.loads((root / "meta" / m).read_text())
+            rows = _jsonl(root / "meta" / m) if m.endswith(".jsonl") else [json.loads((root / "meta" / m).read_text())]
         except ValueError as e:
             return [f"meta/{m} is not valid JSON ({e})"]
+        for i, row in enumerate(rows):
+            where = f"meta/{m} line {i + 1}" if m.endswith(".jsonl") else f"meta/{m}"
+            if not isinstance(row, dict):
+                return [f"{where} is a JSON {type(row).__name__}, not an object"]
+            missing = [k for k in ROW_KEYS.get(m, ()) if k not in row]
+            if missing:
+                return [f"{where} has no {', '.join(missing)}"]
     info = json.loads((root / "meta" / "info.json").read_text())
     modality = json.loads((root / "meta" / "modality.json").read_text())
     features = info.get("features", {})
