@@ -205,3 +205,14 @@ def test_fanout_accepts_all_families(tmp_path, monkeypatch):
     ns = _ns(tmp_path, backend="local", run_id="r", shards=1, families="all")
     assert cli.cmd_fanout(ns) == cli.EXIT_OK
     assert seen == ["all"]
+
+
+@pytest.mark.parametrize("command", ["sim", "eval", "work", "summary"])
+def test_families_help_lists_every_sim_family(command, capsys):
+    from arrival.sim.tasks import SIM_FAMILIES
+
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args([command, "--help"])
+    out = capsys.readouterr().out
+    assert [f for f in SIM_FAMILIES if f not in out] == []
+    assert [f.strip() for f in cli.FAMILY_NAMES.split(",")] == list(SIM_FAMILIES)

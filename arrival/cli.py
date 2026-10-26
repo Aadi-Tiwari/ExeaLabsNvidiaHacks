@@ -13,6 +13,10 @@ from arrival.config import get as get_setting
 from arrival.config import redact
 
 EXIT_OK, EXIT_INVALID, EXIT_USAGE = 0, 1, 2
+# arrival.sim.tasks.SIM_FAMILIES, spelled out because importing it loads MuJoCo
+FAMILY_NAMES = ("counter_to_sink, counter_to_counter, open_drawer, open_door, close_drawer, close_door, put_in_drawer, "
+                "wipe_counter, open_fridge, move_on_table, open_oven, open_dishwasher, turn_on_faucet, load_dishwasher, "
+                "unload_dishwasher")
 
 
 def resolve_scans(scans_dir: str | Path = "scans") -> Path:
@@ -695,7 +699,7 @@ def build_parser() -> argparse.ArgumentParser:
     m.add_argument("--room", default="hero_kitchen")
     m.add_argument("--episodes", type=int, default=8)
     m.add_argument("--families", default="counter_to_sink,open_drawer,move_on_table",
-                   help="all | comma list of counter_to_sink,counter_to_counter,open_drawer,open_door,move_on_table (a family with no variation in this room is skipped)")
+                   help=f"all | comma list of {FAMILY_NAMES} (a family with no variation in this room is skipped)")
     m.add_argument("--people", type=int, default=2)
     m.add_argument("--policy", choices=["scripted", "vla"], default="scripted")
     m.add_argument("--planner", choices=["rule", "vlm"], default="rule",
@@ -765,7 +769,8 @@ def build_parser() -> argparse.ArgumentParser:
     e = sub.add_parser("eval", help="score a policy on fresh or frozen trials; preserve every run")
     e.add_argument("--room")
     e.add_argument("--policy", choices=["scripted", "vla"], default="scripted")
-    e.add_argument("--families", help="all | comma-separated task families (default: counter_to_sink,open_drawer,move_on_table; a family with no variation in this room is skipped)")
+    e.add_argument("--families", help=f"all | comma list of {FAMILY_NAMES} (default: counter_to_sink,open_drawer,move_on_table; "
+                        "a family with no variation in this room is skipped)")
     e.add_argument("--episodes", type=int, help="episodes per family (default: 4)")
     e.add_argument("--seed", type=int)
     e.add_argument("--people", type=int)
@@ -801,7 +806,7 @@ def build_parser() -> argparse.ArgumentParser:
     w.add_argument("--poll", type=float, default=2.0, help="seconds between queue checks")
     w.add_argument("--episodes", type=int, default=8)
     w.add_argument("--families", default="counter_to_sink,open_drawer,move_on_table",
-                   help="all | comma list of counter_to_sink,counter_to_counter,open_drawer,open_door,move_on_table (a family with no variation in this room is skipped)")
+                   help=f"all | comma list of {FAMILY_NAMES} (a family with no variation in this room is skipped)")
     w.add_argument("--people", type=int, default=1)
     w.add_argument("--res", type=int, default=128)
     w.add_argument("--seed", type=int, default=0)
@@ -832,7 +837,7 @@ def build_parser() -> argparse.ArgumentParser:
                         "(default: hero_kitchen plus the two authored RoomPlan fixtures)")
     u.add_argument("--episodes", type=int, default=2, help="episode attempts per room")
     u.add_argument("--families", default="counter_to_sink,open_drawer",
-                   help="all | comma list of counter_to_sink,counter_to_counter,open_drawer,open_door")
+                   help=f"all | comma list of {FAMILY_NAMES}")
     u.add_argument("--people", type=int, default=1)
     u.add_argument("--res", type=int, default=64)
     u.add_argument("--seed", type=int, default=0)
