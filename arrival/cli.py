@@ -279,8 +279,12 @@ def cmd_fanout(a) -> int:
     from arrival.jobs.fanout_status import StatusRecorder
     from arrival.jobs.shards import ShardError
 
-    cfg = FanoutConfig(a.run_id, a.shards, a.room, a.families, a.episodes, a.people, a.res, a.seed, a.scans,
-                       a.dart, a.base, a.exocentric)
+    try:
+        cfg = FanoutConfig(a.run_id, a.shards, a.room, a.families, a.episodes, a.people, a.res, a.seed, a.scans,
+                           a.dart, a.base, a.exocentric)
+    except ShardError as e:
+        print(f"fanout: {e}", file=sys.stderr)
+        return EXIT_USAGE
     if a.backend == "nebius":
         from arrival.jobs.nebius import NebiusBackend, NebiusNotConfigured
 
