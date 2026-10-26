@@ -261,18 +261,20 @@ def make_tasks(twin: dict, families: list[str], n: int, seed: int = 0, people: i
         v = dict(rng.choice(pools[fam]))
         light = rng.choice(LIGHTING)
         name = v.get("object_label") or v.get("name")
+        made_by = {}
         if use_generated_instructions:
             from arrival.tasks.instructions import generate_instructions
             gen = generate_instructions(fam, object_name=v.get("object_label"), fixture_name=v.get("name"))
             options = gen.get(split, gen.get("train", SIM_WORDINGS[fam]))
             instr = options[rng.randrange(len(options))]
             w = -1  # the generated lists have their own indexing: no template index, and no holdout wording
+            made_by = {"instruction_source": gen.get("source")}
         else:
             words = SIM_WORDINGS[fam]
             w = rng.choice([k for k in range(len(words)) if len(words) <= HOLDOUT_WORDING or (k == HOLDOUT_WORDING) == holdout])
             instr = words[w].format(name=name)
         t = {"family": fam, "lighting": light, "wording_index": w, "people": people, "seed": seed * 1000 + i,
-             "holdout": holdout, "instruction": instr, "split": split, **v}
+             "holdout": holdout, "instruction": instr, "split": split, **made_by, **v}
         if "start" in v:
             off = rng.choice([o for o in POSE_OFFSETS if (list(o) == HOLDOUT_OFFSET) == holdout])
             src = _fx(twin, v["source"])
