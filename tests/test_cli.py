@@ -72,3 +72,17 @@ def test_cached_twin_is_recompiled_after_the_scan_changes(tmp_path):
     scans, twin, scan, os = _room(tmp_path)
     os.utime(twin, (1_000_000, 1_000_000))
     assert "cached" not in _twin(tmp_path, scans)
+
+
+def test_sim_exits_1_when_every_task_errors(tmp_path, capsys, monkeypatch):
+    """A renderer that cannot start fails every task at build; that run must not exit 0 with an empty dataset."""
+    pytest.importorskip("mujoco")
+    import arrival.sim.collect as collect
+
+    def broken(*a, **k):
+        raise RuntimeError("gladLoadGL error")
+
+    monkeypatch.setattr(collect, "SimEnv", broken)
+    monkeypatch.chdir(tmp_path)  # resolve_scans falls back to the repo's scans/
+    assert cli.cmd_sim(_ns(tmp_path, room="hero_kitchen")) == cli.EXIT_INVALID
+    assert "every task errored" in capsys.readouterr().err
