@@ -99,3 +99,12 @@ def test_sim_exits_1_when_every_task_errors(tmp_path, capsys, monkeypatch):
     monkeypatch.chdir(tmp_path)  # resolve_scans falls back to the repo's scans/
     assert cli.cmd_sim(_ns(tmp_path, room="hero_kitchen")) == cli.EXIT_INVALID
     assert "every task errored" in capsys.readouterr().err
+
+def test_cost_cli_runs_and_reports(tmp_path, capsys):
+    parser = cli.build_parser()
+    args = parser.parse_args(["cost", "--out", str(tmp_path)])
+    rc = cli.cmd_cost(args)
+    assert rc == cli.EXIT_OK
+    out = capsys.readouterr().out
+    assert "| source | room | family |" in out
+    assert "| dollars | usd | measured | note |" in out
