@@ -233,6 +233,9 @@ def test_wrong_shape_meta_file_is_reported_not_a_traceback(tmp_path, capsys, nam
     assert validate(root) == [f"meta/{name} {msg}"]
     assert cli.main(["validate", str(root), "--episodes"]) == cli.EXIT_INVALID
     assert f"meta/{name} {msg}" in capsys.readouterr().err
+    res = check_loader(root)
+    assert not res["ok"] and [(e["code"], e["msg"]) for e in res["errors"]] == [
+        ("meta_unreadable", f"meta/{name} {msg}")]
 
 
 def test_cli_plain_validate_ignores_quality(tmp_path):

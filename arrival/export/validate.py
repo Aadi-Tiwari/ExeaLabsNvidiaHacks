@@ -26,6 +26,18 @@ def _jsonl(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
+def meta_shape_error(name: str, rows: list) -> str | None:
+    """Why a parsed meta file (rows: one per JSONL line, or [the object]) is not the shape the checks read."""
+    for i, row in enumerate(rows):
+        where = f"meta/{name} line {i + 1}" if name.endswith(".jsonl") else f"meta/{name}"
+        if not isinstance(row, dict):
+            return f"{where} is a JSON {type(row).__name__}, not an object"
+        missing = [k for k in ROW_KEYS.get(name, ()) if k not in row]
+        if missing:
+            return f"{where} has no {', '.join(missing)}"
+    return None
+
+
 def _check_slices(modality: dict, features: dict, errors: list[str]) -> None:
     for group, feat in (("state", "observation.state"), ("action", "action")):
         parts = modality.get(group)
@@ -72,13 +84,8 @@ def validate(root: str | Path) -> list[str]:
             rows = _jsonl(root / "meta" / m) if m.endswith(".jsonl") else [json.loads((root / "meta" / m).read_text())]
         except ValueError as e:
             return [f"meta/{m} is not valid JSON ({e})"]
-        for i, row in enumerate(rows):
-            where = f"meta/{m} line {i + 1}" if m.endswith(".jsonl") else f"meta/{m}"
-            if not isinstance(row, dict):
-                return [f"{where} is a JSON {type(row).__name__}, not an object"]
-            missing = [k for k in ROW_KEYS.get(m, ()) if k not in row]
-            if missing:
-                return [f"{where} has no {', '.join(missing)}"]
+        if err := meta_shape_error(m, rows):
+            return [err]
     info = json.loads((root / "meta" / "info.json").read_text())
     modality = json.loads((root / "meta" / "modality.json").read_text())
     features = info.get("features", {})
