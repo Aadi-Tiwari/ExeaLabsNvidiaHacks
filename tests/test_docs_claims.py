@@ -117,3 +117,17 @@ def test_todo_counts_must_match_item_statuses(tmp_path):
     todo["counts"].update(done=2, review=1)
     path.write_text(json.dumps(todo), encoding="utf-8")
     assert check_docs.check_todo_counts(tmp_path) == []
+
+
+def test_site_todo_names_only_open_items(tmp_path):
+    (tmp_path / "site" / "js").mkdir(parents=True)
+    (tmp_path / "site" / "data").mkdir()
+    items = [{"id": "G1", "status": "done"}, {"id": "G2", "status": "blocked"}, {"id": "P1", "status": "todo"}]
+    (tmp_path / "site" / "data" / "todo.json").write_text(json.dumps({"groups": [{"items": items}]}), encoding="utf-8")
+    js = tmp_path / "site" / "js" / "sections.js"
+    js.write_text("    `<b>Fine-tune (G1).</b> Not run.`,\n    `<b>Server (G2, DAT-3).</b> Not run.`,\n", encoding="utf-8")
+    assert check_docs.check_site_todo(tmp_path) == [
+        "site/js/sections.js:1: G1 is done in site/data/todo.json but listed as still to do",
+        "site/js/sections.js:2: DAT-3 is not an item in site/data/todo.json"]
+    js.write_text("    `<b>Server (G2).</b> Not run.`,\n    `<b>Scans (P1, G2).</b> Not run.`,\n", encoding="utf-8")
+    assert check_docs.check_site_todo(tmp_path) == []

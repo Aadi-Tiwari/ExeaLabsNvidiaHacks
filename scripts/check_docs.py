@@ -3,7 +3,8 @@
     python scripts/check_docs.py [--root DIR]
 
 Reads README.md, docs/REFERENCE.md and ios/README.md under the root and prints one line per problem.
-The counts in site/data/todo.json, which the README to-do and the demo site show, must match its item statuses.
+The counts in site/data/todo.json, which the README to-do and the demo site show, must match its item statuses,
+and every task the demo site's "still to do" list names, as "(ID)" or "(ID, ID)", must be an open item there.
 Exit 0 when clean, 1 when anything is wrong. Nothing is executed: commands are only parsed with the
 parser that arrival.cli.main() builds.
 """
@@ -195,6 +196,25 @@ def check_todo_counts(root: Path) -> list[str]:
             for k, n in want.items() if todo["counts"].get(k) != n]
 
 
+SITE_TODO = re.compile(r"\(([A-Z][\w-]*(?:, [A-Z][\w-]*)*)\)\.</b>")
+
+
+def check_site_todo(root: Path) -> list[str]:
+    js, path = root / "site" / "js" / "sections.js", root / "site" / "data" / "todo.json"
+    if not js.exists() or not path.exists():
+        return []
+    status = {it["id"]: it["status"] for g in json.loads(path.read_text(encoding="utf-8"))["groups"] for it in g["items"]}
+    probs = []
+    for n, line in enumerate(js.read_text(encoding="utf-8").splitlines(), 1):
+        for m in SITE_TODO.finditer(line):
+            for tid in m.group(1).split(", "):
+                if tid not in status:
+                    probs.append(f"site/js/sections.js:{n}: {tid} is not an item in site/data/todo.json")
+                elif status[tid] == "done":
+                    probs.append(f"site/js/sections.js:{n}: {tid} is done in site/data/todo.json but listed as still to do")
+    return probs
+
+
 def check(root: Path = REPO) -> list[str]:
     parser = _cli_parser()
     tests = test_defs(root)
@@ -213,7 +233,7 @@ def check(root: Path = REPO) -> list[str]:
         probs += check_paths(root, doc, text, tests)
         probs += check_status_lists(doc, root, text)
         probs += check_labels(doc, root, text, consts)
-    return probs + check_todo_counts(root)
+    return probs + check_todo_counts(root) + check_site_todo(root)
 
 
 def main(argv: list[str] | None = None) -> int:
