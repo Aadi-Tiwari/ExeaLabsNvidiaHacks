@@ -1,6 +1,7 @@
 """TWN-2: every scan under scans/ normalizes, compiles, writes a layout, has no overlapping fixture
 footprints, nothing below the floor, a closed wall loop, and builds in MuJoCo."""
 
+import importlib.util
 import math
 
 import pytest
@@ -164,3 +165,16 @@ def test_scan_files_are_read_as_utf8_whatever_the_locale(tmp_path, monkeypatch):
     assert bundle.load_room("k", tmp_path)["objects"][0]["label"] == "Ásztal tál"
     assert roomplan.load(tmp_path / "rp.json", "rp")["fixtures"]
     assert load_measurements(tmp_path / "m.json")["measured_by"] == "Ágnes"
+
+
+@pytest.mark.parametrize("arg", ["hero_kitchn", "nope.json"])
+def test_render_rooms_refuses_a_path_with_no_scan(tmp_path, capsys, arg):
+    spec = importlib.util.spec_from_file_location("render_rooms", REPO / "scripts" / "render_rooms.py")
+    render_rooms = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(render_rooms)
+    out = tmp_path / "renders"
+    with pytest.raises(SystemExit) as e:
+        render_rooms.main([str(tmp_path / arg), "--out", str(out)])
+    assert e.value.code == 2
+    assert "no scan.json or roomplan.json at" in capsys.readouterr().err
+    assert not out.exists()
