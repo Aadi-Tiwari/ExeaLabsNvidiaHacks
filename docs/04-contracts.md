@@ -612,7 +612,7 @@ The `sim` report (`out/reports/<room_id>_sim.json`) adds `human_contacts` (total
 
 ## Eval
 
-`out/eval/<run_id>/report.json`, written by `python -m arrival eval`. Each invocation creates a new directory. The summary fields below are retained; the report also includes `run_id`, `checkpoint_id`, `checkpoint_id_source`, `manifest_id`, `twin_sha256`, `manifest_path`, `episodes_path`, `runtime`, `base` and `omitted_families`.
+`out/eval/<run_id>/report.json`, written by `python -m arrival eval`. Each invocation creates a new directory. The summary fields below are retained; the report also includes `run_id`, `checkpoint_id`, `checkpoint_id_source`, `policy_server` (for `--policy vla`, the server's `GET /health` answer, or `{"error": ...}` when it has none; `null` for the scripted expert), `manifest_id`, `twin_sha256`, `manifest_path`, `episodes_path`, `runtime`, `base` and `omitted_families`.
 
 `manifest.json` has `schema_version: 1`, the full `twin`, its `twin_sha256`, ordered `tasks`, `omitted_families` and `settings` (families, episodes_per_family, seed, people, holdout, resolution, base, fps, max_steps). `manifest_id` is the SHA-256 of sorted compact UTF-8 JSON with that ID omitted; nonfinite values are refused. The twin hash uses the same encoding. Replay validates and copies the manifest before any rollout.
 
