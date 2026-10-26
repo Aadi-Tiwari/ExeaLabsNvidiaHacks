@@ -140,6 +140,7 @@ def generate_instructions(family: str, object_name: str | None = None,
 
     instructions: list[str] = []
     source = "token_factory"
+    error = None
 
     from arrival.models.token_factory import TokenFactoryNotConfigured, complete
 
@@ -164,8 +165,11 @@ def generate_instructions(family: str, object_name: str | None = None,
             parsed = json.loads(match.group(0))
             if isinstance(parsed, list) and all(isinstance(x, str) for x in parsed):
                 instructions = [x.strip() for x in parsed if x.strip()]
-    except (TokenFactoryNotConfigured, Exception):
+        if not instructions:
+            error = "the reply had no JSON list of strings"
+    except (TokenFactoryNotConfigured, Exception) as e:
         instructions = []
+        error = f"{type(e).__name__}: {e}"
 
     instructions = list(dict.fromkeys(instructions))[:n]
     if not instructions:
@@ -179,6 +183,7 @@ def generate_instructions(family: str, object_name: str | None = None,
         "source": source,
         "train": instructions[:len(instructions) - eval_count],
         "eval": instructions[len(instructions) - eval_count:],
+        **({"error": error} if source == "template_fallback" and error else {}),
     }
 
     if source != "template_fallback":

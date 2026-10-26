@@ -52,3 +52,21 @@ def test_a_failed_call_is_exit_1(tmp_path, monkeypatch):
     out = tmp_path / "r.json"
     assert smoke.main(["--out", str(out)]) == 1
     assert json.loads(out.read_text())["checks"]["token_factory_planner"]["source"] == "rule_based"
+
+
+def test_a_failed_wordings_call_says_why(tmp_path, monkeypatch, capsys):
+    # the planner check keeps its log; the wordings check printed FAIL with no reason at all
+    import arrival.models.token_factory as tf
+
+    _env(monkeypatch, tmp_path, TOKEN_FACTORY_API_KEY="k", NEMOTRON_SUPER_MODEL="m")
+    monkeypatch.delenv("NEMOTRON_LIGHTNING_MODEL", raising=False)
+    real = tf.complete
+    plan = '{"family": "counter_to_sink", "object": "mug_1", "target": "sink_1"}'
+    monkeypatch.setattr(tf, "complete", lambda messages, role="super", **k: plan if role == "super"
+                        else real(messages, role=role, **k))
+    out = tmp_path / "r.json"
+    assert smoke.main(["--out", str(out)]) == 1
+    wordings = json.loads(out.read_text())["checks"]["token_factory_wordings"]
+    assert wordings["source"] == "template_fallback"
+    assert "NEMOTRON_LIGHTNING_MODEL" in wordings["error"]
+    assert "NEMOTRON_LIGHTNING_MODEL" in capsys.readouterr().out
