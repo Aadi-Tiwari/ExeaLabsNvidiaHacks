@@ -514,8 +514,8 @@ def main(argv=None) -> int:
 
     twin = compile_twin(scan_bundle.load_room(a.room, a.scans))
     log(f"twin {twin['room_id']}: {len(twin['fixtures'])} fixtures, {len(twin['objects'])} objects")
-    # a second room: only scans/hero_kitchen exists; the RoomPlan test fixtures hold no kitchen fixtures (and are
-    # unlicensed), so there is nothing to compile to a sim-able twin
+    # a second room: only scans/hero_kitchen exists; the RoomPlan test fixtures hold no kitchen fixtures,
+    # so there is nothing to compile to a sim-able twin
     others = [p.name for p in Path(a.scans).iterdir() if p.is_dir() and p.name != a.room and (p / "scan.json").exists()]
     log(f"other rooms under {a.scans}: {others or 'none'}")
 

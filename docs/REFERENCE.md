@@ -219,7 +219,7 @@ Crawls the real page (`arrival serve`'s handler on an ephemeral 127.0.0.1 port) 
 ## Multi-room summary
 
 ```bash
-python -m arrival summary                                     # hero_kitchen + the two real RoomPlan fixtures
+python -m arrival summary                                     # hero_kitchen + the two authored RoomPlan fixtures
 python -m arrival summary --rooms hero_kitchen,tests/fixtures/roomplan/office.json --episodes 2 --out out/summary
 ```
 
