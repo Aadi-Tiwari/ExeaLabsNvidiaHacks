@@ -608,7 +608,7 @@ The job status also has `objects`, null until the `objects` stage, then `{"count
 
 `demos_per_hour = successes / seconds * 3600`. `seconds` is wall time of the generate-and-export call.
 
-The `sim` report (`out/reports/<room_id>_sim.json`) adds `human_contacts` (total and per family): attempts dropped because a robot geom reached a person. Those attempts count in `attempts` and `dropped`, never in `successes`. It also adds `fridge_visits` (attempts in which a walker opened the fridge) and `door_contacts` (attempts in which a robot geom touched the door while a person held it open; those are counted in `human_contacts` too). The dataset's per-episode fields do not change.
+The `sim` report (`out/reports/<room_id>_sim.json`) adds `human_contacts` (total and per family): attempts dropped because a robot geom reached a person. Those attempts count in `attempts` and `dropped`, never in `successes`. It also adds `fridge_visits` (attempts in which a walker opened the fridge) and `door_contacts` (attempts in which a robot geom touched the door while a person held it open; those are counted in `human_contacts` too). Each family also carries `seconds`: wall time of that family's attempted tasks, summed (a task skipped before the physics check is in the total `seconds` only), so `arrival cost` can give seconds per demo for one task. `merge-shards` sums it per family, and writes `null` if any shard report lacks it. The dataset's per-episode fields do not change.
 
 ## Eval
 
