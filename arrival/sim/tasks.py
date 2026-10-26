@@ -8,7 +8,7 @@ import math
 import random
 
 from arrival.catalog.objects import GRASPABLE, PICKABLE, TABLE_MOVABLE, WIPE_TOOLS
-from arrival.sim.scene import is_table
+from arrival.sim.scene import has_door, has_drawers, is_table
 from arrival.tasks.propose import LIGHTING, POSE_OFFSETS, WORDINGS, top_z
 from arrival.sim.preflight import DISHWASHER_SIDE, check_task
 from arrival.sim.reach import find_shift
@@ -191,7 +191,8 @@ def make_tasks(twin: dict, families: list[str], n: int, seed: int = 0, people: i
                 if o["catalog_id"] != "mug":
                     continue
                 src = _holder(o, cabinets)
-                if src is None or abs(to_local(o["position"], src)[0] - drawer_x(src, twin["fixtures"])) > 0.6:
+                if src is None or not has_drawers(src, twin["fixtures"]) or (
+                        abs(to_local(o["position"], src)[0] - drawer_x(src, twin["fixtures"])) > 0.6):
                     continue  # the base parks beside the open drawer, so the mug must be within reach of that spot
                 pool.append({"object_id": o["id"], "object_label": o["label"], "source": src["id"], "fixture": src["id"],
                              "start": list(o["position"])})
@@ -204,7 +205,9 @@ def make_tasks(twin: dict, families: list[str], n: int, seed: int = 0, people: i
                     pool.append({"object_id": o["id"], "object_label": o["label"], "source": src["id"],
                                  "fixture": src["id"], "start": list(o["position"])})
         elif fam in ("open_drawer", "open_door", "close_drawer", "close_door"):
-            pool = [{"fixture": c["id"], "name": c["id"].replace("_", " ")} for c in cabinets]
+            has = has_door if fam.endswith("_door") else has_drawers  # a narrow cabinet is one door, no drawers
+            pool = [{"fixture": c["id"], "name": c["id"].replace("_", " ")} for c in cabinets
+                    if has(c, twin["fixtures"])]
         elif fam == "move_on_table":
             for c in (c for c in counters if is_table(c)):
                 for o in twin["objects"]:
