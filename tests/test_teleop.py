@@ -143,3 +143,10 @@ def test_window_turns_typed_keys_into_frames(twin):
             win.sync()
     finally:
         win.shutdown()
+
+
+def test_unknown_room_is_a_usage_error_not_a_traceback(tmp_path, capsys):
+    with pytest.raises(SystemExit) as e:
+        teleop.main(["--room", "nope_room", "--scans", str(tmp_path), "--operator-usd-per-hour", "10"])
+    assert e.value.code == 2
+    assert "no scan for room 'nope_room'" in capsys.readouterr().err
