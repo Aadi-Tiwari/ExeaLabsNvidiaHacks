@@ -180,3 +180,28 @@ def test_fanout_bad_config_is_usage_error(tmp_path, capsys, kw, expected):
     err = capsys.readouterr().err
     assert err.startswith("fanout: ") and expected in err
     assert not (tmp_path / "fanout_store").exists()
+
+
+@pytest.mark.parametrize("bad_family", ["bogus", "counter_to_sink,open_drwaer"])
+def test_fanout_unknown_family_is_usage_error_before_any_shard(tmp_path, capsys, monkeypatch, bad_family):
+    """Every shard's sim would reject the name, so fanout used to launch and retry each shard (Nebius jobs too)."""
+    pytest.importorskip("mujoco")
+    monkeypatch.setattr("arrival.jobs.fanout.run_fanout", lambda *a, **k: pytest.fail("a shard was launched"))
+    ns = _ns(tmp_path, backend="local", run_id="r", shards=2, families=bad_family)
+    assert cli.cmd_fanout(ns) == cli.EXIT_USAGE
+    err = capsys.readouterr().err
+    assert err.startswith("fanout: unknown families") and "open_drawer" in err
+    assert not (tmp_path / "fanout_store").exists()
+
+
+def test_fanout_accepts_all_families(tmp_path, monkeypatch):
+    pytest.importorskip("mujoco")
+    seen = []
+    def fake_run(rec, cfg, out):
+        seen.append(cfg.families)
+        return {"dataset": tmp_path, "ran": [0], "skipped": []}
+    monkeypatch.setattr("arrival.jobs.fanout.run_fanout", fake_run)
+    monkeypatch.setattr("arrival.export.validate.validate", lambda d: [])
+    ns = _ns(tmp_path, backend="local", run_id="r", shards=1, families="all")
+    assert cli.cmd_fanout(ns) == cli.EXIT_OK
+    assert seen == ["all"]
