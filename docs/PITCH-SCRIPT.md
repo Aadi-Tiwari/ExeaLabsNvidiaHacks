@@ -1,6 +1,6 @@
 # Pitch video script (about 2:30, under the 3-minute Devpost limit)
 
-Record a screen capture plus voiceover. Speak at about 150 words a minute; the narration below is about 370 words. Items in [brackets] are for you to fill in or confirm before recording. Do not say anything the repo marks as not done.
+Record a screen capture plus voiceover. Speak at about 150 words a minute; the narration below is about 370 words. Items in [brackets] are for you to fill in or confirm before recording. Do not say anything the repo marks as not done. The Physical AI rules ask for at least one minute of the key modules in action when there is no robot, so keep the screen on the running pipeline (scan, twin, sim, dataset, eval) for at least 60 seconds in total; the 24-second `site/motion/pitch.mp4` is not enough on its own.
 
 ## What to have open
 - https://arrival.exealabs.org (the demo page)
@@ -25,7 +25,7 @@ Record a screen capture plus voiceover. Speak at about 150 words a minute; the n
 "Honest limits: this is simulation only, one room, two tasks, one seed, and one run per model."
 
 **1:55 to 2:20. How to run it and where it runs** (screen: README top, then terminal)
-"Everything is open source under Apache 2.0. `make install`, `make test`, `make demo`. Jobs run through a web app with workers, shards that resume after a crash, and a Nebius fan-out backend. [Say what actually ran on Nebius: the fine-tune host, or a Token Factory call. If nothing did, leave this out.]"
+"Everything is open source under Apache 2.0. `make install`, `make test`, `make demo`. Jobs run through a web app with workers, shards that resume after a crash, and a Nebius fan-out backend. [Say what actually ran on Nebius, from `docs/results/live-apis-<date>.json`: the Nemotron model the planner called on Token Factory, and any Serverless Job run. The fine-tune did not run on Nebius. If nothing did, leave this out.]"
 
 **2:20 to 2:30. Close** (screen: repo URL and demo URL)
 "Arrival. Scan your kitchen, get a robot-ready dataset. The code, the checkpoint and the evidence are all linked from the repo."

@@ -1,18 +1,18 @@
 {
- "as_of": "2026-10-21",
+ "as_of": "2026-10-25",
  "repo": "AvnehSBhatia/ExeaLabsNvidiaHacks",
- "source": "README to-do, refreshed after #194 landed the integration on main and #193, #195, #196, #197 and #198 were merged into feat/more-prs-2. Submission fields checked against https://nebiusglobalaihackathon.devpost.com/ and the official rules.",
+ "source": "README to-do, refreshed after #251, #252 and #302 put PRs #201-#301 on main. Submission fields re-checked against https://nebiusglobalaihackathon.devpost.com/ and the official rules on 2026-10-25.",
  "counts": {
-  "done": 57,
-  "review": 1,
-  "todo": 0,
-  "blocked": 16,
-  "total": 74
+  "done": 60,
+  "review": 0,
+  "todo": 2,
+  "blocked": 18,
+  "total": 80
  },
  "prs": {
-  "merged": 128,
-  "open": 16,
-  "closed_unmerged": 13
+  "merged": 241,
+  "open": 1,
+  "closed_unmerged": 18
  },
  "groups": [
   {
@@ -314,6 +314,53 @@
      "authors": [
       "AvnehSBhatia"
      ]
+    },
+    {
+     "id": "S23",
+     "title": "Integration of #220-#250: scan, sim and docs fixes from the sprint",
+     "status": "done",
+     "owner_kind": "laptop",
+     "pr": [
+      251
+     ],
+     "authors": [
+      "aarochu",
+      "Anandb71",
+      "amanx98",
+      "AvnehSBhatia"
+     ]
+    },
+    {
+     "id": "S24",
+     "title": "Integration of #201-#219 and the dependabot bumps, the Devpost feedback draft",
+     "status": "done",
+     "owner_kind": "laptop",
+     "pr": [
+      252
+     ],
+     "authors": [
+      "aarochu",
+      "Anandb71",
+      "AvnehSBhatia"
+     ]
+    },
+    {
+     "id": "S25",
+     "title": "Integration of #253-#301: CLI usage errors instead of tracebacks, fridge push on any wall, walkers yield to arm links, eval-compare, cost CLI, Windows memory cap, empty shipped API caches",
+     "status": "done",
+     "owner_kind": "laptop",
+     "pr": [
+      302
+     ],
+     "authors": [
+      "Aadi-Tiwari",
+      "amanx98",
+      "AKSHAJ-SHELL",
+      "vrun-systems26",
+      "AvnehSBhatia",
+      "Claude Code"
+     ],
+     "note": "#298 was the same fridge-yaw fix as #279; #279's code is kept, with #298's tests."
     }
    ]
   },
@@ -953,6 +1000,26 @@
    "blurb": "Cloud accounts, billing or deploy access.",
    "items": [
     {
+     "id": "C6",
+     "title": "One real Nemotron call on Token Factory, kept as evidence",
+     "status": "blocked",
+     "owner_kind": "cloud",
+     "size": "S",
+     "priority": "must",
+     "authors": [],
+     "note": "The cheapest way to meet the rule that the project runs on Nebius (Stage One is pass/fail). Put TOKEN_FACTORY_API_KEY, NEMOTRON_SUPER_MODEL and NEMOTRON_LIGHTNING_MODEL in .env, then run python scripts/smoke_live_apis.py and commit the report it writes to docs/results/. Then run sim --planner vlm --instructions nemotron once for the video, and fill the [after the real call] lines in docs/DEVPOST-FEEDBACK.md. The shipped Nemotron cache is empty, so a key reaches the API."
+    },
+    {
+     "id": "C7",
+     "title": "One real Tavily call, for the Best Use of Tavily bonus",
+     "status": "blocked",
+     "owner_kind": "cloud",
+     "size": "S",
+     "priority": "should",
+     "authors": [],
+     "note": "The bonus needs a functional runtime call to the Tavily API. Set TAVILY_API_KEY and run python scripts/smoke_live_apis.py (or arrival research --room hero_kitchen); the report should say source=tavily_api with real source URLs. #299 emptied the shipped cache so the key is used."
+    },
+    {
      "id": "C1",
      "title": "Nebius Serverless Jobs fan-out with resume, then one real small run",
      "status": "blocked",
@@ -960,7 +1027,7 @@
      "size": "L",
      "priority": "must",
      "issue": 66,
-     "note": "Fan-out with done-markers, retry and resume is built. arrival fanout --backend nebius runs shards as Serverless AI Jobs with an Object Storage bucket, tested only against in-process fakes of both APIs. It has never run against Nebius. The hackathon rules count a project as running on Nebius only if it calls the Token Factory inference API or runs on Nebius AI Cloud (Serverless Jobs, Serverless Endpoints, or DevPods). Neither has been done.",
+     "note": "Fan-out with done-markers, retry and resume is built. arrival fanout --backend nebius runs shards as Serverless AI Jobs with an Object Storage bucket, tested only against in-process fakes of both APIs. It has never run against Nebius. The hackathon rules count a project as running on Nebius only if it calls the Token Factory inference API or runs on Nebius AI Cloud (Serverless Jobs, Serverless Endpoints, or DevPods). Neither has been done. C6 alone satisfies the rule; a real Serverless Jobs run (even one small shard) is what the Physical AI track description asks for and what the judges from Nebius will look for.",
      "authors": [
       "AvnehSBhatia",
       "Claude Code"
@@ -977,7 +1044,7 @@
      "pr": [
       115
      ],
-     "note": "Smoke test (#115), /healthz, docker-compose.yml and docs/DEPLOY.md are written and tested on a laptop. The Devpost form does not require a demo URL on the Physical AI track. The static site is still undeployed: cd site && vercel --prod, then put the live URL in the README and on the form if you submit one. #195 checked http://localhost:8765 at 1024 px and 375 px in both themes.",
+     "note": "The static demo site is live at https://arrival.exealabs.org (Vercel). The hosted upload-to-dataset demo is not: smoke test (#115), /healthz, docker-compose.yml and docs/DEPLOY.md are written and tested on a laptop. The Devpost form does not require a demo URL on the Physical AI track.",
      "authors": [
       "JmarbinGG"
      ]
@@ -1037,7 +1104,7 @@
      "pr": [
       156
      ],
-     "note": "Field test of the capture app on an iPhone 13 Pro Max, done with the P2 scans."
+     "note": "First field test done: a kitchen scanned with the capture app on an iPhone 13 Pro Max ran end to end (tests/fixtures/roomplan/kitchen_real_01.json, 9 of 12 episodes valid, bd4e791). The Swift RGB-D recorder is not done."
     },
     {
      "id": "P2",
@@ -1054,6 +1121,16 @@
       156
      ],
      "note": "Licence check done: neither public scan's source repo has a licence. Scans next."
+    },
+    {
+     "id": "P5",
+     "title": "Replace the two unlicensed public RoomPlan fixtures with our own captures",
+     "status": "todo",
+     "owner_kind": "people",
+     "size": "M",
+     "priority": "must",
+     "authors": [],
+     "note": "tests/fixtures/roomplan/amal.json and shopyseek.json come from GitHub repositories with no licence, so we have no grant to redistribute them, and the rules require permission for third-party data. Replace them with an office (table and chairs) and a desk-with-chair capture of our own, or delete them and the tests that need them, before submitting. Uses: tests/fixtures/roomplan/README.md."
     },
     {
      "id": "P3",
@@ -1073,8 +1150,8 @@
     },
     {
      "id": "P4",
-     "title": "Rendered pitch video, 24 seconds, with the fine-tune result",
-     "status": "review",
+     "title": "Pitch video: at least 1 minute of the modules in action, under 3 minutes, public on YouTube",
+     "status": "todo",
      "owner_kind": "people",
      "size": "S",
      "priority": "must",
@@ -1086,15 +1163,15 @@
       156,
       195
      ],
-     "note": "site/motion/pitch.mp4 is the submission video: 24.4 seconds, public-repo file, no studio recording and no copyrighted music. The closing sheet says the fine-tune is 39 of 48 against 26 of 48, small samples, and that real kitchen scans are still not done. Devpost still wants this file on public YouTube (SUB). docs/media/demo.mp4 remains the silent 31-second code render."
+     "note": "The rules ask Physical AI entries with no hardware for at least one minute of footage of the key modules in action. site/motion/pitch.mp4 is 24.4 seconds, so it is not enough by itself. Record the screen capture in docs/PITCH-SCRIPT.md (about 2:30): scan, twin, sim, dataset, the GR00T result, and the Token Factory call once C6 has run. No copyrighted music or third-party marks. Upload as public on YouTube and put the link in the README and on the form (SUB)."
     },
     {
      "id": "OWN",
-     "title": "Close or update stale issues #18, #22, #24, #26, #28, #30, #32, #34",
+     "title": "Close issues that are done: #37 DAT-1, #63 DAT-2, #74 PPL-2, #79 MAN-5; decide #72 MAN-1 and #101",
      "status": "blocked",
      "owner_kind": "people",
      "size": "S",
-     "note": "Repo owner only",
+     "note": "The earlier stale issues (#18 to #34) and superseded PRs are closed. #37 and #63 are covered by G1, #74 and #79 by the fridge work on main. #101 ignores site/, which the repo tracks and deploys: close it.",
      "authors": []
     }
    ]
@@ -1117,23 +1194,10 @@
    ]
   }
  ],
- "superseded": {
-  "prs": [
-   25,
-   27,
-   33,
-   36,
-   49,
-   57,
-   75,
-   77
-  ],
-  "note": "Rebased into #96 to #110. Close them once those merge."
- },
  "not_merged": {
   "prs": [
    101
   ],
-  "note": "#101 ignores site/, which this branch tracks. Left out on purpose."
+  "note": "#101 ignores site/, which the repo tracks and deploys to https://arrival.exealabs.org. Left out on purpose; close it."
  }
 }

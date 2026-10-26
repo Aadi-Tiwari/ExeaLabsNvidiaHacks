@@ -41,22 +41,33 @@ General robot policies like NVIDIA GR00T are trained on generic kitchens. When a
 
 Built for the NVIDIA × Nebius hackathon by Exea Labs and a team of 30. **Want to help? Jump to [Join in](#join-in-team-plan-for-30-people).** The product spec is [plan.pdf](plan.pdf).
 
-## Does it work? (status, Oct 20 2026)
+## NVIDIA and Nebius in Arrival
+
+| What | Where in the code | What it does here | Run for real? |
+|---|---|---|---|
+| **GR00T N1.7-3B** (NVIDIA open model) | `configs/gr00t/`, `scripts/prepare_gr00t.py`, `arrival/sim/policy.py` (`VLAClient`), `arrival/policy_server/` | Fine-tuned on a room's sim dataset, then scored closed-loop in the same twin through a policy server | Yes: 39 of 48 against 26 of 48 ([weights](https://huggingface.co/Ish1105/arrival-gr00t-n17-run4), `docs/07-eval.md`). Trained on one 96 GB GPU on Cosmos, not on Nebius |
+| **Nemotron on Nebius Token Factory** | `arrival/models/token_factory.py`, `VLMPlanner` in `arrival/sim/policy.py`, `arrival/tasks/instructions.py`, `arrival/twin/detect.py` | Plans each task from the instruction and the room inventory (`sim --planner vlm`), writes varied train and held-out instruction wordings (`--instructions nemotron`), and finds small objects in scan frames | Not yet (C6). `python scripts/smoke_live_apis.py` makes the call and keeps the evidence in `docs/results/` |
+| **Nebius AI Cloud: Serverless Jobs and Object Storage** | `arrival/jobs/nebius.py`, `arrival fanout --backend nebius` | Splits collection into resumable shards, one Serverless Job each, with results in a bucket, then merges them | Not yet (C1). Tested against in-process fakes of both APIs |
+| **Tavily** | `arrival/models/tavily.py`, `arrival/tasks/tavily_research.py` | Looks up the scanned appliances (hinges, clearances, safety) and passes the findings to the Nemotron planner (`sim --tavily`) | Not yet (C7). Same smoke script |
+
+Keys go in an untracked `.env` (see `.env.example`); `python -m arrival doctor` reports which are set without printing them. With no keys every path falls back to an offline one, and its output says which source answered.
+
+## Does it work? (status, Oct 25 2026)
 
 | Stage | Status |
 |---|---|
-| Scan → twin | ✅ Works on the sample kitchen (now tiled, no overlapping fixtures) and on 2 real public iPhone RoomPlan exports; a scan regression suite covers every room under `scans/`. The iPhone capture app (`ios/`, CAP-1) is merged but untested on a real kitchen here; field scanning protocol in `docs/SCANNING.md` |
+| Scan → twin | ✅ Works on the sample kitchen (now tiled, no overlapping fixtures) on one real kitchen scanned with the capture app (`ios/`, CAP-1) on an iPhone 13 Pro Max, and on 2 public iPhone RoomPlan exports (unlicensed, to be replaced); a scan regression suite covers every room under `scans/`. Field scanning protocol in `docs/SCANNING.md` |
 | Simulation: kitchen, drawers, doors, oven, fridge, dishwasher, microwave, wall cabinets, faucet, people | ✅ Works. MuJoCo, built from the twin; every moving part is a named joint with a handle site. Panda-style arm and kitchen visuals (recessed fronts, slim handles, sink, gas range) landed with SIM-1 and MAN-1 |
 | People: interactions + safety metric | ✅ Walkers stop at the counter and cross behind the robot. Every episode records the minimum robot-human distance; episodes with contact are dropped. A walker opens the fridge, stands in the doorway and closes it, and the held door counts for the safety metric |
 | Closed-loop eval harness | ✅ `python -m arrival eval` scores N episodes per family (success, time, human contacts, Wilson 95%). Counts arm-fixture contacts too; held-out seeds are offset from training and an episode that raises counts as a failure. ⚠️ The scripted expert is scored; GR00T checkpoints were scored through a live server: 100 steps got 0 of 8 (a plumbing check); a 6,000-step fine-tune on 320 episodes got 10 of 24 (42%, Wilson 95% 25 to 61%) on `counter_to_sink` and `open_drawer`, no people, so far from the scripted expert (docs/ref/POL-3.md) |
 | Robot: pick mug → sink | ✅ 100% success, friction grasp, physics-checked |
 | Robot: open drawer | ✅ 100% success |
-| Robot: open door | ✅ The arm opens both cabinet doors (`eval --families open_door --episodes 8 --people 2`, seeds 0 to 3: 8/8 each, no walker contact; before the door keep-out one of those four seeds lost 1 of 8). Opens to about 63-66°: the hand holds its heading while the bar turns between the pads, and joint 7 stays inside its limit. The arm is mounted at 0.75 m, so a mobile base (L13, in review) is what would open it wider |
-| Robot: counter → counter | ✅ With `--base mobile` (L13, in review, not on `main` yet): the pedestal drives along the counter front at 0.3 m/s and sets the object down 2 m away, 6/6 with two people walking in the hero kitchen. The default base is still fixed, and skips the family |
+| Robot: open door | ✅ The arm opens both cabinet doors (`eval --families open_door --episodes 8 --people 2`, seeds 0 to 3: 8/8 each, no walker contact; before the door keep-out one of those four seeds lost 1 of 8). Opens to about 63-66°: the hand holds its heading while the bar turns between the pads, and joint 7 stays inside its limit. The arm is mounted at 0.75 m, so the mobile base (L13, `--base mobile`) is what would open it wider |
+| Robot: counter → counter | ✅ With `--base mobile` (L13): the pedestal drives along the counter front at 0.3 m/s and sets the object down 2 m away, 6/6 with two people walking in the hero kitchen. The default base is still fixed, and skips the family |
 | Robot: close drawer, close door, put mug in drawer, wipe counter | ✅ 100% each (32/32 across all families, seed 5, two people walking). The part starts open for the close tasks; the sponge must travel 0.4 m pressed to the top |
 | Robot: bowl | ✅ Held by the rim (one finger inside the wall). 4/4 bowl → sink. The bowl is now hollow in physics |
 | GR00T-format dataset + validator | ✅ Passes our validator, and the layout matches GR00T's loader source. ⚠️ Not yet loaded by GR00T itself since the latest fixes |
-| Local web page: browse, download, upload | ✅ Works. Redesigned page: room cards with previews and stats, drag-and-drop upload, live job stages. Uploads are processed by `python -m arrival work` on the same machine (twin, sim dataset, zip); a killed worker's jobs are requeued. The static demo page was checked in a browser at 1024 px and 375 px (#195, on this branch, not on main). ⚠️ No cloud fan-out yet, and no public URL |
+| Local web page: browse, download, upload | ✅ Works. Redesigned page: room cards with previews and stats, drag-and-drop upload, live job stages. Uploads are processed by `python -m arrival work` on the same machine (twin, sim dataset, zip); a killed worker's jobs are requeued. The static demo page is live at https://arrival.exealabs.org and was checked in a browser at 1024 px and 375 px (#195). ⚠️ The upload-to-dataset page is not hosted, and the Nebius fan-out has not run for real |
 | VLM planner (Nemotron) / VLA client (GR00T server) | ✅ VLM planner (Nemotron) wired into sim collection with Token Factory and offline cache fixture (POL-1); dynamic instruction generation with held-out eval set (POL-2). ⚠️ VLA client tested offline |
 | GR00T N1.7 fine-tune and paired evaluation | ✅ Fine-tunes of GR00T N1.7-3B on `hero_kitchen_sim` ran on one 96 GB GPU on Cosmos (not Nebius) and were scored in the sim on identical trials (`docs/07-eval.md`, "Results so far"). Best so far 39 of 48 trials (81%) against 26 of 48 for the clean-data baseline (paired sign test p = 0.007): clean data plus DART demos with the marginal drawer pulls removed. ⚠️ Small samples; the generic-RoboCasa and base-GR00T cells of the usefulness protocol (DAT-3) are not run, so `usefulness` stays `null` |
 | MimicGen, splats, Cosmos, Nebius scale-out | ❌ Not built yet. This is what remains for the hackathon: the DAT-3 baseline cells and real scans (CAP-3) |
@@ -84,11 +95,11 @@ performance gain is claimed. See [capture, output layout and limitations](docs/R
 
 <!-- todo:start (generated by scripts/render_todo_readme.py from site/data/todo.json) -->
 
-As of 2026-10-21: **57** shipped, **1** in review, **0** next, **16** blocked, of **74** items. 128 pull requests merged, 16 open. The same list is on the demo site (`site/data/todo.json`). A row is shipped only when its pull request is merged on `main`.
+As of 2026-10-25: **60** shipped, **0** in review, **2** next, **18** blocked, of **80** items. 241 pull requests merged, 1 open. The same list is on the demo site (`site/data/todo.json`). A row is shipped only when its pull request is merged on `main`.
 
 Sizes: S under half a day, M about a day, L several days. Priority: **must** (the demo or the core claim breaks without it), **should**, nice. Anything that needs real data reports "not measured" until the blocked rows land.
 
-### Shipped on main (22)
+### Shipped on main (25)
 
 Merged PRs, grouped by what they do.
 
@@ -116,6 +127,9 @@ Merged PRs, grouped by what they do.
 | S20 | Time and cost report, seed-replay retargeting, appearance-variation stage with honest labels | #85, #89, #93 | @AvnehSBhatia |
 | S21 | Docs and README claim checker, release QA, PyAV fix, refreshed demo video | #91, #29, #9, #50 | @AvnehSBhatia, @Aadi-Tiwari, @IshaanM05, @aarochu |
 | S22 | Integration of 16 PRs and the sprint PRs #82-#93, plus the to-do docs | #80, #94, #1, #81, #95 | @AvnehSBhatia |
+| S23 | Integration of #220-#250: scan, sim and docs fixes from the sprint | #251 | @aarochu, @Anandb71, @amanx98, @AvnehSBhatia |
+| S24 | Integration of #201-#219 and the dependabot bumps, the Devpost feedback draft | #252 | @aarochu, @Anandb71, @AvnehSBhatia |
+| S25 | Integration of #253-#301: CLI usage errors instead of tracebacks, fridge push on any wall, walkers yield to arm links, eval-compare, cost CLI, Windows memory cap, empty shipped API caches | #302 | @Aadi-Tiwari, @amanx98, @AKSHAJ-SHELL, @vrun-systems26, @AvnehSBhatia, Claude Code |
 
 ### On main (#194) (31)
 
@@ -149,7 +163,7 @@ Integrated on feat/more-prs-2 and merged to main in #194. A row is shipped only 
 | L24 | Oven, dishwasher and faucet families on the any-wall chain Replaces #27. | M | nice | Shipped | #106 | @AvnehSBhatia |
 | L25 | Real Menagerie Franka behind --arm menagerie Replaces #25. The 34 MB meshes are fetched by script and stay out of git. The close-door push standoff is retuned for the real hand: 14 of 14 on seed 5 with no people. Not measured over other seeds, rooms or people. | M | nice | Shipped | #107 | @AvnehSBhatia |
 | L26 | Thin-object (spatula) pinch grasp, in counter_to_sink and wipe, both arms | M | nice | Shipped | #117 | @Aadi-Tiwari |
-| L27 | People pass: yield and stop from the safety distance, counter-use pause, 3D head and arm clearance check On feat/demo-site with no pull request yet. Walkers also keep out of the door hinge disc (open_door 8 of 8 on seeds 0 to 3, was 7 of 8 on one), and fridges can be right-hinged with hinge: "right". Yield uses the closest of the base and the arm-link bodies (with --base mobile, yield uses the base, hand and fingers to prevent deadlocks). The hero fridge with a right hinge is rejected by the pre-flight because its free edge is in the corner. | M | nice | Shipped | issue #24 | @AvnehSBhatia, Claude Code |
+| L27 | People pass: yield and stop from the safety distance, counter-use pause, 3D head and arm clearance check On feat/demo-site with no pull request yet. Walkers also keep out of the door hinge disc (open_door 8 of 8 on seeds 0 to 3, was 7 of 8 on one), and fridges can be right-hinged with hinge: "right". Yield uses the closest of the base and the arm-link bodies. The hero fridge with a right hinge is rejected by the pre-flight because its free edge is in the corner. | M | nice | Shipped | issue #24 | @AvnehSBhatia, Claude Code |
 | L28 | Multi-room summary command (real rooms wait on P2) | S | nice | Shipped | #102 | @AvnehSBhatia |
 | L29 | Frozen evaluation trials: replay the same trials for any policy and keep every run | M | should | Shipped | #109 | @Aadi-Tiwari |
 | L30 | Worker follow-ups: memory cap on Linux, DELETE /jobs/<id> with a retention note, cancel endpoint and per-episode progress DELETE /jobs/<id>, cancel and delete buttons, episode progress and an optional memory cap. The memory cap counts resident memory: the worker reads the job's process tree every 0.5 s and kills it past ARRIVAL_MAX_JOB_MB with a MemoryLimitError naming the stage (#192). The old RLIMIT_AS cap followed the core count and crashed jobs (docs/ref/MEMCAP.md). | M | should | Shipped | #192 | @AvnehSBhatia, Claude Code, @AKSHAJ-SHELL |
@@ -186,29 +200,32 @@ A GPU host with 40 GB or more, or a Linux box.
 | G7 | Real MimicGen retargeting for counter_to_sink | L | should | Blocked | issue #62 | unassigned |
 | G8 | Scan-appearance composite replacing the splat stub | L | should | Blocked | issue #61 | unassigned |
 
-### Needs cloud (5)
+### Needs cloud (7)
 
 Cloud accounts, billing or deploy access.
 
 | id | what | size | priority | status | PRs or issue | who |
 |---|---|---|---|---|---|---|
-| C1 | Nebius Serverless Jobs fan-out with resume, then one real small run Fan-out with done-markers, retry and resume is built. arrival fanout --backend nebius runs shards as Serverless AI Jobs with an Object Storage bucket, tested only against in-process fakes of both APIs. It has never run against Nebius. The hackathon rules count a project as running on Nebius only if it calls the Token Factory inference API or runs on Nebius AI Cloud (Serverless Jobs, Serverless Endpoints, or DevPods). Neither has been done. | L | must | Blocked | issue #66 | @AvnehSBhatia, Claude Code |
-| C2 | Hosted HTTPS demo with a pre-seeded room Smoke test (#115), /healthz, docker-compose.yml and docs/DEPLOY.md are written and tested on a laptop. The Devpost form does not require a demo URL on the Physical AI track. The static site is still undeployed: cd site && vercel --prod, then put the live URL in the README and on the form if you submit one. #195 checked http://localhost:8765 at 1024 px and 375 px in both themes. | M | must | Blocked | #115 | @JmarbinGG |
-| C3 | Measured time and cost per demo against the teleop baseline | S | should | Blocked | issue #67 | unassigned |
+| C6 | One real Nemotron call on Token Factory, kept as evidence The cheapest way to meet the rule that the project runs on Nebius (Stage One is pass/fail). Put TOKEN_FACTORY_API_KEY, NEMOTRON_SUPER_MODEL and NEMOTRON_LIGHTNING_MODEL in .env, then run python scripts/smoke_live_apis.py and commit the report it writes to docs/results/. Then run sim --planner vlm --instructions nemotron once for the video, and fill the [after the real call] lines in docs/DEVPOST-FEEDBACK.md. The shipped Nemotron cache is empty, so a key reaches the API. | S | must | Blocked | none | unassigned |
+| C7 | One real Tavily call, for the Best Use of Tavily bonus The bonus needs a functional runtime call to the Tavily API. Set TAVILY_API_KEY and run python scripts/smoke_live_apis.py (or arrival research --room hero_kitchen); the report should say source=tavily_api with real source URLs. #299 emptied the shipped cache so the key is used. | S | should | Blocked | none | unassigned |
+| C1 | Nebius Serverless Jobs fan-out with resume, then one real small run Fan-out with done-markers, retry and resume is built. arrival fanout --backend nebius runs shards as Serverless AI Jobs with an Object Storage bucket, tested only against in-process fakes of both APIs. It has never run against Nebius. The hackathon rules count a project as running on Nebius only if it calls the Token Factory inference API or runs on Nebius AI Cloud (Serverless Jobs, Serverless Endpoints, or DevPods). Neither has been done. C6 alone satisfies the rule; a real Serverless Jobs run (even one small shard) is what the Physical AI track description asks for and what the judges from Nebius will look for. | L | must | Blocked | issue #66 | @AvnehSBhatia, Claude Code |
+| C2 | Hosted HTTPS demo with a pre-seeded room The static demo site is live at https://arrival.exealabs.org (Vercel). The hosted upload-to-dataset demo is not: smoke test (#115), /healthz, docker-compose.yml and docs/DEPLOY.md are written and tested on a laptop. The Devpost form does not require a demo URL on the Physical AI track. | M | must | Blocked | #115 | @JmarbinGG |
+| C3 | Measured time and cost per demo against the teleop baseline Added arrival cost CLI subcommand with automated P3 teleop baseline comparison. Cloud dollar cost per demo and full C3 comparison remains to be measured with real usage. | S | should | Blocked | issue #67 | @amanx98 |
 | C4 | Detect small objects from posed frames with a VLM Offline slice built: detection client, back-projection into the room, merge across frames and the worker's labelled fallback, tested on rendered frames with hand-written replies. The real model call is blocked on Token Factory credentials. | M | should | Blocked | issue #60 | unassigned |
 | C5 | Real Cosmos variation on a tenth of validated frames | M | nice | Blocked | issue #70 | unassigned |
 
-### Needs people or an iPhone (5)
+### Needs people or an iPhone (6)
 
 Physical rooms, a LiDAR iPhone, or a human.
 
 | id | what | size | priority | status | PRs or issue | who |
 |---|---|---|---|---|---|---|
-| P1 | Field-test the iOS app on a LiDAR iPhone; RGB-D recorder in Swift Field test of the capture app on an iPhone 13 Pro Max, done with the P2 scans. | L | must | Blocked | #156 | @AKSHAJ-SHELL |
+| P1 | Field-test the iOS app on a LiDAR iPhone; RGB-D recorder in Swift First field test done: a kitchen scanned with the capture app on an iPhone 13 Pro Max ran end to end (tests/fixtures/roomplan/kitchen_real_01.json, 9 of 12 episodes valid, bd4e791). The Swift RGB-D recorder is not done. | L | must | Blocked | #156 | @AKSHAJ-SHELL |
 | P2 | Three consented real kitchen scans with tape measurements; licence check of the two public scans Licence check done: neither public scan's source repo has a licence. Scans next. | L | must | Blocked | #156 | @AKSHAJ-SHELL |
+| P5 | Replace the two unlicensed public RoomPlan fixtures with our own captures tests/fixtures/roomplan/amal.json and shopyseek.json come from GitHub repositories with no licence, so we have no grant to redistribute them, and the rules require permission for third-party data. Replace them with an office (table and chairs) and a desk-with-chair capture of our own, or delete them and the tests that need them, before submitting. Uses: tests/fixtures/roomplan/README.md. | M | must | Next | none | unassigned |
 | P3 | Twenty timed teleoperated counter_to_sink demos 20 successes in 26 attempts; 1230.359 operator seconds including failures. Basic validation passes; one long episode is retained. Evidence: docs/results/p3-teleop-2026-10-21/. C3 still needs the cloud comparison. | S | should | Shipped | #127 | @Aadi-Tiwari |
-| P4 | Rendered pitch video, 24 seconds, with the fine-tune result site/motion/pitch.mp4 is the submission video: 24.4 seconds, public-repo file, no studio recording and no copyrighted music. The closing sheet says the fine-tune is 39 of 48 against 26 of 48, small samples, and that real kitchen scans are still not done. Devpost still wants this file on public YouTube (SUB). docs/media/demo.mp4 remains the silent 31-second code render. | S | must | In review | #156, #195 | @AvnehSBhatia, @AKSHAJ-SHELL |
-| OWN | Close or update stale issues #18, #22, #24, #26, #28, #30, #32, #34 Repo owner only | S |  | Blocked | none | unassigned |
+| P4 | Pitch video: at least 1 minute of the modules in action, under 3 minutes, public on YouTube The rules ask Physical AI entries with no hardware for at least one minute of footage of the key modules in action. site/motion/pitch.mp4 is 24.4 seconds, so it is not enough by itself. Record the screen capture in docs/PITCH-SCRIPT.md (about 2:30): scan, twin, sim, dataset, the GR00T result, and the Token Factory call once C6 has run. No copyrighted music or third-party marks. Upload as public on YouTube and put the link in the README and on the form (SUB). | S | must | Next | #156, #195 | @AvnehSBhatia, @AKSHAJ-SHELL |
+| OWN | Close issues that are done: #37 DAT-1, #63 DAT-2, #74 PPL-2, #79 MAN-5; decide #72 MAN-1 and #101 The earlier stale issues (#18 to #34) and superseded PRs are closed. #37 and #63 are covered by G1, #74 and #79 by the fridge work on main. #101 ignores site/, which the repo tracks and deploys: close it. | S |  | Blocked | none | unassigned |
 
 ### Devpost form (1)
 
@@ -220,8 +237,7 @@ Nebius x NVIDIA Global AI Hackathon, https://nebiusglobalaihackathon.devpost.com
 
 ### Pull requests not merged as they are
 
-- #25, #27, #33, #36, #49, #57, #75, #77: Rebased into #96 to #110. Close them once those merge.
-- #101: #101 ignores site/, which this branch tracks. Left out on purpose.
+- #101: #101 ignores site/, which the repo tracks and deploys to https://arrival.exealabs.org. Left out on purpose; close it.
 
 <!-- todo:end -->
 
@@ -233,8 +249,9 @@ Nebius x NVIDIA Global AI Hackathon, https://nebiusglobalaihackathon.devpost.com
 - With a fixed base, drawers and `close_door` on the U-kitchen's corner cabinet and the rotated kitchen's fridge stay unreachable and are skipped. Only the corner cabinet's `open_door` takes a shifted stand spot. The reach planner checks the arm's IK, not collisions.
 - With `--base mobile`, walker yield still ignores the arm links.
 - The job memory limit (`ARRIVAL_MAX_JOB_MB`) counts resident memory across the process tree (`/proc` on Linux, `Toolhelp32`/`psapi` on Windows, `ps` on macOS; `docs/ref/MEMCAP.md`).
-- The static demo page was checked in a browser at desktop and phone width (#195, on this branch, not on main). The upload page's buttons were checked in headless Chromium. There is no public URL yet. Uploads are processed by local workers that share one `out/` folder.
-- No real kitchen has been scanned and run end to end. GR00T has trained on the simulated data; the scores are the small paired trials above.
+- The static demo page is live at https://arrival.exealabs.org and was checked in a browser at desktop and phone width (#195). The upload page's buttons were checked in headless Chromium; it is not hosted. Uploads are processed by local workers that share one `out/` folder.
+- One real kitchen, scanned with the capture app on an iPhone 13 Pro Max, has run end to end (`tests/fixtures/roomplan/kitchen_real_01.json`: 12 tasks over 11 families, 9 of 12 episodes, valid). It has no tape measurements yet, and GR00T has not trained on it; the GR00T scores above are from the authored hero kitchen. The three measured, consented scans (P2) are not done.
+- `tests/fixtures/roomplan/amal.json` and `shopyseek.json` come from public repositories with no licence, so this repository has no grant to redistribute them (`tests/fixtures/roomplan/README.md`). They are to be replaced by our own captures.
 
 ## Get started (5 minutes)
 
@@ -301,7 +318,7 @@ Physics success check → drop failures      arrival/sim/collect.py
 GR00T LeRobot v2 dataset                   out/datasets/<room>_sim/
         │  arrival/export      parquet + mp4 + meta, validator
         ▼
-Fine-tune GR00T N1.7 (next)                docs/REFERENCE.md#later-gr00t-fine-tune-not-run
+Fine-tune GR00T N1.7, score in the twin   docs/GR00T-FINETUNE.md, docs/07-eval.md
 ```
 
 | Folder | What lives there |
@@ -444,6 +461,7 @@ Closed without merging: #45, #46, #48, #53.
 - [docs/04-contracts.md](docs/04-contracts.md): data schemas
 - [docs/09-later.md](docs/09-later.md): designs for MimicGen, splat, Cosmos and fine-tune
 - [docs/BUILD-LOG.md](docs/BUILD-LOG.md): what changed and why
+- [docs/DEVPOST-SUBMISSION.md](docs/DEVPOST-SUBMISSION.md) and [docs/DEVPOST-FEEDBACK.md](docs/DEVPOST-FEEDBACK.md): the hackathon form text and feedback, with the lines that still need a real run marked
 - [docs/CONTRIBUTORS.md](docs/CONTRIBUTORS.md): who worked on what, by pull request and by commit
 - [P3 human baseline](docs/results/p3-teleop-2026-10-21/README.md): timed demos, attempt log, cost assumptions and dataset handoff
 - [docs/00-START-HERE.md](docs/00-START-HERE.md): the original MVP build contract
