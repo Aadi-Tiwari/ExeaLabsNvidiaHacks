@@ -216,3 +216,23 @@ def test_cli_doctor(tmp_path, capsys):
     out_fail = capsys.readouterr().out
     assert rc_fail == cli.EXIT_INVALID
     assert "[FAIL] disk:" in out_fail
+
+def test_doctor_nebius_cloud_env_keys(tmp_path):
+    from arrival.jobs.nebius import JOB_SETTINGS, STORE_SETTINGS
+    env = {
+        "NEBIUS_IAM_TOKEN": "secret_iam_token_xyz",
+        "NEBIUS_PROJECT_ID": "project-12345",
+        "NEBIUS_JOB_IMAGE": "cr.nemotron/arrival:v1",
+        "NEBIUS_JOB_S3_SECRET_ID": "secret-s3-id-999",
+        "NEBIUS_BUCKET": "my-bucket",
+        "NEBIUS_ACCESS_KEY_ID": "access_key_abc",
+        "NEBIUS_SECRET_ACCESS_KEY": "secret_access_key_def",
+    }
+    assert set(env.keys()) == set(JOB_SETTINGS + STORE_SETTINGS)
+    checks = check_env(environ=env, env_files=[])
+    for k in env:
+        chk = next(c for c in checks if c.name == k)
+        assert chk.status == "ok"
+        assert "set in the environment" in chk.detail
+        assert env[k] not in chk.detail  # value never leaked
+

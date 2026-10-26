@@ -108,3 +108,17 @@ def test_cost_cli_runs_and_reports(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "| source | room | family |" in out
     assert "| dollars | usd | measured | note |" in out
+
+@pytest.mark.parametrize("cmd", ["cmd_sim", "cmd_eval"])
+@pytest.mark.parametrize("kw,expected_err", [
+    ({"people": -1}, "--people must be >= 0"),
+    ({"seed": -1}, "--seed must be >= 0"),
+    ({"res": 50}, "--res must be a positive multiple of 16"),
+    ({"res": 0}, "--res must be a positive multiple of 16"),
+])
+def test_sim_eval_numerical_bounds(tmp_path, capsys, cmd, kw, expected_err):
+    pytest.importorskip("mujoco")
+    ns = _ns(tmp_path, **kw)
+    assert getattr(cli, cmd)(ns) == cli.EXIT_USAGE
+    assert expected_err in capsys.readouterr().err
+
