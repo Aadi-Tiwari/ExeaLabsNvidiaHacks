@@ -157,3 +157,13 @@ def test_script_exit_codes_and_skip(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "-6.0 cm  FAIL" in out and "1 failing" in out
     assert scan_accuracy.main([str(none_room)]) == 0  # nothing measured is not a failure
+
+
+def test_script_reads_an_intake_scan_with_only_roomplan_json(tmp_path, capsys):
+    d = tmp_path / "intake_room"  # what scripts/intake_scan.py writes: roomplan.json, no scan.json
+    d.mkdir()
+    shutil.copy(SCANS / "hero_kitchen" / "roomplan.json", d / "roomplan.json")
+    (d / "measurements.json").write_text(HERO_FIXTURE.read_text())
+    scan_accuracy.main([str(d)])
+    out = capsys.readouterr().out
+    assert "1 room(s) measured" in out and "intake_room" in out
