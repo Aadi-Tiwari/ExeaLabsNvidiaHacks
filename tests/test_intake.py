@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -199,3 +200,37 @@ def test_cli_go_and_refusal(tmp_path, photos, clean_plan, capsys):
     assert "GO" in capsys.readouterr().out
     assert cli.main(base + ["--photos", *map(str, photos)]) == 2
     assert "already exists" in capsys.readouterr().err
+
+
+def test_check_reruns_every_check_on_an_existing_folder(tmp_path, photos, clean_plan):
+    amal = it.check(_run(tmp_path, photos, room="amal")["dir"].name, scans=tmp_path / "scans")
+    assert not amal["go"] and "overlapping fixtures" in " ".join(amal["problems"])  # geometry, not only notes
+    d = _run(tmp_path, photos, plan=clean_plan, measures="counter_length=3.2,counter_height=0.92")["dir"]
+    before = it.check("kitchen_01", scans=tmp_path / "scans")
+    assert not before["go"] and "notes.md: 'Sink width (m)' is missing or blank" in before["problems"]
+    notes = d / "notes.md"
+    notes.write_text(re.sub(r"(Sink width \(m\)[^\n]*?)TODO", r"\g<1>0.55", notes.read_text(encoding="utf-8")),
+                     encoding="utf-8")
+    (d / "measurements.json").write_text(json.dumps(
+        {"counter_length_m": 3.2, "counter_height_m": 0.92, "sink_width_m": 0.55}))
+    after = it.check("kitchen_01", scans=tmp_path / "scans")
+    assert after["go"], after["problems"]
+    with pytest.raises(it.IntakeError, match="does not exist"):
+        it.check("kitchen_02", scans=tmp_path / "scans")
+
+
+def test_cli_no_go_points_at_check(tmp_path, photos, clean_plan, capsys):
+    spec = importlib.util.spec_from_file_location("intake_scan", REPO / "scripts" / "intake_scan.py")
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    scans = ["--scans", str(tmp_path / "scans")]
+    assert cli.main(["kitchen_01", "--roomplan", str(clean_plan), "--out", str(tmp_path / "r"), *scans,
+                     "--photos", *map(str, photos)]) == 1
+    out = capsys.readouterr().out
+    assert f"intake_scan.py kitchen_01 --check --scans {tmp_path / 'scans'}" in out
+    assert cli.main(["kitchen_01", "--check", *scans]) == 1
+    assert "NO-GO" in capsys.readouterr().out
+    assert cli.main(["kitchen_02", "--check", *scans]) == 2
+    with pytest.raises(SystemExit) as e:
+        cli.main(["kitchen_01", *scans])
+    assert e.value.code == 2 and "--roomplan is required" in capsys.readouterr().err

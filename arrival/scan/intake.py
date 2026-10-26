@@ -2,6 +2,7 @@
 
     intake(room_id, roomplan_path, photos, measures=...)   # creates the folder, runs the checks
     validate_scan_dir(path)                                 # list of problems, empty when the folder is complete
+    check(room_id)                                          # validate_scan_dir plus the geometry checks
 
 The folder holds roomplan.json as exported, reference_N.jpg re-encoded without EXIF (GPS, device serial,
 timestamps) and downscaled to MAX_PHOTO_PX, notes.md from NOTES_TEMPLATE, and measurements.json, the
@@ -237,6 +238,27 @@ def _render(room_id: str, twin: dict, out_dir: Path) -> Path:
     path = out_dir / f"{room_id}_roomplan_top.png"
     render_rooms.render(f"{room_id}_roomplan", twin, 100.0).save(path)
     return path
+
+
+def check(room_id: str, *, scans: str | Path | None = None) -> dict:
+    """Re-check an existing scans/<room_id>/ (a NO-GO intake whose notes were filled in since): validate_scan_dir
+    plus the same geometry checks intake ran. Returns {"dir", "go", "problems", "fixtures"}."""
+    if not ROOM_ID.fullmatch(room_id or ""):
+        raise IntakeError(f"room id {room_id!r} must be lowercase letters, digits and underscores only")
+    dest = (Path(scans) if scans else ROOT / "scans") / room_id
+    if not dest.is_dir():
+        raise IntakeError(f"{dest} does not exist; land the scan with intake first")
+    problems = validate_scan_dir(dest)
+    fixtures = []
+    try:
+        bundle = _load_roomplan(dest / "roomplan.json", room_id)
+    except IntakeError:
+        bundle = None  # validate_scan_dir already reported it
+    if bundle is not None:
+        report = _checks(bundle)
+        problems += report["problems"]
+        fixtures = [f"{f['id']} ({f['type']})" for f in report["twin"]["fixtures"]]
+    return {"dir": dest, "go": not problems, "problems": problems, "fixtures": fixtures}
 
 
 def intake(room_id: str, roomplan_path: str | Path, photos: list | None = None, *, scans: str | Path | None = None,
