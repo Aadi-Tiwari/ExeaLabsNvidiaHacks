@@ -267,6 +267,8 @@ def drop_flagged(root: str | Path, out: str | Path, report: dict | None = None, 
         info["total_videos"] = n * len(video_keys)
     if "arrival_successes" in info:
         info["arrival_successes"] = n  # successes the dataset still holds; arrival_attempts is kept as collected
+    if "arrival_families" in info:
+        info["arrival_families"] = sorted({e["arrival_family"] for e in kept if e.get("arrival_family")})
     (meta / "info.json").write_text(json.dumps(info, indent=2))
     cleaned = {"output": str(out), "kept": n, "dropped": sorted(bad), "index_map": {str(k): v for k, v in mapping.items()},
                "dropped_reasons": {str(r["episode_index"]): r["flags"] for r in report["results"] if not r["ok"]}}
