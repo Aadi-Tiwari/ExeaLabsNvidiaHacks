@@ -52,7 +52,8 @@ def wordings(tmp: Path) -> dict:
 
     res, s = _timed(lambda: generate_instructions("counter_to_sink", "mug", n=4, cache_path=tmp / "instr.json"))
     return {"ok": res.get("source") == "token_factory", "model": config()["models"]["lightning"], "seconds": s,
-            "source": res.get("source"), "train": res.get("train"), "eval": res.get("eval")}
+            "source": res.get("source"), "train": res.get("train"), "eval": res.get("eval"),
+            **({"error": res["error"]} if res.get("error") else {})}
 
 
 def tavily(tmp: Path) -> dict:
