@@ -40,17 +40,20 @@ class FanoutConfig:
     res: int = 128
     seed: int = 0
     scans: str = "scans"
+    dart: float = 0.0
+    base: str = "fixed"
+    exocentric: bool = False
 
     def __post_init__(self) -> None:
         # The run id becomes both a scratch-directory component and an object-storage prefix.
         if not isinstance(self.run_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", self.run_id):
             raise ShardError("run_id must be 1-64 letters, digits, underscores or hyphens, starting with a letter or digit")
-        for name, minimum in (("shards", 1), ("episodes", 1), ("people", 0), ("res", 1)):
+        for name, minimum in (("shards", 1), ("episodes", 1), ("people", 0), ("res", 1), ("seed", 0)):
             value = getattr(self, name)
             if type(value) is not int or value < minimum:
                 raise ShardError(f"{name} must be an integer >= {minimum}")
-        if type(self.seed) is not int:
-            raise ShardError("seed must be an integer")
+        if self.res % 16 != 0:
+            raise ShardError(f"res must be a multiple of 16, got {self.res}")
         if not isinstance(self.room, str) or not self.room.strip():
             raise ShardError("room must be a non-empty name")
         if (not isinstance(self.families, str) or not self.families.strip() or
@@ -58,11 +61,24 @@ class FanoutConfig:
             raise ShardError("families must be comma-separated non-empty names")
         if not isinstance(self.scans, str) or not self.scans.strip():
             raise ShardError("scans must be a non-empty path")
+        if type(self.dart) not in (int, float) or not 0 <= self.dart < float("inf"):
+            raise ShardError("dart must be a finite number >= 0")
+        if self.base not in ("fixed", "mobile"):
+            raise ShardError("base must be fixed or mobile")
+        if type(self.exocentric) is not bool:
+            raise ShardError("exocentric must be true or false")
 
     def sim_args(self, i: int) -> list[str]:
-        return ["sim", "--room", self.room, "--families", self.families, "--episodes", str(self.episodes),
+        args = ["sim", "--room", self.room, "--families", self.families, "--episodes", str(self.episodes),
                 "--people", str(self.people), "--res", str(self.res), "--seed", str(self.seed),
                 "--scans", str(self.scans), "--shard", f"{i}/{self.shards}", "--resume"]
+        if self.dart:
+            args += ["--dart", str(self.dart)]
+        if self.base != "fixed":
+            args += ["--base", self.base]
+        if self.exocentric:
+            args.append("--exocentric")
+        return args
 
 
 class Backend(Protocol):

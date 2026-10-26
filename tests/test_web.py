@@ -754,6 +754,10 @@ def _bad_axes(m, root):
     m["axes"]["camera"] = "opengl"
 
 
+def _list_depth_unit(m, root):
+    m["depth_unit"] = ["m"]
+
+
 @pytest.mark.parametrize("mutate,code", [
     (_same_times, "non_monotonic_timestamps"), (_drop_file, "missing_file"), (_wrong_rgb_size, "bad_size"),
     (_corrupt_rgb, "bad_image"), (_wrong_depth_shape, "depth_shape"),
@@ -766,7 +770,7 @@ def _bad_axes(m, root):
 
     (_corrupt_rgb, "bad_image"), (_wrong_depth_shape, "depth_shape"), (_pickled_depth, "bad_depth"),
     (_invalid_confidence_level, "bad_confidence"), (_invalid_confidence_mode, "bad_confidence"),
-    (_bad_axes, "axis_convention"),
+    (_bad_axes, "axis_convention"), (_list_depth_unit, "depth_unit"),
 ])
 def test_bad_frames_bundle_is_rejected_and_nothing_is_queued(make, tmp_path, mutate, code):
     srv, out = make(rate_limit=0)
@@ -843,6 +847,20 @@ def test_frames_member_count_cap(make, monkeypatch):
 
 # -- CLI flags and the doctor
 
+def test_a_port_already_served_cannot_be_bound_again(make):
+    """On Windows SO_REUSEADDR let a second `arrival serve` bind the port the first one was serving."""
+    srv, out = make()
+    with pytest.raises(OSError):
+        make_server(port=srv.server_address[1], out_dir=out, scans_dir=REPO / "scans").server_close()
+
+
+def test_serve_reports_an_address_it_cannot_listen_on(capsys):
+    from arrival.cli import EXIT_USAGE, main
+
+    assert main(["serve", "--host", "no-such-host.invalid", "--port", "0"]) == EXIT_USAGE
+    assert "serve: cannot listen on no-such-host.invalid:0" in capsys.readouterr().err
+
+
 def test_serve_hardening_flags_parse_and_validate():
     from arrival.cli import EXIT_USAGE, build_parser, main
 
@@ -852,7 +870,20 @@ def test_serve_hardening_flags_parse_and_validate():
     d = build_parser().parse_args(["serve"])
     assert (d.max_upload_mb, d.rate_limit, d.max_queued, d.public, d.behind_proxy) == (200, 10, 50, False, False)
     assert main(["serve", "--max-upload-mb", "0"]) == EXIT_USAGE
+    assert main(["serve", "--max-upload-mb", "nan"]) == EXIT_USAGE
+    assert main(["serve", "--max-upload-mb", "inf"]) == EXIT_USAGE
     assert main(["serve", "--rate-limit", "-1"]) == EXIT_USAGE
+
+
+def test_serve_refuses_a_port_bind_cannot_take(monkeypatch, capsys):
+    from arrival.cli import EXIT_USAGE, main
+
+    for port in ("-1", "65536", "70000"):
+        assert main(["serve", "--port", port]) == EXIT_USAGE
+        assert "--port must be 0-65535" in capsys.readouterr().err
+    seen = {}
+    monkeypatch.setattr("arrival.web.app.serve", lambda **kw: seen.update(kw))
+    assert main(["serve", "--port", "0"]) == 0 and seen["port"] == 0
 
 
 def test_doctor_reports_keys_without_values(tmp_path, monkeypatch, capsys):

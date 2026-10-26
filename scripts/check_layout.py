@@ -147,16 +147,19 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--room", help="compile scans/<room> in memory instead of reading a folder")
     p.add_argument("--json", action="store_true")
     a = p.parse_args(argv)
-    if a.room:
-        from arrival.scan.bundle import load_room
-        from arrival.twin.compile import compile_twin, layout_dict
-        twin = compile_twin(load_room(a.room))
-        layout = yaml.safe_load(yaml.safe_dump(layout_dict(twin), sort_keys=False))
-    elif a.twin_dir:
-        d = Path(a.twin_dir)
-        twin, layout = json.loads((d / "twin.json").read_text()), yaml.safe_load((d / "layout.yaml").read_text())
-    else:
+    if not (a.room or a.twin_dir):
         p.error("give a twin folder or --room")
+    try:
+        if a.room:
+            from arrival.scan.bundle import load_room
+            from arrival.twin.compile import compile_twin, layout_dict
+            twin = compile_twin(load_room(a.room))
+            layout = yaml.safe_load(yaml.safe_dump(layout_dict(twin), sort_keys=False))
+        else:
+            d = Path(a.twin_dir)
+            twin, layout = json.loads((d / "twin.json").read_text()), yaml.safe_load((d / "layout.yaml").read_text())
+    except FileNotFoundError as e:
+        p.error(str(e))
     res = check_layout(twin, layout)
     if a.json:
         print(json.dumps(res, indent=2))

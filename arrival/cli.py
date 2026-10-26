@@ -1,9 +1,10 @@
-"""python -m arrival demo | validate | serve | sim | merge-shards | subset | eval | realism | work | gc | doctor | summary | export-site"""
+"""python -m arrival demo | validate | serve | sim | merge-shards | subset | eval | eval-compare | realism | work | gc | doctor | summary | export-site | cost"""
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 import time
 from pathlib import Path
@@ -127,6 +128,7 @@ def cmd_validate(a) -> int:
         return EXIT_INVALID
     print(format_report(report))
     if a.json:
+        Path(a.json).parent.mkdir(parents=True, exist_ok=True)
         Path(a.json).write_text(json.dumps(report, indent=2) + "\n")
         print(f"report: {a.json}")
     if a.drop:
@@ -140,14 +142,22 @@ def cmd_validate(a) -> int:
 
 
 def cmd_serve(a) -> int:
+    if not 0 <= a.port <= 65535:
+        print("--port must be 0-65535 (0 = any free port)", file=sys.stderr)
+        return EXIT_USAGE
     from arrival.web.app import serve
 
-    if a.max_upload_mb <= 0 or a.rate_limit < 0 or a.max_queued < 0:
-        print("--max-upload-mb must be > 0; --rate-limit and --max-queued must be >= 0 (0 = off)", file=sys.stderr)
+    if not 0 < a.max_upload_mb < float("inf") or a.rate_limit < 0 or a.max_queued < 0:  # NaN fails the first test
+        print("--max-upload-mb must be a finite number > 0; --rate-limit and --max-queued must be >= 0 (0 = off)",
+              file=sys.stderr)
         return EXIT_USAGE
-    serve(port=a.port, out_dir=Path(a.out), scans_dir=resolve_scans(a.scans), host=a.host,
-          max_upload_mb=a.max_upload_mb, rate_limit=a.rate_limit, max_queued=a.max_queued,
-          public=a.public, behind_proxy=a.behind_proxy)
+    try:
+        serve(port=a.port, out_dir=Path(a.out), scans_dir=resolve_scans(a.scans), host=a.host,
+              max_upload_mb=a.max_upload_mb, rate_limit=a.rate_limit, max_queued=a.max_queued,
+              public=a.public, behind_proxy=a.behind_proxy)
+    except OSError as e:  # the bind: port in use, or a host that does not resolve
+        print(f"serve: cannot listen on {a.host}:{a.port}: {e}", file=sys.stderr)
+        return EXIT_USAGE
     return EXIT_OK
 
 
@@ -160,6 +170,19 @@ def cmd_doctor(a) -> int:
     return EXIT_INVALID if doctor.exit_code(checks) else EXIT_OK
 
 
+def _load_twin(room: str, out: str | Path, scans: str | Path) -> dict:
+    """The compiled twin under <out>/twins, unless scans/<room>/scan.json was saved after it was written;
+    then the scan is compiled again. Raises FileNotFoundError when neither exists."""
+    from arrival.scan import bundle as scan_bundle
+    from arrival.twin.compile import compile_twin
+
+    twin_path = Path(out) / "twins" / room / "twin.json"
+    scan_path = resolve_scans(scans) / room / "scan.json"
+    if twin_path.is_file() and not (scan_path.is_file() and scan_path.stat().st_mtime > twin_path.stat().st_mtime):
+        return json.loads(twin_path.read_text())
+    return compile_twin(scan_bundle.load_room(room, resolve_scans(scans)))
+
+
 def _sim_args(a):
     """Shared by sim and eval: (families, twin) or an error message."""
     try:
@@ -168,6 +191,8 @@ def _sim_args(a):
         return "mujoco is not installed: pip install -e '.[sim]'"
     from arrival.sim.tasks import SIM_FAMILIES
 
+    if getattr(a, "people", None) is not None and a.people < 0:  # before the writer clears the old dataset
+        return "--people must be >= 0"
     if getattr(a, "arm", "procedural") == "menagerie":
         from arrival.sim import menagerie
 
@@ -175,23 +200,19 @@ def _sim_args(a):
             return menagerie.FETCH_HINT
 
     fams = list(SIM_FAMILIES) if a.families == "all" else [f.strip() for f in a.families.split(",") if f.strip()]
+    if not fams:
+        return "--families is empty: give at least one family name, or all"
     bad = [f for f in fams if f not in SIM_FAMILIES]
     if bad or a.episodes < 1:
         return f"unknown families {bad} (choose from {', '.join(SIM_FAMILIES)})" if bad else "--episodes must be >= 1"
-    if getattr(a, "base", "fixed") == "mobile" and getattr(a, "policy", "scripted") != "scripted":
-        return ("--base mobile needs --policy scripted: the policy server wire format carries no base pose yet "
-                "(8-float arm only), so a served policy could not drive the base")
-    twin_path = Path(a.out) / "twins" / a.room / "twin.json"
-    if twin_path.is_file():
-        twin = json.loads(twin_path.read_text())
-    else:
-        from arrival.scan import bundle as scan_bundle
-        from arrival.twin.compile import compile_twin
-
-        try:
-            twin = compile_twin(scan_bundle.load_room(a.room, resolve_scans(a.scans)))
-        except FileNotFoundError:
-            return f"no scan for room {a.room!r} under {resolve_scans(a.scans)} and no twin in {a.out}/twins"
+    if getattr(a, "seed", 0) is not None and getattr(a, "seed", 0) < 0:
+        return "--seed must be >= 0"
+    if getattr(a, "res", 16) is not None and (getattr(a, "res", 16) <= 0 or getattr(a, "res", 16) % 16 != 0):
+        return "--res must be a positive multiple of 16"
+    try:
+        twin = _load_twin(a.room, a.out, a.scans)
+    except FileNotFoundError:
+        return f"no scan for room {a.room!r} under {resolve_scans(a.scans)} and no twin in {a.out}/twins"
     return fams, twin
 
 
@@ -202,12 +223,19 @@ def cmd_sim(a) -> int:
         print(args, file=sys.stderr)
         return EXIT_USAGE
     fams, twin = args
+    if a.seed < 0:  # numpy refuses it in every task, after the writer has cleared the old dataset
+        print("--seed must be >= 0", file=sys.stderr)
+        return EXIT_USAGE
     from arrival.jobs.shards import ShardError, parse_shard
 
     try:
         shard = parse_shard(a.shard) if getattr(a, "shard", None) else None
     except ShardError as e:
         print(e, file=sys.stderr)
+        return EXIT_USAGE
+    dart = getattr(a, "dart", 0.0)
+    if not (math.isfinite(dart) and dart >= 0):  # -1 and nan ran with no noise but were written to info.json
+        print("--dart must be a finite number >= 0 (0 = off)", file=sys.stderr)
         return EXIT_USAGE
     if getattr(a, "tavily", False):
         from arrival.tasks.tavily_research import TavilyResearchAgent
@@ -250,6 +278,9 @@ def cmd_sim(a) -> int:
               f"{r['skipped_error']} errored; none written):", file=sys.stderr)
         for x in r["skip_reasons"][:5]:
             print(f"  {x.get('task_id') or x['family']}: {x['reason']}", file=sys.stderr)
+    if r["attempts"] == 0 and r["skipped_error"]:
+        print(f"sim: every task errored before the physics check, so {res['dataset']} has no episodes", file=sys.stderr)
+        return EXIT_INVALID
     if a.save_preview:
         print(f"preview: {Path(a.out) / 'previews'}")
     return EXIT_OK
@@ -263,7 +294,12 @@ def cmd_fanout(a) -> int:
     from arrival.jobs.fanout_status import StatusRecorder
     from arrival.jobs.shards import ShardError
 
-    cfg = FanoutConfig(a.run_id, a.shards, a.room, a.families, a.episodes, a.people, a.res, a.seed, a.scans)
+    try:
+        cfg = FanoutConfig(a.run_id, a.shards, a.room, a.families, a.episodes, a.people, a.res, a.seed, a.scans,
+                           getattr(a, "dart", 0.0), getattr(a, "base", "fixed"), getattr(a, "exocentric", False))
+    except ShardError as e:
+        print(f"fanout: {e}", file=sys.stderr)
+        return EXIT_USAGE
     if a.backend == "nebius":
         from arrival.jobs.nebius import NebiusBackend, NebiusNotConfigured
 
@@ -286,19 +322,31 @@ def cmd_fanout(a) -> int:
             if left:
                 print(f"fanout: could not cancel Nebius jobs {left}; cancel them by hand", file=sys.stderr)
     problems = validate(res["dataset"])
+    for p in problems:
+        print(f"INVALID: {p}", file=sys.stderr)
     print(f"dataset: {res['dataset']} (ran shards {res['ran']}, skipped {res['skipped']})")
-    return EXIT_OK if not problems else EXIT_USAGE
+    return EXIT_INVALID if problems else EXIT_OK
 
 
 def cmd_subset(a) -> int:
     """Keep the episodes of a sim dataset that pass a rule (family, drawer opening) as a new validated dataset."""
     from arrival.export.subset import SubsetError, subset_dataset
     from arrival.export.validate import validate
+    from arrival.jobs.shards import ShardError
+    from arrival.sim.tasks import SIM_FAMILIES
 
+    if a.families:
+        fams = list(SIM_FAMILIES) if a.families == "all" else [f.strip() for f in a.families.split(",") if f.strip()]
+        bad = [f for f in fams if f not in SIM_FAMILIES]
+        if bad:
+            print(f"unknown families {bad} (choose from {', '.join(SIM_FAMILIES)})", file=sys.stderr)
+            return EXIT_USAGE
+    else:
+        fams = None
     try:
-        res = subset_dataset(a.src, a.out, families=[f for f in a.families.split(",") if f] if a.families else None,
+        res = subset_dataset(a.src, a.out, families=fams,
                              min_drawer_opening=a.min_drawer_opening)
-    except SubsetError as e:
+    except (SubsetError, ShardError) as e:
         print(f"subset: {e}", file=sys.stderr)
         return EXIT_USAGE
     errors = validate(res["dataset"])
@@ -313,6 +361,11 @@ def cmd_merge_shards(a) -> int:
     from arrival.export.validate import validate
     from arrival.jobs.shards import ShardError, merge_shards
 
+    out_p = Path(a.out).resolve()
+    for s in a.shards:
+        if Path(s).resolve() == out_p:
+            print(f"--out cannot be an input shard directory: {a.out}", file=sys.stderr)
+            return EXIT_USAGE
     try:
         res = merge_shards(a.shards, a.out)
     except ShardError as e:
@@ -353,19 +406,12 @@ def cmd_research(a) -> int:
         print(f"Saved: {target}")
         return EXIT_OK
 
-    twin_path = Path(a.out) / "twins" / a.room / "twin.json"
-    if twin_path.is_file():
-        twin = json.loads(twin_path.read_text())
-    else:
-        from arrival.scan import bundle as scan_bundle
-        from arrival.twin.compile import compile_twin
-
-        try:
-            twin = compile_twin(scan_bundle.load_room(a.room, resolve_scans(a.scans)))
-        except FileNotFoundError:
-            print(f"no scan for room {a.room!r} under {resolve_scans(a.scans)} and no twin in {a.out}/twins",
-                  file=sys.stderr)
-            return EXIT_USAGE
+    try:
+        twin = _load_twin(a.room, a.out, a.scans)
+    except FileNotFoundError:
+        print(f"no scan for room {a.room!r} under {resolve_scans(a.scans)} and no twin in {a.out}/twins",
+              file=sys.stderr)
+        return EXIT_USAGE
 
     print(f"Researching appliances for room '{a.room}' via Tavily...")
     enriched = agent.enrich_twin(twin)
@@ -391,7 +437,7 @@ def cmd_eval(a) -> int:
     from arrival.sim.policy import VLANotConfigured
 
     defaults = dict(room="hero_kitchen", families="counter_to_sink,open_drawer,move_on_table", episodes=4, seed=0,
-                    people=2, holdout=False, res=128, scans="scans")
+                    people=2, holdout=False, res=128, scans="scans", base="fixed", arm="procedural")
     try:
         if getattr(a, "manifest", None):
             conflicts = ["--" + key for key in defaults if getattr(a, key, None) is not None]
@@ -427,6 +473,19 @@ def cmd_eval(a) -> int:
     return EXIT_OK
 
 
+def cmd_eval_compare(a) -> int:
+    """Paired sign test between two eval runs of the same manifest."""
+    from arrival.eval.compare import CompareError, compare, table
+
+    try:
+        res = compare(a.run_a, a.run_b)
+    except CompareError as e:
+        print(f"eval-compare: {e}", file=sys.stderr)
+        return EXIT_USAGE
+    print(table(res))
+    return EXIT_OK
+
+
 def cmd_realism(a) -> int:
     """Score the twin's render against a scan's held-out RGB-D frames; writes out/eval/<room>_realism.json and .png."""
     try:
@@ -457,18 +516,37 @@ def cmd_work(a) -> int:
     from arrival.sim.tasks import SIM_FAMILIES
 
     fams = list(SIM_FAMILIES) if a.families == "all" else [f.strip() for f in a.families.split(",") if f.strip()]
+    if not fams:
+        print("--families is empty: give at least one family name, or all", file=sys.stderr)
+        return EXIT_USAGE
     bad = [f for f in fams if f not in SIM_FAMILIES]
     if bad or a.episodes < 1:
         print(f"unknown families {bad} (choose from {', '.join(SIM_FAMILIES)})" if bad else "--episodes must be >= 1",
               file=sys.stderr)
         return EXIT_USAGE
+    if a.people < 0:
+        print("--people must be >= 0", file=sys.stderr)
+        return EXIT_USAGE
+    if a.seed < 0:
+        print("--seed must be >= 0", file=sys.stderr)
+        return EXIT_USAGE
+    if a.res < 16 or a.res % 16:  # the exporter's mp4 rule; any other size fails every job the worker claims
+        print("--res must be a positive multiple of 16", file=sys.stderr)
+        return EXIT_USAGE
     if a.retries is not None and a.retries < 0:
         print("--retries must be >= 0", file=sys.stderr)
         return EXIT_USAGE
+    for flag, value in (("--max-job-seconds", a.max_job_seconds), ("--retention-hours", a.retention_hours)):
+        if value is not None and not 0 <= value < float("inf"):  # same rule as the ARRIVAL_* variables; NaN fails it
+            print(f"{flag} must be a finite number >= 0", file=sys.stderr)
+            return EXIT_USAGE
     try:  # ARRIVAL_* variables first, then the flags
         limits = Limits.from_env().replace(max_episodes=a.max_episodes, max_people=a.max_people,
                                            max_job_seconds=a.max_job_seconds, retention_hours=a.retention_hours,
                                            job_retries=a.retries)
+        if not 0 <= a.poll < float("inf"):  # time.sleep refuses these the first time the queue is empty
+            print("--poll must be a finite number >= 0", file=sys.stderr)
+            return EXIT_USAGE
         n = work(Path(a.out), once=a.once, poll=a.poll, limits=limits, episodes=a.episodes, families=fams,
                  people=a.people, res=a.res, seed=a.seed)
     except LimitError as e:
@@ -482,8 +560,8 @@ def cmd_gc(a) -> int:
     """Delete finished jobs (upload, twin, dataset, zip) older than --max-age-hours."""
     from arrival.jobs.retention import gc
 
-    if a.max_age_hours <= 0:
-        print("--max-age-hours must be > 0", file=sys.stderr)
+    if not 0 < a.max_age_hours < float("inf"):  # NaN fails it too; gc() raises on any of these
+        print("--max-age-hours must be a finite number > 0", file=sys.stderr)
         return EXIT_USAGE
     res = gc(Path(a.out), a.max_age_hours, dry_run=a.dry_run)
     verb = "would remove" if a.dry_run else "removed"
@@ -502,10 +580,22 @@ def cmd_summary(a) -> int:
     from arrival.sim.tasks import SIM_FAMILIES
 
     fams = list(SIM_FAMILIES) if a.families == "all" else [f.strip() for f in a.families.split(",") if f.strip()]
+    if not fams:
+        print("--families is empty: give at least one family name, or all", file=sys.stderr)
+        return EXIT_USAGE
     bad = [f for f in fams if f not in SIM_FAMILIES]
     if bad or a.episodes < 1:
         print(f"unknown families {bad} (choose from {', '.join(SIM_FAMILIES)})" if bad else "--episodes must be >= 1",
               file=sys.stderr)
+        return EXIT_USAGE
+    if a.people < 0:
+        print("--people must be >= 0", file=sys.stderr)
+        return EXIT_USAGE
+    if a.seed < 0:
+        print("--seed must be >= 0", file=sys.stderr)
+        return EXIT_USAGE
+    if a.res <= 0 or a.res % 16 != 0:
+        print("--res must be a positive multiple of 16", file=sys.stderr)
         return EXIT_USAGE
     rooms = [r.strip() for r in a.rooms.split(",") if r.strip()] if a.rooms else None
     kw = {"rooms": rooms} if rooms else {}
@@ -530,6 +620,23 @@ def cmd_export_site(a) -> int:
           f"{len(res['zips'])} zips, rooms: {', '.join(res['rooms']) or 'none'})")
     print(f"open {Path(res['dest']) / 'index.html'} in a browser, or serve the folder with any static host")
     return EXIT_OK
+
+
+def cmd_cost(a) -> int:
+    """Time and cost report computed from local runs and teleop baseline."""
+    from arrival.eval import cost
+
+    argv = ["--out", str(a.out)]
+    if a.usage:
+        argv.extend(["--usage", str(a.usage)])
+    if a.pricing:
+        argv.extend(["--pricing", str(a.pricing)])
+    if a.baseline:
+        argv.extend(["--baseline", str(a.baseline)])
+    if a.json:
+        argv.append("--json")
+    rc = cost.main(argv)
+    return EXIT_OK if rc == 0 else EXIT_USAGE
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -620,6 +727,9 @@ def build_parser() -> argparse.ArgumentParser:
     f.add_argument("--res", type=int, default=128)
     f.add_argument("--seed", type=int, default=0)
     f.add_argument("--scans", default="scans")
+    f.add_argument("--dart", type=float, default=0.0, metavar="RAD", help="as for sim: DART noise std in rad, 0 = off")
+    f.add_argument("--base", choices=["fixed", "mobile"], default="fixed", help="as for sim")
+    f.add_argument("--exocentric", action="store_true", help="as for sim: also export the external overview camera")
     f.add_argument("--out", default="out")
     f.set_defaults(fn=cmd_fanout)
     g = sub.add_parser("merge-shards", help="join sim --shard datasets into one validated LeRobot v2 dataset")
@@ -648,8 +758,8 @@ def build_parser() -> argparse.ArgumentParser:
     e.add_argument("--seed", type=int)
     e.add_argument("--people", type=int)
     e.add_argument("--holdout", action="store_true", default=None, help="held-out wording and start offset")
-    e.add_argument("--base", choices=["fixed", "mobile"], default="fixed", help="mobile: the pedestal drives (MAN-3)")
-    e.add_argument("--arm", choices=["procedural", "menagerie"], default="procedural",
+    e.add_argument("--base", choices=["fixed", "mobile"], help="mobile: the pedestal drives (MAN-3); default fixed")
+    e.add_argument("--arm", choices=["procedural", "menagerie"],
                    help="menagerie = the real Franka asset from MuJoCo Menagerie (python scripts/fetch_menagerie.py; meshes are not committed)")
     e.add_argument("--res", type=int)
     e.add_argument("--out", default="out")
@@ -657,6 +767,10 @@ def build_parser() -> argparse.ArgumentParser:
     e.add_argument("--manifest", help="replay a previous run's manifest.json without resampling")
     e.add_argument("--checkpoint-id", help="caller-declared checkpoint label; required for VLA")
     e.set_defaults(fn=cmd_eval)
+    ec = sub.add_parser("eval-compare", help="paired sign test between two eval runs that replayed the same manifest")
+    ec.add_argument("run_a", help="out/eval/<run_id> (or its episodes.jsonl)")
+    ec.add_argument("run_b")
+    ec.set_defaults(fn=cmd_eval_compare)
     rl = sub.add_parser("realism", help="score the twin's render against a scan's held-out RGB-D frames "
                                         "(JSON + side-by-side PNG, misaligned-pose control)")
     rl.add_argument("scan", help="scan folder (or a room id under --scans) holding frames_manifest.json and "
@@ -719,6 +833,13 @@ def build_parser() -> argparse.ArgumentParser:
     x.add_argument("--dest", default="out/static_site", help="folder to write (replaced if it exists)")
     x.add_argument("--zips", action="store_true", help="also include each dataset as a downloadable zip (can be large)")
     x.set_defaults(fn=cmd_export_site)
+    c = sub.add_parser("cost", help="time and cost report vs teleop baseline (markdown + json)")
+    c.add_argument("--out", default="out", help="folder with reports/, eval/, jobs/ and usage/")
+    c.add_argument("--usage", default=None, help="usage.json: {product: units consumed}")
+    c.add_argument("--pricing", default=None, help="pricing YAML (default: configs/pricing.example.yaml)")
+    c.add_argument("--baseline", default=None, help="teleop_baseline.json (default: docs/results/p3-teleop-2026-10-21/)")
+    c.add_argument("--json", action="store_true", help="print the report as JSON instead of markdown")
+    c.set_defaults(fn=cmd_cost)
     return p
 
 

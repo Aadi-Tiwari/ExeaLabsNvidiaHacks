@@ -13,6 +13,7 @@ from arrival.twin.accuracy import load_measurements
 from conftest import REPO
 
 AMAL = REPO / "tests" / "fixtures" / "roomplan" / "amal.json"
+KITCHEN = REPO / "tests" / "fixtures" / "roomplan" / "kitchen_real_01.json"
 MEASURE = "counter_length=3.20,counter_height=0.92,sink_width=0.55"
 META = dict(location_type="kitchen", phone="iPhone 15 Pro", ios="18.1", lighting="daylight", clutter="low")
 
@@ -57,6 +58,12 @@ def test_amal_is_no_go_for_its_footprint_overlaps_but_the_folder_validates(tmp_p
     r = _run(tmp_path, photos)
     assert it.validate_scan_dir(r["dir"]) == []
     assert not r["go"] and len(r["problems"]) == 1 and "overlapping fixtures" in r["problems"][0]
+
+
+def test_real_kitchen_scan_is_go(tmp_path, photos):
+    """Flush cabinets and a dishwasher in a real scan touch to within float noise; that is not an overlap."""
+    r = _run(tmp_path, photos, plan=KITCHEN)
+    assert r["go"], r["problems"]
 
 
 def test_intake_lands_a_valid_folder_without_exif(tmp_path, photos, clean_plan):

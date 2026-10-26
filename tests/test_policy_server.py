@@ -111,6 +111,16 @@ def test_server_answers_500_for_an_invalid_chunk():
         assert e.value.code == 500
 
 
+def test_server_answers_400_for_an_integer_too_large_for_a_float():
+    body = encode_request(_obs(), "x")
+    raw = json.dumps(body).replace(json.dumps(body["state.gripper"]), "[1" + "0" * 400 + "]").encode()
+    with MockPolicyServer() as srv:
+        req = urllib.request.Request(srv.url + "/act", data=raw, method="POST")
+        with pytest.raises(urllib.error.HTTPError) as e:
+            urllib.request.urlopen(req, timeout=5)
+        assert e.value.code == 400
+
+
 def test_client_rejects_malformed_server_reply(monkeypatch):
     from arrival.policy_server import mock_server  # a reply the server's own encoder would refuse to build
     monkeypatch.setattr(mock_server, "encode_response", lambda chunk: {"action.single_arm": [], "action.gripper": []})
@@ -216,6 +226,29 @@ def test_eval_vla_dead_server_takes_existing_failure_path(twin, monkeypatch, tmp
         with pytest.raises(OSError):  # nothing finished before the server died: the CLI turns this into exit 2
             evaluate(twin, ["open_drawer"], 1, policy_name="vla", checkpoint_id="test-mock", people=0, res=64, out_dir=tmp_path,
                      log=lambda *_: None)
+
+
+@pytest.mark.parametrize("cmd", ["sim", "eval"])
+def test_cli_mobile_base_is_driven_by_a_served_policy(monkeypatch, tmp_path, cmd):
+    """--base mobile --policy vla sends the 11-float state and the sim moves the base by the reply's action.base."""
+    from arrival.cli import main
+
+    seen = []
+
+    class Drive(MockPolicyServer):
+        def act(self, state):
+            seen.append(np.asarray(state, dtype=float))
+            chunk = super().act(state)
+            chunk[:, 8] += 0.02  # base x
+            return chunk
+
+    with Drive(chunk=4) as srv:
+        monkeypatch.setenv("GR00T_POLICY_URL", srv.url)
+        extra = ["--checkpoint-id", "test-mock"] if cmd == "eval" else []
+        assert main([cmd, "--families", "counter_to_counter", "--episodes", "1", "--people", "0", "--res", "32",
+                     "--base", "mobile", "--policy", "vla", "--out", str(tmp_path), *extra]) == 0
+    assert seen and all(s.shape == (11,) for s in seen)
+    assert seen[-1][8] > seen[0][8] + 0.1
 
 
 def test_cli_eval_vla_unset_exits_2(monkeypatch):

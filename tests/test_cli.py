@@ -19,9 +19,34 @@ def test_sim_missing_room_is_usage_error(tmp_path, capsys):
     assert "no scan for room" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize("flag", ["--people", "--seed"])
+def test_sim_negative_people_or_seed_is_a_usage_error_and_keeps_the_old_dataset(tmp_path, capsys, monkeypatch, flag):
+    pytest.importorskip("mujoco")
+    monkeypatch.chdir(tmp_path)  # resolve_scans falls back to the repo's scans/
+    old = tmp_path / "datasets" / "hero_kitchen_sim" / "meta" / "info.json"
+    old.parent.mkdir(parents=True)
+    old.write_text("{}")
+    assert cli.main(["sim", flag, "-1", "--episodes", "1", "--families", "open_drawer",
+                     "--out", str(tmp_path)]) == cli.EXIT_USAGE
+    assert f"{flag} must be >= 0" in capsys.readouterr().err
+    assert old.is_file()
+
+
 def test_research_missing_room_is_usage_error(tmp_path, capsys, monkeypatch):
     monkeypatch.setattr("arrival.tasks.tavily_research.TavilyResearchAgent", lambda *a, **k: object())
     assert cli.cmd_research(_ns(tmp_path)) == cli.EXIT_USAGE
+
+
+@pytest.mark.parametrize("cmd", ["sim", "work", "summary"])
+def test_empty_families_is_a_usage_error(tmp_path, capsys, monkeypatch, cmd):
+    """`--families ,` parsed to no families: sim replaced the old dataset with an empty, invalid one and exited 0."""
+    pytest.importorskip("mujoco")
+    monkeypatch.chdir(tmp_path)  # resolve_scans falls back to the repo's scans/
+    argv = [cmd, "--families", " , ", "--out", str(tmp_path)]
+    argv += {"sim": ["--room", "hero_kitchen"], "work": ["--once"]}.get(cmd, [])
+    assert cli.main(argv) == cli.EXIT_USAGE
+    assert "--families is empty" in capsys.readouterr().err
+    assert not (tmp_path / "datasets").exists()
 
 
 def test_sim_vla_not_configured_is_usage_error(tmp_path, capsys, monkeypatch):
@@ -32,12 +57,111 @@ def test_sim_vla_not_configured_is_usage_error(tmp_path, capsys, monkeypatch):
     assert "policy vla" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize("cmd", ["cmd_sim", "cmd_eval"])
-def test_mobile_base_with_a_served_policy_is_a_usage_error(tmp_path, capsys, monkeypatch, cmd):
-    """The policy wire format is 8-float arm only (no base pose), so a served policy cannot drive the base."""
+def test_fanout_reports_invalid_merged_dataset(tmp_path, capsys, monkeypatch):
+    monkeypatch.setattr("arrival.jobs.fanout.run_fanout",
+                        lambda rec, cfg, out: {"dataset": str(tmp_path / "ds"), "ran": [0], "skipped": []})
+    monkeypatch.setattr("arrival.export.validate.validate", lambda d: ["meta/info.json: missing"])
+    a = _ns(tmp_path, backend="local", run_id="r", shards=1)
+    assert cli.cmd_fanout(a) == cli.EXIT_INVALID
+    assert "INVALID: meta/info.json: missing" in capsys.readouterr().err
+
+
+def _room(tmp_path):
+    import json
+    import os
+    import shutil
+
+    from conftest import REPO
+
+    scans = tmp_path / "scans"
+    shutil.copytree(REPO / "scans" / "hero_kitchen", scans / "hero_kitchen")
+    twin = tmp_path / "out" / "twins" / "hero_kitchen" / "twin.json"
+    twin.parent.mkdir(parents=True)
+    twin.write_text(json.dumps({"cached": True}))
+    return scans, twin, scans / "hero_kitchen" / "scan.json", os
+
+
+def _twin(tmp_path, scans):
     pytest.importorskip("mujoco")
-    monkeypatch.setenv("GR00T_POLICY_URL", "http://127.0.0.1:9")  # never contacted: refused before any run
-    monkeypatch.chdir(tmp_path)
-    ns = _ns(tmp_path, room="hero_kitchen", policy="vla", base="mobile")
+    fams, twin = cli._sim_args(_ns(tmp_path / "out", base="fixed", arm="procedural", room="hero_kitchen", scans=str(scans)))
+    return twin
+
+
+def test_cached_twin_is_used_while_it_is_newer_than_the_scan(tmp_path):
+    scans, twin, scan, os = _room(tmp_path)
+    os.utime(scan, (1_000_000, 1_000_000))
+    assert _twin(tmp_path, scans) == {"cached": True}
+
+
+def test_cached_twin_is_recompiled_after_the_scan_changes(tmp_path):
+    scans, twin, scan, os = _room(tmp_path)
+    os.utime(twin, (1_000_000, 1_000_000))
+    assert "cached" not in _twin(tmp_path, scans)
+
+
+def test_sim_exits_1_when_every_task_errors(tmp_path, capsys, monkeypatch):
+    """A renderer that cannot start fails every task at build; that run must not exit 0 with an empty dataset."""
+    pytest.importorskip("mujoco")
+    import arrival.sim.collect as collect
+
+    def broken(*a, **k):
+        raise RuntimeError("gladLoadGL error")
+
+    monkeypatch.setattr(collect, "SimEnv", broken)
+    monkeypatch.chdir(tmp_path)  # resolve_scans falls back to the repo's scans/
+    assert cli.cmd_sim(_ns(tmp_path, room="hero_kitchen")) == cli.EXIT_INVALID
+    assert "every task errored" in capsys.readouterr().err
+
+def test_cost_cli_runs_and_reports(tmp_path, capsys):
+    parser = cli.build_parser()
+    args = parser.parse_args(["cost", "--out", str(tmp_path)])
+    rc = cli.cmd_cost(args)
+    assert rc == cli.EXIT_OK
+    out = capsys.readouterr().out
+    assert "| source | room | family |" in out
+    assert "| dollars | usd | measured | note |" in out
+
+@pytest.mark.parametrize("cmd", ["cmd_sim", "cmd_eval"])
+@pytest.mark.parametrize("kw,expected_err", [
+    ({"people": -1}, "--people must be >= 0"),
+    ({"seed": -1}, "--seed must be >= 0"),
+    ({"res": 50}, "--res must be a positive multiple of 16"),
+    ({"res": 0}, "--res must be a positive multiple of 16"),
+])
+def test_sim_eval_numerical_bounds(tmp_path, capsys, cmd, kw, expected_err):
+    pytest.importorskip("mujoco")
+    ns = _ns(tmp_path, **kw)
     assert getattr(cli, cmd)(ns) == cli.EXIT_USAGE
-    assert "--base mobile needs --policy scripted" in capsys.readouterr().err
+    assert expected_err in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("threshold", [-0.5, float("nan"), float("inf"), -1.0])
+def test_subset_drawer_bounds(tmp_path, capsys, threshold):
+    ns = argparse.Namespace(src=str(tmp_path), out=str(tmp_path / "o"), families="", min_drawer_opening=threshold)
+    assert cli.cmd_subset(ns) == cli.EXIT_USAGE
+    assert "min_drawer_opening must be a finite, nonnegative distance in metres" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("bad_family", ["bad_family", "counter_to_sink,unknown_family"])
+def test_subset_unknown_families(tmp_path, capsys, bad_family):
+    ns = argparse.Namespace(src=str(tmp_path), out=str(tmp_path / "o"), families=bad_family, min_drawer_opening=None)
+    assert cli.cmd_subset(ns) == cli.EXIT_USAGE
+    assert "unknown families" in capsys.readouterr().err
+
+
+def test_merge_shards_refuses_out_matching_input_shard(tmp_path, capsys):
+    shard_dir = tmp_path / "shard0"
+    shard_dir.mkdir()
+    ns = argparse.Namespace(shards=[str(shard_dir)], out=str(shard_dir))
+    assert cli.cmd_merge_shards(ns) == cli.EXIT_USAGE
+    assert "--out cannot be an input shard directory" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("kw,expected", [({"shards": 0}, "shards must be"), ({"run_id": "../x"}, "run_id must be")])
+def test_fanout_bad_config_is_usage_error(tmp_path, capsys, kw, expected):
+    """FanoutConfig checks its settings in __post_init__; that error is a usage message, not a traceback."""
+    ns = _ns(tmp_path, backend="local", **{"run_id": "r", "shards": 1, **kw})
+    assert cli.cmd_fanout(ns) == cli.EXIT_USAGE
+    err = capsys.readouterr().err
+    assert err.startswith("fanout: ") and expected in err
+    assert not (tmp_path / "fanout_store").exists()

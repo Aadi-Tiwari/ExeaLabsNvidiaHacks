@@ -1,0 +1,61 @@
+# Devpost submission: text to paste
+
+Form: https://nebiusglobalaihackathon.devpost.com/ (deadline Friday, October 30, 2026, 10:00am Pacific). Each section below is one form field. Lines in **[brackets]** must be filled in or deleted before you submit; do not submit a bracket. Every number here comes from the README or `docs/07-eval.md`; if one of those changes, change it here too.
+
+## Track
+
+Physical AI.
+
+## Name and tagline
+
+Arrival: scan a room once, get robot training data for that exact room.
+
+## Description
+
+### The problem
+
+General robot policies such as NVIDIA GR00T learn in generic simulated kitchens. When a robot arrives in a real home, it has never seen that kitchen's counters, sink, drawers or fridge, and teleoperating new demonstrations in every home does not scale.
+
+### What Arrival does
+
+Arrival turns one iPhone LiDAR scan of a room into GR00T-ready training data for that room:
+
+1. **Scan.** An Apple RoomPlan export from an iPhone describes the walls, counters, sink, stove, fridge, doors and drawers. A small iOS app (`ios/`) captures and uploads the scan.
+2. **Twin.** The scan is compiled into a digital twin: a RoboCasa-style layout and a MuJoCo scene where every drawer, door, fridge and oven is a named joint with a handle.
+3. **Simulate.** A 7-joint arm does kitchen tasks in the twin (pick and place to the sink or another counter, open and close drawers and doors, put a mug in a drawer, wipe the counter, open the fridge, oven and dishwasher; the README's status table gives each one's measured rate) while simulated people walk through the kitchen. Grasps use friction physics, success is checked by the simulator, and episodes with human contact are dropped.
+4. **Capture.** Every successful episode is written as a GR00T-compatible LeRobot v2 dataset: joint states, actions, ego, wrist and optional room cameras, and language instructions.
+5. **Fine-tune and evaluate.** GR00T N1.7-3B fine-tuned on one room's data scored 39 of 48 paired closed-loop trials against 26 of 48 for the clean-data baseline (paired sign test p = 0.007). The checkpoint is public: https://huggingface.co/Ish1105/arrival-gr00t-n17-run4.
+
+### NVIDIA and Nebius
+
+- **GR00T N1.7-3B**: the policy we fine-tune and score, with a modality config for our embodiment and a policy-server client used by the closed-loop eval.
+- **Nemotron on Nebius Token Factory**: plans each task from the instruction and the room's inventory (`sim --planner vlm`) and writes varied, held-out instruction wordings (`--instructions nemotron`). **[Say which Nemotron models you called and what `scripts/smoke_live_apis.py` measured. If that has not run, delete this bullet, because the rules only count a real runtime call.]**
+- **Nebius AI Cloud Serverless Jobs and Object Storage**: `arrival fanout --backend nebius` splits simulation into resumable shards, each run as a Serverless Job, with results in an Object Storage bucket. **[Say whether a real run happened, with the job count and time. If not, write "built and tested against fakes; not yet run on Nebius".]**
+- **Tavily**: researches the appliances found in each scan (hinges, clearances, safety guidance) and passes the findings to the Nemotron planner (`sim --tavily`). **[Confirm a real call happened.]**
+
+### How it is built
+
+Python 3.11, MuJoCo, a LeRobot v2 writer and validator, a local web app with an upload queue and workers (cancel, retry, memory and time limits, retention), shardable and resumable collection, a frozen-trial evaluation harness with Wilson intervals and a paired comparison command, and a time and cost report against a human teleoperation baseline (20 timed teleop demos). It is tested on Linux, macOS and Windows in CI.
+
+### Honest limits
+
+The results are from simulation only: one room, two tasks in the scored fine-tune, one seed, one run per model, and small samples. Base GR00T and a generic RoboCasa baseline were not scored. It has not run on a real robot. One real kitchen, scanned on an iPhone 13 Pro Max with our capture app, ran end to end (9 of 12 episodes valid); the GR00T fine-tune used the authored sample kitchen. **[Update if more real scans land (P2).]**
+
+### What's next
+
+Real scans of consenting homes, the three-cell usefulness eval (room-specific vs generic vs base GR00T), and fanning simulation out on Nebius so a new room produces its data in minutes.
+
+## Links
+
+- Code: https://github.com/AvnehSBhatia/ExeaLabsNvidiaHacks (Apache 2.0)
+- Demo site (optional on this track): https://arrival.exealabs.org
+- Video: **[public YouTube link, at least 1 minute of the modules in action, under 3 minutes]**
+- Checkpoint: https://huggingface.co/Ish1105/arrival-gr00t-n17-run4
+
+## Built during the submission period?
+
+Yes. The repository's first commit is October 12, 2026, after the August 26, 2026 start, so no "what changed" note is needed. Say so if the form asks.
+
+## Feedback field
+
+Paste `docs/DEVPOST-FEEDBACK.md` after its **[after the real call]** lines are filled in or deleted.

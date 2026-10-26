@@ -18,6 +18,7 @@ import mmap
 import re
 import secrets
 import shutil
+import socket
 import sys
 import tempfile
 import threading
@@ -282,6 +283,8 @@ def _fmt_list(values) -> str:
 
 class ArrivalServer(ThreadingHTTPServer):
     daemon_threads = True
+    # On Windows SO_REUSEADDR lets a second server bind a port that is already being served; ask for exclusive use.
+    allow_reuse_address = sys.platform != "win32"
     out_dir: Path
     scans_dir: Path
     max_upload_bytes: int = MAX_UPLOAD_BYTES
@@ -291,6 +294,11 @@ class ArrivalServer(ThreadingHTTPServer):
     limiter: hd.RateLimiter
     post_lock: threading.Lock
     heavy_slots: threading.BoundedSemaphore
+
+    def server_bind(self):
+        if sys.platform == "win32":
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
 
 def _csp(inline: bool) -> str:
@@ -1001,26 +1009,24 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             self.close_connection = True
             return self._json(411, {"error": "Content-Length required"})
-        try:
-            limits = Limits.from_env()
-        except LimitError as e:  # a bad ARRIVAL_* variable is the operator's mistake, not the client's
-            self.close_connection = True
-            return self._json(500, {"error": f"server limits misconfigured: {e}"})
-        max_bytes = min(srv.max_upload_bytes, limits.max_upload_bytes) if limits.max_upload_bytes else srv.max_upload_bytes
 
         def refuse(code: int, error: str, extra: dict | None = None, **more):
             self._drain(length)  # the body is still unread
             self._json(code, {"error": error, **more}, extra)
 
+        try:
+            limits = Limits.from_env()
+        except LimitError as e:  # a bad ARRIVAL_* variable is the operator's mistake, not the client's
+            return refuse(500, f"server limits misconfigured: {e}")
+        max_bytes = min(srv.max_upload_bytes, limits.max_upload_bytes) if limits.max_upload_bytes else srv.max_upload_bytes
+
         allowed, wait = srv.limiter.check(self._client())
         if not allowed:
             return refuse(429, "too many uploads, retry later", {"Retry-After": str(wait)})
         if not check_upload_size(length, max_bytes):
-            self.close_connection = True
-            return self._json(413, {"error": "upload too large", "max_bytes": max_bytes})
+            return refuse(413, "upload too large", max_bytes=max_bytes)
         if limits.max_queue and count_active(self.out_dir / "jobs") >= limits.max_queue:  # before reading the body
-            self.close_connection = True
-            return self._json(429, {"error": "queue is full, try again later", "max_queue": limits.max_queue})
+            return refuse(429, "queue is full, try again later", max_queue=limits.max_queue)
         ctype = self.headers.get("Content-Type", "")
         if not ctype.lower().startswith("multipart/form-data"):
             return refuse(400, "expected multipart/form-data")

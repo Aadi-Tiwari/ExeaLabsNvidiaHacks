@@ -1,6 +1,7 @@
 """Worker limits, concurrent claiming, retry, retention and usage metering. Offline, no sim: jobs here are corrupt
 uploads, fake child processes or a stand-in for the sim, so each test costs well under a second."""
 
+import contextlib
 import http.client
 import json
 import os
@@ -33,7 +34,13 @@ def jobs_of(out):
 
 
 def status_of(out, job):
-    return json.loads((jobs_of(out) / job["id"] / "status.json").read_text(encoding="utf-8"))
+    sp = jobs_of(out) / job["id"] / "status.json"
+    for _ in range(5):
+        try:
+            return json.loads(sp.read_text(encoding="utf-8"))
+        except OSError:
+            time.sleep(0.01)
+    return json.loads(sp.read_text(encoding="utf-8"))
 
 
 def fake_running(out, job, pid=None, age=0.0):
@@ -149,6 +156,16 @@ def test_job_over_episode_or_people_ceiling_fails_and_worker_continues(tmp_path)
     create_job(jobs_of(out), "k.json", data=b"{}")
     st = run_once(out, limits=Limits(max_people=1), people=3, log=QUIET)
     assert st["status"] == "failed" and "people 3" in st["error"]
+
+
+@pytest.mark.parametrize("res", ["0", "100"])
+def test_work_cli_refuses_a_res_every_job_would_fail_on(tmp_path, res):
+    from arrival.cli import main
+
+    out = tmp_path / "out"
+    job = create_job(jobs_of(out), "k.json", data=b"not json")
+    assert main(["work", "--once", "--res", res, "--out", str(out)]) == 2
+    assert status_of(out, job)["status"] == "queued"
 
 
 def test_work_refuses_options_above_the_limits_before_touching_jobs(tmp_path):
@@ -557,6 +574,17 @@ def test_work_cli_takes_retries_from_the_env_then_the_flag(tmp_path, monkeypatch
     assert main(["work", "--once", "--retries", "-1", "--out", str(tmp_path)]) == 2
 
 
+@pytest.mark.parametrize("flag", ["--max-job-seconds", "--retention-hours"])
+@pytest.mark.parametrize("value", ["-5", "nan", "inf"])
+def test_work_cli_refuses_a_bad_time_limit_before_touching_jobs(tmp_path, flag, value):
+    from arrival.cli import main
+
+    out = tmp_path / "out"
+    job = create_job(jobs_of(out), "k.json", data=b"not json")
+    assert main(["work", "--once", flag, value, "--out", str(out)]) == 2
+    assert status_of(out, job)["status"] == "queued"
+
+
 def test_requeue_sets_not_before_with_exponential_backoff(tmp_path):
     d = tmp_path / "job_x"
     d.mkdir()
@@ -676,6 +704,38 @@ def test_delete_job_removes_twin_dataset_report_and_zip_but_not_a_busy_job(tmp_p
     assert (jobs_of(out) / q["id"]).exists()
 
 
+@contextlib.contextmanager
+def _undeletable(path):
+    """Make ``path`` impossible to delete: held open on Windows, its folder read-only elsewhere."""
+    if os.name == "nt":
+        with open(path, "rb"):
+            yield
+        return
+    if os.geteuid() == 0:
+        pytest.skip("root can delete from a read-only folder")
+    path.parent.chmod(0o500)
+    try:
+        yield
+    finally:
+        path.parent.chmod(0o700)
+
+
+@pytest.mark.parametrize("blocked", ["dataset", "zip"])
+def test_gc_keeps_a_job_it_could_not_fully_delete_and_retries_it(tmp_path, blocked):
+    out = tmp_path / "out"
+    job, room = _finished_job(out, "old", 48)
+    folder = jobs_of(out) / job["id"]
+    target = out / "datasets" / f"{room}_sim" / "f.bin" if blocked == "dataset" else folder / "dataset.zip"
+    with _undeletable(target):
+        res = gc(out, 24, log=QUIET)
+        assert res["removed"] == [] and res["bytes"] == 0
+        assert (folder / "status.json").exists()  # still listed, so the next sweep finds it again
+        with pytest.raises(OSError):
+            delete_job(out, job["id"])
+    assert gc(out, 24, log=QUIET)["removed"] == [job["id"]]
+    assert not folder.exists() and not target.exists()
+
+
 def test_retention_does_not_erase_metering(tmp_path):
     out = tmp_path / "out"
     job = create_job(jobs_of(out), "k.json", data=b"not json")
@@ -696,6 +756,17 @@ def test_gc_cli_dry_run_and_delete(tmp_path, capsys):
     assert main(["gc", "--max-age-hours", "24", "--out", str(out)]) == 0
     assert "removed 1 job(s)" in capsys.readouterr().out and not (jobs_of(out) / job["id"]).exists()
     assert main(["gc", "--max-age-hours", "0", "--out", str(out)]) == 2
+
+
+def test_gc_cli_refuses_nan_and_inf_as_usage_errors(tmp_path, capsys):
+    from arrival.cli import main
+
+    out = tmp_path / "out"
+    job, _ = _finished_job(out, "old", 100)
+    for value in ("nan", "inf", "-1"):
+        assert main(["gc", "--max-age-hours", value, "--out", str(out)]) == 2
+        assert "--max-age-hours must be a finite number > 0" in capsys.readouterr().err
+    assert (jobs_of(out) / job["id"]).exists()
 
 
 def test_work_sweeps_old_jobs_when_retention_is_set(tmp_path):
@@ -804,7 +875,6 @@ GRANDCHILD_ALLOCATES = ("import subprocess, sys, time; "
                         "time.sleep(60)")
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="tree_rss reads /proc or ps; not measured on Windows")
 def test_tree_rss_counts_the_processes_a_child_starts():
     p = subprocess.Popen([sys.executable, "-c", GRANDCHILD_ALLOCATES.format(MB=200)])
     try:
@@ -824,7 +894,6 @@ STAGE_THEN_ALLOCATE = ("import sys, json, time; from pathlib import Path; p = Pa
                        "b = b'x' * (300 << 20); time.sleep(120)")
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="tree_rss reads /proc or ps; not measured on Windows")
 def test_job_over_memory_limit_is_killed_and_recorded_with_its_stage(tmp_path):
     out = tmp_path / "out"
     job = create_job(jobs_of(out), "big.json", data=b"{}")
@@ -847,3 +916,14 @@ def test_job_under_memory_limit_is_not_killed(tmp_path):
     st = run_once(out, limits=Limits(max_job_seconds=60, max_job_bytes=1 << 30, job_retries=0), isolate=True,
                   log=QUIET, child_cmd=[sys.executable, "-c", small])
     assert st["status"] == "failed" and st["error"].startswith("WorkerProcessError") and "code 7" in st["error"]
+
+
+def test_work_cli_refuses_a_poll_time_sleep_cannot_take(tmp_path, monkeypatch, capsys):
+    from arrival.cli import main
+
+    for value in ("-1", "nan", "inf"):
+        assert main(["work", "--poll", value, "--out", str(tmp_path)]) == 2
+        assert "--poll must be a finite number >= 0" in capsys.readouterr().err
+    seen = {}
+    monkeypatch.setattr("arrival.jobs.worker.work", lambda out, **kw: seen.update(kw) or 0)
+    assert main(["work", "--once", "--poll", "0", "--out", str(tmp_path)]) == 0 and seen["poll"] == 0

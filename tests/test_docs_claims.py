@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import shutil
 
 import pytest
@@ -93,3 +94,26 @@ def test_fenced_headings_do_not_change_planned_sections(tmp_path, fence):
         text = f"{heading}\n\n{fence}markdown\n{example_heading}\n{fence}\n\n`arrival/jobs/shards.py`\n"
         problems = check_docs.check_paths(tmp_path, tmp_path / "README.md", text, {})
         assert problems == ([] if planned else ["README.md:7: path does not exist `arrival/jobs/shards.py`"])
+
+
+def test_fine_tune_guide_commands_are_checked():
+    assert "docs/GR00T-FINETUNE.md" in check_docs.DOCS
+    text = (REPO / "docs" / "GR00T-FINETUNE.md").read_text(encoding="utf-8")
+    parser = check_docs._cli_parser()
+    cmds = [c for _, c in check_docs.fenced_commands(text)]
+    assert any(c.startswith("python -m arrival sim") for c in cmds)
+    assert all(check_docs.check_command(parser, c) is None for c in cmds)
+
+
+def test_todo_counts_must_match_item_statuses(tmp_path):
+    path = tmp_path / "site" / "data" / "todo.json"
+    path.parent.mkdir(parents=True)
+    items = [{"id": "A-1", "status": "done"}, {"id": "A-2", "status": "done"}, {"id": "A-3", "status": "review"}]
+    todo = {"counts": {"done": 1, "review": 2, "todo": 0, "blocked": 0, "total": 3}, "groups": [{"items": items}]}
+    path.write_text(json.dumps(todo), encoding="utf-8")
+    assert check_docs.check_todo_counts(tmp_path) == [
+        "site/data/todo.json: counts.done is 1, the items give 2",
+        "site/data/todo.json: counts.review is 2, the items give 1"]
+    todo["counts"].update(done=2, review=1)
+    path.write_text(json.dumps(todo), encoding="utf-8")
+    assert check_docs.check_todo_counts(tmp_path) == []

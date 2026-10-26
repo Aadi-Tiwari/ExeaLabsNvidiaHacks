@@ -27,6 +27,23 @@ def test_resolve_room_by_name_and_by_path():
         summary.resolve_room("nope.json", SCANS)
 
 
+
+def test_generic_scan_file_names_take_the_folder_name():
+    # two rooms given as scan.json files were both "scan", and their datasets shared scan_sim
+    a = summary.resolve_room("tests/fixtures/scans/rotated_kitchen/scan.json", SCANS)
+    b = summary.resolve_room("tests/fixtures/scans/u_kitchen_42/scan.json", SCANS)
+    assert (a[0], b[0]) == ("rotated_kitchen", "u_kitchen_42")
+
+
+def test_a_bare_scan_json_in_the_current_folder_takes_that_folder_name(tmp_path, monkeypatch):
+    # "scan.json" run from inside its folder has the parent ".", whose name is empty
+    room = tmp_path / "galley_7"
+    room.mkdir()
+    (room / "scan.json").write_text("{}")
+    monkeypatch.chdir(room)
+    assert summary.resolve_room("scan.json", SCANS)[0] == "galley_7"
+
+
 def test_missing_room_is_a_failed_cell_not_a_crash(tmp_path):
     row = summary.run_room("no_such_room", tmp_path, SCANS)
     assert statuses(row) == {"normalize": "failed", **dict.fromkeys(summary.STAGES[1:], "not_run")}
@@ -122,3 +139,17 @@ def test_cli_summary_writes_json_and_markdown(tmp_path, capsys):
     assert [r["room"] for r in data["rooms"]] == ["hero_kitchen"] and data["settings"]["res"] == 64
     assert (tmp_path / "summary.md").read_text().startswith("# Room summary")
     assert cli.main(["summary", "--families", "bogus", "--out", str(tmp_path)]) == cli.EXIT_USAGE
+
+@pytest.mark.parametrize("flag,val,expected_err", [
+    ("--people", "-1", "--people must be >= 0"),
+    ("--seed", "-1", "--seed must be >= 0"),
+    ("--res", "50", "--res must be a positive multiple of 16"),
+    ("--res", "0", "--res must be a positive multiple of 16"),
+    ("--episodes", "0", "--episodes must be >= 1"),
+])
+def test_cli_summary_numerical_bounds(tmp_path, capsys, flag, val, expected_err):
+    pytest.importorskip("mujoco")
+    rc = cli.main(["summary", flag, val, "--out", str(tmp_path)])
+    assert rc == cli.EXIT_USAGE
+    assert expected_err in capsys.readouterr().err
+

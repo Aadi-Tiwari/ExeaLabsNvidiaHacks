@@ -8,7 +8,8 @@ import pytest
 
 from arrival import cli
 from arrival.export import quality
-from arrival.export.validate import validate
+from arrival.export.loader_check import check_loader
+from arrival.export.validate import META, validate
 from arrival.sim.export import SimDatasetWriter
 from arrival.sim.robot import RANGES
 
@@ -208,6 +209,20 @@ def test_not_a_dataset_is_a_typed_error(tmp_path):
         quality.check_episodes(tmp_path)
 
 
+@pytest.mark.parametrize("name", META)
+def test_truncated_meta_file_is_reported_not_a_traceback(tmp_path, capsys, name):
+    root = tmp_path / "ds"
+    build(root, {})
+    path = root / "meta" / name
+    path.write_text(path.read_text()[:-5])  # what a run killed mid-write leaves behind
+    errors = validate(root)
+    assert len(errors) == 1 and errors[0].startswith(f"meta/{name} is not valid JSON")
+    assert cli.main(["validate", str(root), "--episodes"]) == cli.EXIT_INVALID
+    assert f"meta/{name} is not valid JSON" in capsys.readouterr().err
+    res = check_loader(root)
+    assert not res["ok"] and [e["code"] for e in res["errors"]] == ["meta_unreadable"]
+
+
 def test_cli_plain_validate_ignores_quality(tmp_path):
     s, a = trace()
     build(tmp_path / "ds", {"zero_motion": episode(np.repeat(s[:1], 64, 0), a)})
@@ -225,3 +240,52 @@ def test_cli_episodes_exit_codes_and_drop(ds, tmp_path, capsys):
     assert cli.main(["validate", str(root), "--drop", str(tmp_path / "clean")]) == cli.EXIT_OK
     assert cli.main(["validate", str(tmp_path / "clean"), "--episodes"]) == cli.EXIT_OK
     assert cli.main(["validate", str(tmp_path / "missing"), "--episodes"]) == cli.EXIT_INVALID
+
+
+def _write_episodes(root, rng, lengths):
+    import pyarrow as pa
+    from arrival.export import lerobot
+
+    (root / "data" / "chunk-000").mkdir(parents=True)
+    stats = []
+    for i, n in enumerate(lengths):
+        s, a = (rng.normal(size=(n, 11)).astype(np.float32) for _ in range(2))
+        t = pa.Table.from_arrays([pa.array(list(s), type=pa.list_(pa.float32())),
+                                  pa.array(list(a), type=pa.list_(pa.float32())),
+                                  pa.array(np.arange(n, dtype=np.float32) / 20)], names=["observation.state", "action", "timestamp"])
+        pq.write_table(t, root / "data" / "chunk-000" / f"episode_{i:06d}.parquet")
+        stats.append({"stats": {"observation.state": lerobot._stats(s), "action": lerobot._stats(a),
+                                  "timestamp": lerobot._stats(np.arange(n, dtype=np.float32) / 20)}})
+    return stats
+
+
+def test_dataset_stats_quantiles_match_the_python_list_reading(tmp_path):
+    from arrival.export.lerobot import QUANTILES, dataset_stats
+
+    stats = _write_episodes(tmp_path, np.random.default_rng(3), [40, 1, 77])
+    got = dataset_stats(tmp_path, stats)
+    for key in ("observation.state", "action", "timestamp"):
+        rows = [v for f in sorted(tmp_path.glob("data/chunk-*/episode_*.parquet"))
+                for v in pq.read_table(f).column(key).to_pylist()]
+        q01, q99 = np.quantile(np.asarray(rows, dtype=np.float64).reshape(len(rows), -1), QUANTILES, axis=0)
+        assert got[key]["q01"] == q01.tolist() and got[key]["q99"] == q99.tolist()
+
+
+def test_list_column_matches_to_pylist_and_refuses_ragged_or_null_rows():
+    import pyarrow as pa
+    from arrival.export.lerobot import list_column
+
+    rows = np.random.default_rng(0).normal(size=(5, 3)).astype(np.float32)
+    col = pa.chunked_array([pa.array(list(rows[:2]), pa.list_(pa.float32())), pa.array(list(rows[2:]), pa.list_(pa.float32()))])
+    assert np.array_equal(list_column(col), np.array(col.to_pylist(), dtype=np.float64))
+    with pytest.raises(ValueError):
+        list_column(pa.chunked_array([pa.array([[1.0, 2.0], [3.0]], pa.list_(pa.float32()))]))
+    with pytest.raises(ValueError):
+        list_column(pa.chunked_array([pa.array([[1.0], None], pa.list_(pa.float32()))]))
+
+
+def test_cli_json_report_goes_into_a_folder_that_does_not_exist_yet(tmp_path):
+    build(tmp_path / "ds", {})
+    report = tmp_path / "reports" / "q.json"
+    assert cli.main(["validate", str(tmp_path / "ds"), "--episodes", "--json", str(report)]) == cli.EXIT_OK
+    assert json.loads(report.read_text())["kept"] == 6

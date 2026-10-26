@@ -1,6 +1,6 @@
 # Devpost feedback draft: Token Factory, AI Cloud and the NVIDIA models
 
-Paste the three sections into the Devpost feedback field. The NVIDIA section is from runs we did. The Nebius sections have two parts: what we saw writing the code, and lines marked **[after the real call]** that must be filled in with what actually happened. Delete any bracketed line you can't back with a run.
+Paste the three sections into the Devpost feedback field. The NVIDIA section is from runs we did. The Nebius sections have two parts: what we saw writing the code, and lines marked **[after the real call]** that must be filled in with what actually happened. Delete any bracketed line you can't back with a run. `python scripts/smoke_live_apis.py` makes the Token Factory and Tavily calls and writes the model ids, latency and source of each to `docs/results/live-apis-<date>.json`; quote that file, not memory.
 
 ## NVIDIA models
 
