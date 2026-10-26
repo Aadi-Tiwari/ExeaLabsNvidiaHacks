@@ -56,6 +56,15 @@ def test_continuation_lines_and_comments_are_joined():
     assert check_docs.fenced_commands(text) == [(2, "python -m arrival sim --episodes 2")]
 
 
+def test_double_backslash_line_end_in_a_fenced_block(tmp_path):
+    # markdown does not unescape code blocks: a pasted "\\" is a literal backslash, and the command ends there
+    (tmp_path / "docs" / "ref").mkdir(parents=True)
+    (tmp_path / "docs" / "ref" / "RUN.md").write_text(
+        "Prose may end in \\\\\n```bash\npython a.py --x 1 \\\\\n    --y 2 \\\n    --z 3\n```\n", encoding="utf-8")
+    assert check_docs.check_continuations(tmp_path) == [
+        "docs/ref/RUN.md:3: line ends in two backslashes; bash reads a literal backslash and ends the command there"]
+
+
 def test_task_listed_done_and_open(tmp_path):
     doc = tmp_path / "README.md"
     text = "**Done:** CAP-1, MAN-2. **Open:** MAN-2, SIM-5."
