@@ -500,6 +500,10 @@ def main(argv=None) -> int:
     ap.add_argument("--families", default=",".join(FAMILIES))
     ap.add_argument("--skip-dataset", action="store_true")
     a = ap.parse_args(argv)
+    try:  # before the output folder is cleared: a mistyped --room must not wipe site/data
+        bundle = scan_bundle.load_room(a.room, a.scans)
+    except FileNotFoundError:
+        ap.error(f"no scan for room {a.room!r} under {a.scans}")
     out, scratch = Path(a.out), Path(a.scratch)
     kept = {n: (out / n).read_bytes() for n in KEEP if (out / n).is_file()}
     if out.exists():
@@ -512,7 +516,7 @@ def main(argv=None) -> int:
         shutil.rmtree(scratch)
     log = lambda *x: print(*x, flush=True)  # noqa: E731
 
-    twin = compile_twin(scan_bundle.load_room(a.room, a.scans))
+    twin = compile_twin(bundle)
     log(f"twin {twin['room_id']}: {len(twin['fixtures'])} fixtures, {len(twin['objects'])} objects")
     # a second room: only scans/hero_kitchen exists; the RoomPlan test fixtures hold no kitchen fixtures,
     # so there is nothing to compile to a sim-able twin
