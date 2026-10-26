@@ -425,7 +425,11 @@ def main(argv=None) -> int:
         ap.error("costs must be >= 0 and --successes >= 1")
     if a.no_viewer and not sys.stdin.isatty():
         ap.error("--no-viewer reads keys from the terminal, so it needs an interactive one")
-    twin = compile_twin(load_room(a.room, a.scans))
+    try:
+        bundle = load_room(a.room, a.scans)
+    except FileNotFoundError:
+        ap.error(f"no scan for room {a.room!r} under {a.scans}")
+    twin = compile_twin(bundle)
     print(HELP, flush=True)
     kw = dict(people=a.people, seed=a.seed, res=a.res, record=a.record)
     args = (a.out, a.operator_usd_per_hour, a.setup_usd, a.assumption, a.successes)
