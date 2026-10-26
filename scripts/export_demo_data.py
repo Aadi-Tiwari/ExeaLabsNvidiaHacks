@@ -68,7 +68,7 @@ def rnd(v, n=4):
 def dump(path: Path, obj, indent=None) -> int:
     path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(obj, indent=indent, separators=(",", ":") if indent is None else None, allow_nan=False)
-    path.write_text(text)
+    path.write_text(text, newline="\n")  # same bytes on every OS, so the sizes in stats.json match what git serves
     return len(text)
 
 
@@ -624,14 +624,22 @@ def main(argv=None) -> int:
             stats["cost"] = None
             stats["cost_error"] = f"{type(e).__name__}: {e}"
             log(f"cost report did not run: {stats['cost_error']}")
-    (out / "README.md").write_text(README)
-    stats["files"] = {}
-    dump(out / "stats.json", rnd(stats, 4), indent=1)
-    sizes = {str(p.relative_to(out)): p.stat().st_size for p in sorted(out.rglob("*")) if p.is_file()}
-    stats["files"] = sizes
-    dump(out / "stats.json", rnd(stats, 4), indent=1)
+    (out / "README.md").write_text(README, newline="\n")
+    sizes = write_stats(out, stats)
     log(f"total {sum(sizes.values()) / 1e6:.2f} MB in {len(sizes)} files")
     return verify(out)
+
+
+def write_stats(out: Path, stats: dict) -> dict:
+    """Write stats.json with `files` listing every file under `out`, stats.json included. Its own size depends on the
+    listing, so it is rewritten until the listing stops changing (two or three passes)."""
+    stats["files"] = {}
+    while True:
+        dump(out / "stats.json", rnd(stats, 4), indent=1)
+        sizes = {p.relative_to(out).as_posix(): p.stat().st_size for p in sorted(out.rglob("*")) if p.is_file()}
+        if sizes == stats["files"]:
+            return sizes
+        stats["files"] = sizes
 
 
 def verify(out: Path) -> int:
