@@ -12,7 +12,7 @@ mujoco = pytest.importorskip("mujoco")
 from arrival.catalog.objects import (GRASPABLE, HANDLE_HELD, OBJECT_SPECS, PICKABLE, RIM_HELD, THIN_HELD,  # noqa: E402
                                      object_spec, sample_size)
 from arrival.scan.bundle import load_room  # noqa: E402
-from arrival.sim.scene import DOOR_FLAT, UPPER_Z0, build_mjcf, part_names  # noqa: E402
+from arrival.sim.scene import DOOR_FLAT, UPPER_Z0, build_mjcf, overview_camera_xml, part_names  # noqa: E402
 from arrival.twin.compile import compile_twin  # noqa: E402
 
 WALLS = [{"id": "n", "start": [0.0, 0.0], "end": [4.0, 0.0], "height": 2.4, "thickness": 0.02},
@@ -292,3 +292,30 @@ def test_spatula_is_pinched_with_the_pads_off_the_counter(twin, family, replaces
         assert top > 0.2  # carried, not pushed
     else:
         assert detail["wiped_m"] > 1.0  # it followed the hand through all four strokes
+
+
+def test_overview_camera_stands_behind_a_robot_on_any_wall():
+    # a run on another wall used to keep the north-wall camera and film the empty floor behind the robot
+    rotated = compile_twin(load_room("rotated_kitchen", "tests/fixtures/scans"))
+    xs = [p for w in rotated["walls"] for p in (w["start"][0], w["end"][0])]
+    ys = [p for w in rotated["walls"] for p in (w["start"][1], w["end"][1])]
+    for yaw in (0.0, 90.0, 180.0):
+        base = (sum(xs) / len(xs), sum(ys) / len(ys), 0.75)
+        m = mujoco.MjModel.from_xml_string(build_mjcf(rotated, base, yaw))
+        d = mujoco.MjData(m)
+        mujoco.mj_forward(m, d)  # mj_kinematics leaves the camera frames unset
+        cam = d.camera("overview")
+        f = np.array([np.cos(np.radians(yaw)), np.sin(np.radians(yaw))])
+        look = -cam.xmat.reshape(3, 3)[:2, 2]  # the camera looks along its -z
+        assert look @ f / np.linalg.norm(look) > 0.99  # it looks the way the robot faces
+        assert (np.array(base[:2]) - cam.xpos[:2]) @ f > 0.5  # from behind the robot
+        assert min(xs) < cam.xpos[0] < max(xs) and min(ys) < cam.xpos[1] < max(ys)  # inside the room
+
+
+def test_overview_camera_falls_back_to_the_north_line_when_nothing_behind_the_robot_is_clear():
+    # a fixture over the whole strip behind the robot used to leave the camera at 0.5 m, unchecked, inside it
+    xs, ys = (0.0, 4.0), (0.0, 4.0)
+    block = {"position": [0.6, 2.0, 0.45], "yaw": 0.0, "size": [1.8, 4.0, 0.9]}  # x -0.3 to 1.5, every spot
+    north = overview_camera_xml(xs, ys, (2.0, 2.0, 0.75), -90.0)
+    assert overview_camera_xml(xs, ys, (2.0, 2.0, 0.75), 0.0, [block]) == north
+    assert overview_camera_xml(xs, ys, (2.0, 2.0, 0.75), 0.0) != north  # nothing in the way: behind the robot
