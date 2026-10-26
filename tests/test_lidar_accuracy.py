@@ -164,3 +164,12 @@ def test_script_rejects_missing_room(tmp_path, capsys):
         scan_accuracy.main([str(tmp_path / "no_such_room")])
     assert e.value.code == 2
     assert "no_such_room" in capsys.readouterr().err
+
+
+def test_script_reports_room_without_scan(tmp_path, capsys):
+    d = tmp_path / "no_scan"
+    d.mkdir()
+    (d / "measurements.json").write_text(HERO_FIXTURE.read_text())
+    assert scan_accuracy.main([str(d)]) == 1
+    out = capsys.readouterr().out
+    assert "no_scan: ERROR" in out and "scan.json" in out and "1 failing" in out
