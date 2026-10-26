@@ -26,6 +26,7 @@ out/renders/<room_id>_roomplan_top.png
 - room id with anything but `[a-z0-9_]`
 - `scans/<room_id>` already exists (intake never overwrites)
 - fewer than 2 photos unless `--no-photos`, or a photo that is not an image
+- a HEIC/HEIF photo (the iPhone camera's default): Pillow cannot read it, so the message says to convert it to JPEG or set Settings > Camera > Formats to Most Compatible before taking the photos
 - a RoomPlan that does not load, or has fewer than 3 walls
 - a measurement that is not a number of metres above 0 and at most 20 (centimetres typed by mistake), or an unknown key
 
