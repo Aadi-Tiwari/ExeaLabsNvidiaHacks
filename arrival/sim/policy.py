@@ -720,6 +720,16 @@ class VLAClient(Policy):
         self.timeout = timeout
         self.queue: list[np.ndarray] = []
 
+    def server_info(self) -> dict:
+        """The server's GET /health answer (the mock says "server": "mock", the shim "gr00t_shim"), or
+        {"error": ...} when it has none; never raises, so a server without /health can still be evaluated."""
+        try:
+            with urllib.request.urlopen(self.url.rstrip("/") + "/health", timeout=min(self.timeout, 5.0)) as r:
+                info = json.load(r)
+        except Exception as e:
+            return {"error": f"{type(e).__name__}: {e}"}
+        return info if isinstance(info, dict) else {"error": "/health did not return a JSON object"}
+
     def reset(self, env, task: dict) -> None:
         self.instruction = task["instruction"]
         self.queue = []
