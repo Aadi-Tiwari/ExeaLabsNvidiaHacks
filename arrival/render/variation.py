@@ -233,9 +233,9 @@ def vary_dataset(src: str | Path, dst: str | Path, backend: str = "local_stub", 
     if source_errors:
         raise ValueError(f"source dataset does not validate: {source_errors[0]}")
 
+    cli = client if client is not None else (CosmosClient() if backend == "cosmos" else LocalStub(seed))
     stage_start = time.perf_counter()
     shutil.copytree(src, dst)
-    cli = client if client is not None else (CosmosClient() if backend == "cosmos" else LocalStub(seed))
     counts = {"selected": 0, "ok": 0, "rejected": 0, "failed": 0, "skipped": 0}
     consecutive = 0
     cosmos_ok = 0

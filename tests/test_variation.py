@@ -137,6 +137,13 @@ def test_bad_fps_rejected_before_copy(dataset, tmp_path, fps):
     assert not dst.exists()
 
 
+def test_bad_cosmos_url_rejected_before_copy(dataset, tmp_path, monkeypatch):
+    monkeypatch.setenv("COSMOS_URL", "ftp://example")
+    dst = tmp_path / "copy"
+    with pytest.raises(ValueError, match="COSMOS_URL"):
+        variation.vary_dataset(dataset, dst, backend="cosmos")
+    assert not dst.exists()
+
 def test_local_stub_differs_keeps_geometry_and_source_untouched(dataset, tmp_path):
     before = digest(dataset)
     dst = tmp_path / "copy"
