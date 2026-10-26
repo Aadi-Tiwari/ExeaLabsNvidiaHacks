@@ -18,6 +18,7 @@ import mmap
 import re
 import secrets
 import shutil
+import socket
 import sys
 import tempfile
 import threading
@@ -282,6 +283,8 @@ def _fmt_list(values) -> str:
 
 class ArrivalServer(ThreadingHTTPServer):
     daemon_threads = True
+    # On Windows SO_REUSEADDR lets a second server bind a port that is already being served; ask for exclusive use.
+    allow_reuse_address = sys.platform != "win32"
     out_dir: Path
     scans_dir: Path
     max_upload_bytes: int = MAX_UPLOAD_BYTES
@@ -291,6 +294,11 @@ class ArrivalServer(ThreadingHTTPServer):
     limiter: hd.RateLimiter
     post_lock: threading.Lock
     heavy_slots: threading.BoundedSemaphore
+
+    def server_bind(self):
+        if sys.platform == "win32":
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
 
 def _csp(inline: bool) -> str:
