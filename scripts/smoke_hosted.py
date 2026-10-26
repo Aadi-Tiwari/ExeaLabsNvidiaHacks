@@ -17,6 +17,7 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+from http.cookiejar import CookieJar
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -28,12 +29,14 @@ class Smoke:
     def __init__(self, base: str, timeout: float = 30.0):
         self.base, self.timeout = base.rstrip("/"), timeout
         self.results: list[dict] = []
+        # one visitor: a --public server shows a job only to the cookie it set on the upload
+        self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(CookieJar()))
 
     def request(self, method: str, path: str, body: bytes | None = None, headers: dict | None = None):
         """(status, headers, body bytes); HTTP errors are returned, not raised. A network failure gives status 0."""
         req = urllib.request.Request(self.base + path, data=body, method=method, headers=headers or {})
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as r:
+            with self.opener.open(req, timeout=self.timeout) as r:
                 return r.status, dict(r.headers), r.read()
         except urllib.error.HTTPError as e:
             return e.code, dict(e.headers or {}), e.read()

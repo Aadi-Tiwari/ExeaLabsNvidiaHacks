@@ -63,6 +63,16 @@ def test_passes_against_the_arrival_server(arrival_url, capsys):
     assert len(list((out / "jobs").iterdir())) == 1  # only the good upload became a job
 
 
+def test_passes_against_a_public_server(tmp_path, capsys):
+    """--public shows a visitor only the jobs their cookie owns, as DEPLOY.md hosts it."""
+    srv = make_server(port=0, out_dir=tmp_path / "out", scans_dir=SCANS, public=True)
+    try:
+        assert smoke.main([_serve(srv), "--json"]) == 0, capsys.readouterr().out
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
 def test_fails_a_server_that_accepts_bad_uploads_and_crafted_paths(capsys):
     srv = ThreadingHTTPServer(("127.0.0.1", 0), _AcceptsEverything)
     try:
