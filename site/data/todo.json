@@ -3,14 +3,14 @@
  "repo": "AvnehSBhatia/ExeaLabsNvidiaHacks",
  "source": "README to-do, refreshed after #251, #252 and #302 put PRs #201-#301 on main. Submission fields re-checked against https://nebiusglobalaihackathon.devpost.com/ and the official rules on 2026-10-25.",
  "counts": {
-  "done": 62,
+  "done": 63,
   "review": 0,
-  "todo": 2,
+  "todo": 1,
   "blocked": 16,
   "total": 80
  },
  "prs": {
-  "merged": 241,
+  "merged": 276,
   "open": 1,
   "closed_unmerged": 18
  },
@@ -1131,11 +1131,13 @@
     {
      "id": "P5",
      "title": "Replace the two unlicensed public RoomPlan fixtures with our own captures",
-     "status": "todo",
+     "status": "done",
      "owner_kind": "people",
      "size": "M",
      "priority": "must",
-     "authors": [],
+     "authors": [
+      "amanx98"
+     ],
      "note": "Licence risk resolved: unlicensed fixtures amal.json and shopyseek.json replaced with Apache 2.0 authored fixtures office.json and study.json (#310). Consented real phone captures of an office (table and chairs) and a bedroom (desk blocked by chair) are still wanted to validate phone noise on doors and windows. Uses: tests/fixtures/roomplan/README.md.",
      "pr": [
       310
