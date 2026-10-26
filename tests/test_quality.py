@@ -267,3 +267,10 @@ def test_list_column_matches_to_pylist_and_refuses_ragged_or_null_rows():
         list_column(pa.chunked_array([pa.array([[1.0, 2.0], [3.0]], pa.list_(pa.float32()))]))
     with pytest.raises(ValueError):
         list_column(pa.chunked_array([pa.array([[1.0], None], pa.list_(pa.float32()))]))
+
+
+def test_cli_json_report_goes_into_a_folder_that_does_not_exist_yet(tmp_path):
+    build(tmp_path / "ds", {})
+    report = tmp_path / "reports" / "q.json"
+    assert cli.main(["validate", str(tmp_path / "ds"), "--episodes", "--json", str(report)]) == cli.EXIT_OK
+    assert json.loads(report.read_text())["kept"] == 6

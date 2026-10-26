@@ -128,6 +128,7 @@ def cmd_validate(a) -> int:
         return EXIT_INVALID
     print(format_report(report))
     if a.json:
+        Path(a.json).parent.mkdir(parents=True, exist_ok=True)
         Path(a.json).write_text(json.dumps(report, indent=2) + "\n")
         print(f"report: {a.json}")
     if a.drop:
