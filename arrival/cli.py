@@ -829,7 +829,7 @@ def build_parser() -> argparse.ArgumentParser:
     u = sub.add_parser("summary", help="tiny run on several rooms: compile / sim / validate table (markdown + json)")
     u.add_argument("--rooms", default=None,
                    help="comma list of scan names under --scans or paths to RoomPlan/scan .json files "
-                        "(default: hero_kitchen plus the two real RoomPlan fixtures)")
+                        "(default: hero_kitchen plus the two authored RoomPlan fixtures)")
     u.add_argument("--episodes", type=int, default=2, help="episode attempts per room")
     u.add_argument("--families", default="counter_to_sink,open_drawer",
                    help="all | comma list of counter_to_sink,counter_to_counter,open_drawer,open_door")

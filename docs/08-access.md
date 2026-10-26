@@ -39,4 +39,4 @@ The implementing agent does not open these accounts and does not block on them. 
 
 - Do not put keys in the repo, the README, or the dataset.
 - Do not spend credits on a fine-tune of the placeholder dataset.
-- Scanner apps and RoomPlan category lists were unverified in the spec. The normalizer in this repo fixes the subset it accepts. The normalizer now handles Apple's keyed-enum encoding and is tested against 2 public real exports (`tests/fixtures/roomplan/`); our own capture can replace `scans/hero_kitchen/roomplan.json` later. Polycam and Scaniverse exports are not accepted until a converter is written.
+- Scanner apps and RoomPlan category lists were unverified in the spec. The normalizer in this repo fixes the subset it accepts. The normalizer now handles Apple's keyed-enum encoding and is tested against 2 authored RoomPlan exports (`tests/fixtures/roomplan/`); our own capture can replace `scans/hero_kitchen/roomplan.json` later. Polycam and Scaniverse exports are not accepted until a converter is written.

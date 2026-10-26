@@ -12,7 +12,7 @@ from arrival.twin.accuracy import load_measurements
 
 from conftest import REPO
 
-AMAL = REPO / "tests" / "fixtures" / "roomplan" / "amal.json"
+OFFICE = REPO / "tests" / "fixtures" / "roomplan" / "office.json"
 KITCHEN = REPO / "tests" / "fixtures" / "roomplan" / "kitchen_real_01.json"
 MEASURE = "counter_length=3.20,counter_height=0.92,sink_width=0.55"
 META = dict(location_type="kitchen", phone="iPhone 15 Pro", ios="18.1", lighting="daylight", clutter="low")
@@ -20,8 +20,8 @@ META = dict(location_type="kitchen", phone="iPhone 15 Pro", ios="18.1", lighting
 
 @pytest.fixture
 def clean_plan(tmp_path):
-    """amal.json with its objects dropped: the walls and floor only, so the geometry checks have nothing to flag."""
-    plan = json.loads(AMAL.read_text())
+    """office.json with its objects dropped: the walls and floor only, so the geometry checks have nothing to flag."""
+    plan = json.loads(OFFICE.read_text())
     plan["objects"] = []
     path = tmp_path / "clean.json"
     path.write_text(json.dumps(plan))
@@ -44,7 +44,7 @@ def photos(tmp_path):
     return [_jpeg(tmp_path / "a.jpg"), _jpeg(tmp_path / "b.jpg", (800, 600))]
 
 
-def _run(tmp_path, photos, room="kitchen_01", plan=AMAL, **kw):
+def _run(tmp_path, photos, room="kitchen_01", plan=OFFICE, **kw):
     args = dict(scans=tmp_path / "scans", out_dir=tmp_path / "renders", measures=MEASURE, **META)
     args.update(kw)
     return it.intake(room, plan, photos, **args)
@@ -54,7 +54,7 @@ def test_fixture_photos_really_carry_gps(photos):
     assert it._photo_problems(photos[0]) == ["a.jpg carries an EXIF GPS tag"]
 
 
-def test_amal_is_no_go_for_its_footprint_overlaps_but_the_folder_validates(tmp_path, photos):
+def test_office_is_no_go_for_its_footprint_overlaps_but_the_folder_validates(tmp_path, photos):
     r = _run(tmp_path, photos)
     assert it.validate_scan_dir(r["dir"]) == []
     assert not r["go"] and len(r["problems"]) == 1 and "overlapping fixtures" in r["problems"][0]
@@ -128,7 +128,7 @@ def test_bad_measurement_refused(tmp_path, photos, spec):
 
 
 def test_roomplan_with_no_walls_refused(tmp_path, photos):
-    plan = json.loads(AMAL.read_text())
+    plan = json.loads(OFFICE.read_text())
     plan["walls"] = []
     bad = tmp_path / "nowalls.json"
     bad.write_text(json.dumps(plan))

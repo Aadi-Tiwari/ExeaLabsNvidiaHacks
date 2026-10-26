@@ -10,7 +10,7 @@ Setup note: this machine has a stray `tests` package in `~/miniconda3/lib/python
 
 1. **A real runtime call on Nebius (C6): done Oct 26.** Nemotron Super and Lightning answered live through Token Factory, and so did Tavily (C7). The evidence is `docs/results/live-apis-2026-10-26.json` and `docs/results/planner-benchmark-2026-10-26.json`. Rerun `python scripts/smoke_live_apis.py` on the day if anything changes.
 2. **The video (P4).** It must be on public YouTube, under 3 minutes, and for Physical AI with no hardware it must have **at least one minute of the key modules in action**. `site/motion/pitch.mp4` is 24.4 s, which is not enough. Record the screen capture in `docs/PITCH-SCRIPT.md` (about 2:30). Show the live Nemotron call from step 1. Use no copyrighted music, and no third-party trademarks without permission (keep logos off screen).
-3. **Unlicensed data (P5).** `tests/fixtures/roomplan/amal.json` and `shopyseek.json` come from repos with no licence. The rules require permission for third-party data and a repo whose content we may publish. Replace them with our own captures, or delete them and their tests. `tests/fixtures/roomplan/README.md` lists every user.
+3. **Unlicensed data (P5).** Done: replaced unlicensed `amal.json` and `shopyseek.json` with clean authored fixtures `office.json` and `study.json` under Apache 2.0.
 4. **Consent for the real kitchen.** `kitchen_real_01.json` is a teammate's real kitchen. Confirm the owner agreed to publish it. It holds geometry only, with no frames, but say so in the fixture README.
 
 ## 2. The form (SUB)

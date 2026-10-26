@@ -147,7 +147,7 @@ Doors, windows and openings are kept in the bundle and twin with the id of their
 
 ```bash
 python scripts/render_rooms.py                              # out/renders/<room>_top.png and <room>_roomplan_top.png
-python scripts/render_rooms.py tests/fixtures/roomplan/amal.json
+python scripts/render_rooms.py tests/fixtures/roomplan/office.json
 ```
 
 ### Uploaded-frame comparison
@@ -219,8 +219,8 @@ Crawls the real page (`arrival serve`'s handler on an ephemeral 127.0.0.1 port) 
 ## Multi-room summary
 
 ```bash
-python -m arrival summary                                     # hero_kitchen + the two real RoomPlan fixtures
-python -m arrival summary --rooms hero_kitchen,tests/fixtures/roomplan/amal.json --episodes 2 --out out/summary
+python -m arrival summary                                     # hero_kitchen + the two authored RoomPlan fixtures
+python -m arrival summary --rooms hero_kitchen,tests/fixtures/roomplan/office.json --episodes 2 --out out/summary
 ```
 
 Runs normalize, compile, tasks, sim and validate (structural, then per episode) on each room with tiny settings (default 2 episode attempts, 64 px, 1 person; work files under `out/summary`, not `out/`) and writes `summary.md` and `summary.json` there. A failing stage records its reason and the later stages read `-` (not run); a room with no reachable task reads `skipped`. `--rooms` takes scan names under `--scans` or paths to a RoomPlan or `scan.json` file. The tape-error column is filled only where a `measurements.json` exists (hero_kitchen's is authored from its own scan and is labelled so), and realism is always "not measured": it needs held-out RGB-D frames that no room here has. RoomPlan exports hold no small objects, so their objects are `default_synthetic` (invented) and the table says so.

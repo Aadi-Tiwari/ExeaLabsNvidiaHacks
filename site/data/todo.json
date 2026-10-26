@@ -1136,7 +1136,10 @@
      "size": "M",
      "priority": "must",
      "authors": [],
-     "note": "tests/fixtures/roomplan/amal.json and shopyseek.json come from GitHub repositories with no licence, so we have no grant to redistribute them, and the rules require permission for third-party data. Replace them with an office (table and chairs) and a desk-with-chair capture of our own, or delete them and the tests that need them, before submitting. Uses: tests/fixtures/roomplan/README.md."
+     "note": "Licence risk resolved: unlicensed fixtures amal.json and shopyseek.json replaced with Apache 2.0 authored fixtures office.json and study.json (#310). Consented real phone captures of an office (table and chairs) and a bedroom (desk blocked by chair) are still wanted to validate phone noise on doors and windows. Uses: tests/fixtures/roomplan/README.md.",
+     "pr": [
+      310
+     ]
     },
     {
      "id": "P3",
