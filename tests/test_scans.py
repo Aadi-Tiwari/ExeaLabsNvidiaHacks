@@ -13,6 +13,7 @@ from conftest import SCANS
 
 WALL_TOL = 0.01
 FLOOR_TOL = 1e-6
+OVERLAP_TOL = 1e-3  # metres; flush fixtures in a real RoomPlan scan cross by float noise (0.04 mm in kitchen_real_01)
 HERO_KNOWN_OVERLAPS = {("counter_a", "fridge_1"), ("counter_b", "stove_1")}  # the TWN-6 bug, nothing else
 
 
@@ -42,12 +43,14 @@ def _corners(f: dict) -> list[tuple[float, float]]:
             for dx, dy in ((sx / 2, sy / 2), (-sx / 2, sy / 2), (-sx / 2, -sy / 2), (sx / 2, -sy / 2))]
 
 
-def _overlap(a: dict, b: dict, tol: float = 1e-6) -> bool:
-    """Separating-axis test on the two footprint rectangles. Touching edges do not count."""
+def _overlap(a: dict, b: dict, tol: float = OVERLAP_TOL) -> bool:
+    """Separating-axis test on the two footprint rectangles. Touching edges, or crossing by tol or less, do not count."""
     ca, cb = _corners(a), _corners(b)
     for poly in (ca, cb):
         for i in range(4):
             ex, ey = poly[(i + 1) % 4][0] - poly[i][0], poly[(i + 1) % 4][1] - poly[i][1]
+            n = math.hypot(ex, ey) or 1.0
+            ex, ey = ex / n, ey / n
             pa = [-ey * x + ex * y for x, y in ca]
             pb = [-ey * x + ex * y for x, y in cb]
             if max(pa) <= min(pb) + tol or max(pb) <= min(pa) + tol:
@@ -122,3 +125,12 @@ def test_scene_builds_in_mujoco(room, source):
     base = ((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2, 0.75)
     model = mujoco.MjModel.from_xml_string(build_mjcf(twin, base))
     assert model.ngeom > len(twin["walls"])
+
+
+def test_overlap_ignores_float_noise_between_flush_fixtures():
+    """kitchen_real_01's dishwasher and the cabinet beside it share an edge to 0.04 mm (RoomPlan float noise)."""
+    a = {"position": [1.0, 0.0, 0.0], "size": [1.0, 0.6, 0.9], "yaw": 3.141592654}
+    flush = {"position": [2.0 - 0.00004, 0.0, 0.0], "size": [1.0, 0.6, 0.9], "yaw": 3.141592654}
+    into = {"position": [2.0 - 0.005, 0.0, 0.0], "size": [1.0, 0.6, 0.9], "yaw": 0.0}
+    assert not _overlap(a, flush)
+    assert _overlap(a, into)
