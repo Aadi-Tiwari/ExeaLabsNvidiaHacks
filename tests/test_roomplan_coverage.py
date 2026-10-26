@@ -17,7 +17,7 @@ APPLE_CATEGORIES = ("bathtub", "bed", "chair", "dishwasher", "fireplace", "oven"
                     "sofa", "stairs", "storage", "stove", "table", "television", "toilet", "washerDryer")
 FLOOR_Y = -1.4
 W, D, H = 6.0, 5.0, 2.5
-REAL = REPO / "tests" / "fixtures" / "roomplan"
+FIXTURES = REPO / "tests" / "fixtures" / "roomplan"
 
 
 def _t(x, y, z, yaw=0.0):
@@ -108,9 +108,9 @@ def _seg_dist(p, w):
 
 
 @pytest.mark.parametrize("name", ["office", "study"])
-def test_real_export_portals_sit_on_their_walls(name):
-    raw = json.loads((REAL / f"{name}.json").read_text())
-    b = roomplan.load(REAL / f"{name}.json", name)
+def test_authored_fixture_portals_sit_on_their_walls(name):
+    raw = json.loads((FIXTURES / f"{name}.json").read_text())
+    b = roomplan.load(FIXTURES / f"{name}.json", name)
     walls = {w["id"]: w for w in b["walls"]}
     for key in ("doors", "windows", "openings"):
         assert len(b[key]) == len(raw[key])
@@ -142,8 +142,8 @@ def test_polygon_floor_sets_extent():
 
 
 @pytest.mark.parametrize("name", ["office", "study"])
-def test_real_export_polygon_floor_matches_walls(name):
-    b = roomplan.load(REAL / f"{name}.json", name)
+def test_authored_fixture_polygon_floor_matches_walls(name):
+    b = roomplan.load(FIXTURES / f"{name}.json", name)
     assert len(b["floors"]) == 1 and len(b["floors"][0]["corners"]) == 4
     xs = [c[0] for c in b["floors"][0]["corners"]]
     ys = [c[1] for c in b["floors"][0]["corners"]]

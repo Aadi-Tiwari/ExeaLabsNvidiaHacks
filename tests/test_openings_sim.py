@@ -19,7 +19,7 @@ from arrival.twin.compile import compile_twin, place_default_objects  # noqa: E4
 
 from conftest import REPO, SCANS  # noqa: E402
 
-REAL = REPO / "tests" / "fixtures" / "roomplan"
+FIXTURES = REPO / "tests" / "fixtures" / "roomplan"
 BASE = (2.0, 0.6, 0.75)  # a stand spot clear of the office's table and chairs (test_non_kitchen)
 HERO_BASE = (1.3, 1.0, 0.75)
 PORTAL = re.compile(r"(door|window|opening)(\d+)_(\w+)$")
@@ -77,8 +77,8 @@ def _export():
     return {"walls": walls, "floors": [], "doors": doors, "windows": windows, "openings": openings, "objects": []}
 
 
-def _real(name: str) -> dict:
-    twin = compile_twin(roomplan.load(REAL / f"{name}.json", name))
+def _fixture(name: str) -> dict:
+    twin = compile_twin(roomplan.load(FIXTURES / f"{name}.json", name))
     place_default_objects(twin, seed=0)
     return twin
 
@@ -98,7 +98,7 @@ def synthetic():
 
 @pytest.fixture(scope="module")
 def office():
-    return _real("office")
+    return _fixture("office")
 
 
 def _portal_geoms(m) -> dict:
@@ -177,8 +177,8 @@ def test_portals_lie_on_their_wall(synthetic):
     ("office", {("door", 0): "closed", ("door", 1): "open", ("window", 0): "window"}),
     ("study", {("door", 0): "closed"}),
 ])
-def test_real_exports_draw_every_portal_on_its_wall(name, counts):
-    twin = _real(name)
+def test_authored_fixtures_draw_every_portal_on_its_wall(name, counts):
+    twin = _fixture(name)
     m = _model(twin)
     d = mujoco.MjData(m)
     mujoco.mj_forward(m, d)
@@ -199,13 +199,13 @@ def test_real_exports_draw_every_portal_on_its_wall(name, counts):
 
 def test_export_without_parent_ids_lands_on_the_same_walls():
     """Exports from before iOS 17 carry no parentIdentifier: the nearest wall is the same one."""
-    raw = json.loads((REAL / "office.json").read_text())
+    raw = json.loads((FIXTURES / "office.json").read_text())
     for key in ("doors", "windows", "openings"):
         for s in raw[key]:
             del s["parentIdentifier"]
     orphan = compile_twin(roomplan.to_bundle(raw, "office"))
     assert all(p["wall_id"] is None for k in ("doors", "windows") for p in orphan[k])
-    assert portals_xml(orphan) == portals_xml(compile_twin(roomplan.load(REAL / "office.json", "office")))
+    assert portals_xml(orphan) == portals_xml(compile_twin(roomplan.load(FIXTURES / "office.json", "office")))
 
 
 def test_portal_geoms_never_collide(synthetic, office):

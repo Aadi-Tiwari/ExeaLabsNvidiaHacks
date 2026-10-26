@@ -1,4 +1,4 @@
-"""SIM-5 and L9: a real non-kitchen RoomPlan scan (tests/fixtures/roomplan/office.json, a table and two chairs) becomes
+"""SIM-5 and L9: an authored non-kitchen RoomPlan fixture (tests/fixtures/roomplan/office.json, a table and two chairs) becomes
 a room the arm can work in: the table is a table, furniture is solid, the room holds office things (a laptop, a book,
 a cup) instead of a mug and plate, and move_on_table episodes pass physics."""
 
