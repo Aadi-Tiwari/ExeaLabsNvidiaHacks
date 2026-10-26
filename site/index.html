@@ -370,6 +370,25 @@
 
   <div class="measured" id="measured"></div>
 
+  <div class="two" id="models">
+    <section class="box" aria-labelledby="boxNemotron">
+      <h3 id="boxNemotron" class="box__h mono">Nemotron on Nebius Token Factory plans each task</h3>
+      <ul class="list">
+        <li>Nemotron 3 Super turns an instruction and the room's inventory into a task plan, live, in about 2.6 s. Nemotron 3.5 Lightning writes the training and held-out wordings.</li>
+        <li>On 15 indirect requests such as "let me check if we're out of milk", the planner picked the right task 13 times. A keyword parser got 6.</li>
+        <li>On 54 wordings Lightning wrote, it was 52 against 47. The requests were written by us, not sampled from users.</li>
+      </ul>
+    </section>
+    <section class="box" aria-labelledby="boxTavily">
+      <h3 id="boxTavily" class="box__h mono">Tavily looks up each scanned appliance</h3>
+      <ul class="list">
+        <li>Every appliance found in the scan is researched live, and the findings go into the planner's prompt.</li>
+        <li>For the fridge it returns the federal limit on the force needed to open an empty door, 66.7 N (15 lb), citing the eCFR and GE.</li>
+        <li>The safety rules shown beside each answer are our own table, and are labelled as such.</li>
+      </ul>
+    </section>
+  </div>
+
   <!-- revision schedule: filled in by js/todo.js from data/todo.json -->
   <section class="sched" id="schedWrap" aria-labelledby="schedTitle" hidden>
     <p class="mono sched__tag">Revision schedule <span id="schedAsOf"></span></p>
