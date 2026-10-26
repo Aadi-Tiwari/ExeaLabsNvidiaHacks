@@ -157,3 +157,10 @@ def test_script_exit_codes_and_skip(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "-6.0 cm  FAIL" in out and "1 failing" in out
     assert scan_accuracy.main([str(none_room)]) == 0  # nothing measured is not a failure
+
+
+def test_script_rejects_missing_room(tmp_path, capsys):
+    with pytest.raises(SystemExit) as e:
+        scan_accuracy.main([str(tmp_path / "no_such_room")])
+    assert e.value.code == 2
+    assert "no_such_room" in capsys.readouterr().err
