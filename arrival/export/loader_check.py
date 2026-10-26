@@ -92,6 +92,13 @@ def check_loader(root: str | Path) -> dict:
         for m in missing:
             f.err("missing_meta", f"missing meta/{m}")
         return out
+    for m in need:
+        try:
+            _jsonl(meta / m) if m.endswith(".jsonl") else json.loads((meta / m).read_text())
+        except ValueError as e:
+            f.err("meta_unreadable", f"meta/{m} is not valid JSON ({e})")
+    if f.errors:
+        return out
     info = json.loads((meta / "info.json").read_text())
     modality = json.loads((meta / "modality.json").read_text())
     emb = json.loads((meta / "embodiment.json").read_text())

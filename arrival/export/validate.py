@@ -66,6 +66,11 @@ def validate(root: str | Path) -> list[str]:
     missing = [m for m in META if not (root / "meta" / m).is_file()]
     if missing:
         return [f"missing meta/{m}" for m in missing]
+    for m in META:  # a run killed while writing meta leaves truncated JSON; report it instead of a traceback
+        try:
+            _jsonl(root / "meta" / m) if m.endswith(".jsonl") else json.loads((root / "meta" / m).read_text())
+        except ValueError as e:
+            return [f"meta/{m} is not valid JSON ({e})"]
     info = json.loads((root / "meta" / "info.json").read_text())
     modality = json.loads((root / "meta" / "modality.json").read_text())
     features = info.get("features", {})
