@@ -293,7 +293,13 @@ def cmd_fanout(a) -> int:
     from arrival.jobs.fanout import FanoutConfig, LocalBackend, run_fanout
     from arrival.jobs.fanout_status import StatusRecorder
     from arrival.jobs.shards import ShardError
+    from arrival.sim.tasks import SIM_FAMILIES
 
+    if a.families != "all":
+        bad = [f.strip() for f in a.families.split(",") if f.strip() and f.strip() not in SIM_FAMILIES]
+        if bad:  # every shard's sim would reject them, after the backend launched and retried it
+            print(f"fanout: unknown families {bad} (choose from {', '.join(SIM_FAMILIES)})", file=sys.stderr)
+            return EXIT_USAGE
     try:
         cfg = FanoutConfig(a.run_id, a.shards, a.room, a.families, a.episodes, a.people, a.res, a.seed, a.scans,
                            getattr(a, "dart", 0.0), getattr(a, "base", "fixed"), getattr(a, "exocentric", False))
