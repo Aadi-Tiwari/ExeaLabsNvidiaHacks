@@ -3,6 +3,7 @@
     python scripts/check_docs.py [--root DIR]
 
 Reads README.md, docs/REFERENCE.md and ios/README.md under the root and prints one line per problem.
+Every markdown file under docs/ is also checked for fenced lines that end in two backslashes.
 The counts in site/data/todo.json, which the README to-do and the demo site show, must match its item statuses.
 Exit 0 when clean, 1 when anything is wrong. Nothing is executed: commands are only parsed with the
 parser that arrival.cli.main() builds.
@@ -195,6 +196,23 @@ def check_todo_counts(root: Path) -> list[str]:
             for k, n in want.items() if todo["counts"].get(k) != n]
 
 
+def check_continuations(root: Path) -> list[str]:
+    """A fenced line ending in two backslashes: markdown does not unescape code, so a pasted copy passes a literal
+    backslash and runs the next line as its own command. Covers every markdown file under docs/, not just DOCS."""
+    probs = []
+    for doc in sorted([root / "README.md", *(root / "docs").rglob("*.md")]):
+        if not doc.is_file():
+            continue
+        inside = False
+        for n, line in enumerate(doc.read_text(encoding="utf-8").splitlines(), 1):
+            if FENCE.match(line):
+                inside = not inside
+            elif inside and line.rstrip().endswith("\\\\"):
+                probs.append(f"{doc.relative_to(root).as_posix()}:{n}: line ends in two backslashes; "
+                             f"bash reads a literal backslash and ends the command there")
+    return probs
+
+
 def check(root: Path = REPO) -> list[str]:
     parser = _cli_parser()
     tests = test_defs(root)
@@ -213,7 +231,7 @@ def check(root: Path = REPO) -> list[str]:
         probs += check_paths(root, doc, text, tests)
         probs += check_status_lists(doc, root, text)
         probs += check_labels(doc, root, text, consts)
-    return probs + check_todo_counts(root)
+    return probs + check_continuations(root) + check_todo_counts(root)
 
 
 def main(argv: list[str] | None = None) -> int:
