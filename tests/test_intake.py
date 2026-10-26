@@ -119,6 +119,16 @@ def test_fewer_than_two_photos_refused(tmp_path, photos):
     assert not (tmp_path / "scans" / "kitchen_01").exists()
 
 
+@pytest.mark.parametrize("name", ["IMG_0001.HEIC", "IMG_0001.jpg"])
+def test_heic_photo_refused_with_how_to_get_jpeg(tmp_path, photos, name):
+    box = b"ftypheic" + bytes(4) + b"mif1heic"
+    heic = tmp_path / name
+    heic.write_bytes((len(box) + 4).to_bytes(4, "big") + box + bytes(64))
+    with pytest.raises(it.IntakeError, match="HEIC/HEIF.*Most Compatible"):
+        _run(tmp_path, [photos[0], heic])
+    assert not (tmp_path / "scans" / "kitchen_01").exists()
+
+
 @pytest.mark.parametrize("spec", ["counter_length=abc", "counter_length=3.2,sink_width=", "counter_height=92cm",
                                   "counter_length=-1", "counter_length=320", "counter_length=nan", "desk=1.0"])
 def test_bad_measurement_refused(tmp_path, photos, spec):

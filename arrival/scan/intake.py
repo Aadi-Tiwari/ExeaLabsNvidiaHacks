@@ -27,6 +27,7 @@ ROOM_ID = re.compile(r"[a-z0-9_]+")
 MAX_PHOTO_PX = 1600
 MIN_PHOTOS = 2
 GPS_IFD = 0x8825
+HEIF_BRANDS = {b"heic", b"heix", b"heim", b"heis", b"hevc", b"hevx", b"hevm", b"hevs", b"mif1", b"msf1"}
 MEASURES = ("counter_length", "counter_height", "sink_width")
 MAX_MEASURE_M = 20.0  # a tape value above this is almost certainly centimetres
 # notes.md key -> label shown in the template. Keys are what validate_scan_dir looks for.
@@ -106,6 +107,16 @@ def parse_measures(spec: str | dict | None) -> dict[str, float]:
                               f"{MAX_MEASURE_M:g} (a value in centimetres?)")
         out[k] = n
     return out
+
+
+def _is_heif(path: Path) -> bool:
+    """An iPhone's default photo format; Pillow has no HEIF decoder unless pillow-heif is installed."""
+    try:
+        with open(path, "rb") as f:
+            head = f.read(12)
+    except OSError:
+        return False
+    return head[4:8] == b"ftyp" and head[8:12] in HEIF_BRANDS
 
 
 def _photo_problems(path: Path) -> list[str]:
@@ -248,6 +259,9 @@ def intake(room_id: str, roomplan_path: str | Path, photos: list | None = None, 
     bundle = _load_roomplan(plan, room_id)
     tape = parse_measures(measures)
     for p in photos:
+        if _is_heif(p):
+            raise IntakeError(f"photo {p} is HEIC/HEIF, which intake cannot read; convert it to JPEG, or "
+                              "take the photos with the iPhone's Settings > Camera > Formats set to Most Compatible")
         try:
             with Image.open(p) as im:
                 im.verify()
