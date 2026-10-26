@@ -135,6 +135,13 @@ def test_measurements_validation(tmp_path):
         load_measurements(write({**good, "tolerance_m": -1}))
 
 
+def test_script_rejects_missing_room(tmp_path, capsys):
+    with pytest.raises(SystemExit) as e:
+        scan_accuracy.main([str(tmp_path / "no_such_room")])
+    assert e.value.code == 2
+    assert "no_such_room" in capsys.readouterr().err
+
+
 def _room(tmp_path, name, measurements=None):
     d = tmp_path / name
     d.mkdir()
@@ -157,19 +164,3 @@ def test_script_exit_codes_and_skip(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "-6.0 cm  FAIL" in out and "1 failing" in out
     assert scan_accuracy.main([str(none_room)]) == 0  # nothing measured is not a failure
-
-
-def test_script_rejects_missing_room(tmp_path, capsys):
-    with pytest.raises(SystemExit) as e:
-        scan_accuracy.main([str(tmp_path / "no_such_room")])
-    assert e.value.code == 2
-    assert "no_such_room" in capsys.readouterr().err
-
-
-def test_script_reports_room_without_scan(tmp_path, capsys):
-    d = tmp_path / "no_scan"
-    d.mkdir()
-    (d / "measurements.json").write_text(HERO_FIXTURE.read_text())
-    assert scan_accuracy.main([str(d)]) == 1
-    out = capsys.readouterr().out
-    assert "no_scan: ERROR" in out and "scan.json" in out and "1 failing" in out

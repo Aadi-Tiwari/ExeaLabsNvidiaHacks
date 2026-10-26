@@ -39,7 +39,7 @@ def main(argv: list[str] | None = None) -> int:
         measured += 1
         try:
             res = compare(compile_twin(bundle.load_room(d.name, d.parent)), load_measurements(mfile))
-        except (MeasurementError, ValueError, KeyError, OSError) as e:
+        except (MeasurementError, ValueError, KeyError) as e:
             print(f"{d.name}: ERROR {e}")
             failed += 1
             continue
