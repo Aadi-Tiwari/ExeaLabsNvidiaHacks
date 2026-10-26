@@ -107,7 +107,7 @@ def _seg_dist(p, w):
     return math.dist(p, [x0 + t * dx, y0 + t * dy])
 
 
-@pytest.mark.parametrize("name", ["amal", "shopyseek"])
+@pytest.mark.parametrize("name", ["office", "study"])
 def test_real_export_portals_sit_on_their_walls(name):
     raw = json.loads((REAL / f"{name}.json").read_text())
     b = roomplan.load(REAL / f"{name}.json", name)
@@ -118,7 +118,7 @@ def test_real_export_portals_sit_on_their_walls(name):
             assert p["wall_id"] in walls
             assert _seg_dist(p["position"][:2], walls[p["wall_id"]]) <= 0.02
             assert 0 < p["position"][2] - p["size"][2] / 2 + 0.05  # sill at or above the floor
-    if name == "amal":
+    if name == "office":
         assert [d["is_open"] for d in b["doors"]] == [False, True]
 
 
@@ -141,7 +141,7 @@ def test_polygon_floor_sets_extent():
     assert doc["room"]["floor"][0]["pos"] == pytest.approx([(W + 1) / 2, D / 2, 0.0])
 
 
-@pytest.mark.parametrize("name", ["amal", "shopyseek"])
+@pytest.mark.parametrize("name", ["office", "study"])
 def test_real_export_polygon_floor_matches_walls(name):
     b = roomplan.load(REAL / f"{name}.json", name)
     assert len(b["floors"]) == 1 and len(b["floors"][0]["corners"]) == 4

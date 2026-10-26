@@ -1,7 +1,7 @@
 """Top-down PNG of every room under scans/ for eyeballing a compiled twin (TWN-2).
 
     python scripts/render_rooms.py                                   # all rooms under scans/
-    python scripts/render_rooms.py scans/hero_kitchen tests/fixtures/roomplan/amal.json
+    python scripts/render_rooms.py scans/hero_kitchen tests/fixtures/roomplan/office.json
 
 Writes out/renders/<room>_top.png from scan.json and <room>_roomplan_top.png from roomplan.json
 (a bare .json argument is treated as a RoomPlan export). Walls are dark lines, doors brown, windows

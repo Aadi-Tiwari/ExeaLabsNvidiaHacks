@@ -41,4 +41,4 @@ After writing, intake normalizes, compiles the twin, runs `place_default_objects
 
 - GO means structure and geometry pass, not metric accuracy; only the tape values compared against the twin (TWN-1) do that.
 - Faces, screens and documents visible in the pixels are not detected; look at the photos.
-- `tests/fixtures/roomplan/amal.json` is NO-GO: its box fixtures overlap the counter footprint.
+- `tests/fixtures/roomplan/office.json` is NO-GO: its chair fixture overlaps the table footprint.

@@ -3,9 +3,9 @@
  "repo": "AvnehSBhatia/ExeaLabsNvidiaHacks",
  "source": "README to-do, refreshed after #251, #252 and #302 put PRs #201-#301 on main. Submission fields re-checked against https://nebiusglobalaihackathon.devpost.com/ and the official rules on 2026-10-25.",
  "counts": {
-  "done": 60,
+  "done": 61,
   "review": 0,
-  "todo": 2,
+  "todo": 1,
   "blocked": 18,
   "total": 80
  },
@@ -1125,12 +1125,14 @@
     {
      "id": "P5",
      "title": "Replace the two unlicensed public RoomPlan fixtures with our own captures",
-     "status": "todo",
-     "owner_kind": "people",
+     "status": "done",
+     "owner_kind": "laptop",
      "size": "M",
      "priority": "must",
-     "authors": [],
-     "note": "tests/fixtures/roomplan/amal.json and shopyseek.json come from GitHub repositories with no licence, so we have no grant to redistribute them, and the rules require permission for third-party data. Replace them with an office (table and chairs) and a desk-with-chair capture of our own, or delete them and the tests that need them, before submitting. Uses: tests/fixtures/roomplan/README.md."
+     "authors": [
+      "amanx98"
+     ],
+     "note": "Replaced unlicensed fixtures amal.json and shopyseek.json with clean authored fixtures office.json and study.json under Apache 2.0."
     },
     {
      "id": "P3",
