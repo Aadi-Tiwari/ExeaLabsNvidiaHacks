@@ -86,3 +86,12 @@ def test_wait_reports_a_job_the_worker_never_finished(arrival_url, capsys):
     url, _ = arrival_url  # no worker is running
     assert smoke.main([url, "--wait", "0.5"]) == 1
     assert "FAIL worker finished the job: status=queued" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("args, why", [(["--scan", "no_such_scan.json"], "no_such_scan.json"),
+                                       (["--timeout", "0"], "--timeout"), (["--wait", "-1"], "--wait")])
+def test_bad_arguments_exit_2_before_any_request(args, why, capsys):
+    with pytest.raises(SystemExit) as e:
+        smoke.main(["http://127.0.0.1:9", *args])
+    assert e.value.code == 2
+    assert why in capsys.readouterr().err

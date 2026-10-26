@@ -123,6 +123,12 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     if not a.url.startswith(("http://", "https://")):
         ap.error("url must start with http:// or https://")
+    if a.timeout <= 0:
+        ap.error("--timeout must be above 0")
+    if a.wait < 0:
+        ap.error("--wait must be 0 or more")
+    if not Path(a.scan).is_file():
+        ap.error(f"--scan {a.scan} is not a file")
     s = Smoke(a.url, a.timeout)
     ok = s.run(Path(a.scan).read_bytes(), wait=a.wait, require_healthz=a.require_healthz)
     if a.json:
