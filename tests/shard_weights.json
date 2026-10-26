@@ -1,6 +1,7 @@
 {
  "tests/test_any_wall.py": 79.5,
  "tests/test_appliance_tasks.py": 79.4,
+ "tests/test_check_site.py": 0.1,
  "tests/test_ci_hygiene.py": 0.7,
  "tests/test_cli.py": 0.4,
  "tests/test_compile.py": 0.1,
