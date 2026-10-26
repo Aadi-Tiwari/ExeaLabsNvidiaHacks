@@ -183,3 +183,21 @@ def test_research_cache_key_is_stable_across_processes():
     keys = {subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True,
                            env={**os.environ, "PYTHONHASHSEED": str(i)}).stdout for i in (1, 2)}
     assert len(keys) == 1
+
+
+def test_shipped_cache_does_not_shadow_the_api(monkeypatch):
+    # the planner cache that ships in the package must not answer the hero kitchen's template wordings,
+    # or `sim --planner vlm` with a TOKEN_FACTORY_API_KEY never calls Token Factory for them
+    from arrival.tasks.instructions import FALLBACK_TEMPLATES
+
+    calls = []
+    monkeypatch.setattr("arrival.models.token_factory.complete",
+                        lambda *a, **k: calls.append(1) or '{"family": "counter_to_sink", "object": "mug_1", "target": "sink_1"}')
+    planner = VLMPlanner(log=lambda *_: None)
+    monkeypatch.setattr(planner, "_save_cache", lambda: None)
+    objects, fixtures = ["bowl_1", "mug_1"], ["counter_a", "counter_b", "fridge_1", "sink_1", "stove_1"]
+    wordings = [t.format(name="mug") for t in FALLBACK_TEMPLATES["counter_to_sink"]]
+    for w in wordings:
+        planner.plan(w, objects, fixtures)
+        assert planner.source == "token_factory"
+    assert len(calls) == len(wordings)

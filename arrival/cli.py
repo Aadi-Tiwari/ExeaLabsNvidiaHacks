@@ -296,7 +296,7 @@ def cmd_fanout(a) -> int:
 
     try:
         cfg = FanoutConfig(a.run_id, a.shards, a.room, a.families, a.episodes, a.people, a.res, a.seed, a.scans,
-                           a.dart, a.base, a.exocentric)
+                           getattr(a, "dart", 0.0), getattr(a, "base", "fixed"), getattr(a, "exocentric", False))
     except ShardError as e:
         print(f"fanout: {e}", file=sys.stderr)
         return EXIT_USAGE
