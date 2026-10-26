@@ -8,6 +8,7 @@ through every merge, so `git shortlog -sn` and GitHub's contributor graph agree 
 """
 from __future__ import annotations
 
+import argparse
 import json
 import subprocess
 from collections import defaultdict
@@ -82,4 +83,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter).parse_args()
     raise SystemExit(main())
