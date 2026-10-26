@@ -298,3 +298,23 @@ def test_malformed_backend_result_fails_frames_without_aborting_copy(dataset, tm
     assert summary["ok"] == 0
     assert all(row["status"] == "failed" and row["reason"] for row in rows(dst))
     assert validate(dst) == []
+
+
+@pytest.mark.parametrize("case,message", [
+    ("missing", "no dataset at"),
+    ("fraction", "fraction must be finite and between 0 and 1"),
+    ("exists", "the copy directory must be new"),
+])
+def test_cli_bad_input_is_a_usage_error(dataset, tmp_path, capsys, case, message):
+    src, dst, extra = dataset, tmp_path / "copy", []
+    if case == "missing":
+        src = tmp_path / "nope"
+    elif case == "fraction":
+        extra = ["--fraction", "2"]
+    else:
+        dst.mkdir()
+    with pytest.raises(SystemExit) as e:
+        variation.main([str(src), str(dst), *extra])
+    assert e.value.code == 2
+    assert message in capsys.readouterr().err
+    assert case == "exists" or not dst.exists()
