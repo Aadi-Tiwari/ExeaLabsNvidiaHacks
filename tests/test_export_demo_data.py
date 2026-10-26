@@ -43,3 +43,14 @@ def test_rerun_keeps_the_hand_edited_todo_list(tmp_path, monkeypatch):
         export_demo_data.main(["--out", str(out), "--scratch", str(tmp_path / "scratch")])
     assert (out / "todo.json").read_text() == '{"items": []}'
     assert not (out / "stale.json").exists()
+
+
+def test_unknown_room_leaves_the_output_folder_alone(tmp_path, capsys):
+    out = tmp_path / "data"
+    out.mkdir()
+    (out / "rooms.json").write_text("{}")
+    with pytest.raises(SystemExit) as e:
+        export_demo_data.main(["--room", "nope_room", "--out", str(out), "--scratch", str(tmp_path / "scratch")])
+    assert e.value.code == 2
+    assert "no scan for room 'nope_room'" in capsys.readouterr().err
+    assert (out / "rooms.json").read_text() == "{}"
