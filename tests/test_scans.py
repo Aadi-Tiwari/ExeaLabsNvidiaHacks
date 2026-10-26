@@ -1,6 +1,7 @@
 """TWN-2: every scan under scans/ normalizes, compiles, writes a layout, has no overlapping fixture
 footprints, nothing below the floor, a closed wall loop, and builds in MuJoCo."""
 
+import importlib.util
 import math
 
 import pytest
@@ -9,7 +10,7 @@ import yaml
 from arrival.scan import bundle, roomplan
 from arrival.twin.compile import compile_twin, write_twin
 
-from conftest import SCANS
+from conftest import REPO, SCANS
 
 WALL_TOL = 0.01
 FLOOR_TOL = 1e-6
@@ -134,3 +135,16 @@ def test_overlap_ignores_float_noise_between_flush_fixtures():
     into = {"position": [2.0 - 0.005, 0.0, 0.0], "size": [1.0, 0.6, 0.9], "yaw": 0.0}
     assert not _overlap(a, flush)
     assert _overlap(a, into)
+
+
+@pytest.mark.parametrize("arg", ["hero_kitchn", "nope.json"])
+def test_render_rooms_refuses_a_path_with_no_scan(tmp_path, capsys, arg):
+    spec = importlib.util.spec_from_file_location("render_rooms", REPO / "scripts" / "render_rooms.py")
+    render_rooms = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(render_rooms)
+    out = tmp_path / "renders"
+    with pytest.raises(SystemExit) as e:
+        render_rooms.main([str(tmp_path / arg), "--out", str(out)])
+    assert e.value.code == 2
+    assert "no scan.json or roomplan.json at" in capsys.readouterr().err
+    assert not out.exists()
