@@ -241,6 +241,8 @@ def cmd_sim(a) -> int:
         from arrival.tasks.tavily_research import TavilyResearchAgent
         agent = TavilyResearchAgent()
         twin = agent.enrich_twin(twin)
+        for ftype, info in twin["tavily_research"].items():  # say what the planner will be told, and where it came from
+            print(f"[tavily] {ftype}: {info['source']}, {len(info['sources'])} sources: {info['summary'][:100]}")
     from arrival.sim.collect import collect
     from arrival.sim.policy import VLANotConfigured
 

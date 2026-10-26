@@ -52,3 +52,15 @@ def test_a_failed_call_is_exit_1(tmp_path, monkeypatch):
     out = tmp_path / "r.json"
     assert smoke.main(["--out", str(out)]) == 1
     assert json.loads(out.read_text())["checks"]["token_factory_planner"]["source"] == "rule_based"
+
+
+def test_planner_benchmark_without_a_key_is_exit_2(monkeypatch, capsys):
+    spec = importlib.util.spec_from_file_location("planner_benchmark", REPO / "scripts" / "planner_benchmark.py")
+    bench = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(bench)
+    monkeypatch.setenv("ARRIVAL_DOTENV", "0")
+    monkeypatch.delenv("TOKEN_FACTORY_API_KEY", raising=False)
+    assert bench.main([]) == 2
+    assert "TOKEN_FACTORY_API_KEY" in capsys.readouterr().err
+    assert bench.right({"family": "open_fridge", "object": None}, "open_fridge", None)
+    assert not bench.right({"family": "counter_to_sink", "object": "bowl_1"}, "counter_to_sink", "mug_1")

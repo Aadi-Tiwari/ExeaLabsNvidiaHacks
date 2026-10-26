@@ -1,12 +1,12 @@
 {
- "as_of": "2026-10-25",
+ "as_of": "2026-10-26",
  "repo": "AvnehSBhatia/ExeaLabsNvidiaHacks",
  "source": "README to-do, refreshed after #251, #252 and #302 put PRs #201-#301 on main. Submission fields re-checked against https://nebiusglobalaihackathon.devpost.com/ and the official rules on 2026-10-25.",
  "counts": {
-  "done": 60,
+  "done": 62,
   "review": 0,
   "todo": 2,
-  "blocked": 18,
+  "blocked": 16,
   "total": 80
  },
  "prs": {
@@ -1002,22 +1002,28 @@
     {
      "id": "C6",
      "title": "One real Nemotron call on Token Factory, kept as evidence",
-     "status": "blocked",
+     "status": "done",
      "owner_kind": "cloud",
      "size": "S",
      "priority": "must",
-     "authors": [],
-     "note": "The cheapest way to meet the rule that the project runs on Nebius (Stage One is pass/fail). Put TOKEN_FACTORY_API_KEY, NEMOTRON_SUPER_MODEL and NEMOTRON_LIGHTNING_MODEL in .env, then run python scripts/smoke_live_apis.py and commit the report it writes to docs/results/. Then run sim --planner vlm --instructions nemotron once for the video, and fill the [after the real call] lines in docs/DEVPOST-FEEDBACK.md. The shipped Nemotron cache is empty, so a key reaches the API."
+     "authors": [
+      "AvnehSBhatia",
+      "Claude Code"
+     ],
+     "note": "Live on Oct 26: Nemotron Super plans (about 2.6 s each) and Lightning writes wordings through Token Factory. On 15 indirect requests the Nemotron planner picks the right task 13 times against 6 for the keyword parser, and on 54 Lightning-written wordings 52 against 47 (docs/results/planner-benchmark-2026-10-26.json). Evidence: docs/results/live-apis-2026-10-26.json."
     },
     {
      "id": "C7",
      "title": "One real Tavily call, for the Best Use of Tavily bonus",
-     "status": "blocked",
+     "status": "done",
      "owner_kind": "cloud",
      "size": "S",
      "priority": "should",
-     "authors": [],
-     "note": "The bonus needs a functional runtime call to the Tavily API. Set TAVILY_API_KEY and run python scripts/smoke_live_apis.py (or arrival research --room hero_kitchen); the report should say source=tavily_api with real source URLs. #299 emptied the shipped cache so the key is used."
+     "authors": [
+      "AvnehSBhatia",
+      "Claude Code"
+     ],
+     "note": "Live on Oct 26: queries rewritten against the live API so they return figures (e.g. the fridge's federal 66.7 N opening-force limit, citing ecfr.gov), at the advanced depth. The safety guidelines beside them are still our built-in table, labelled built_in_table."
     },
     {
      "id": "C1",
@@ -1027,7 +1033,7 @@
      "size": "L",
      "priority": "must",
      "issue": 66,
-     "note": "Fan-out with done-markers, retry and resume is built. arrival fanout --backend nebius runs shards as Serverless AI Jobs with an Object Storage bucket, tested only against in-process fakes of both APIs. It has never run against Nebius. The hackathon rules count a project as running on Nebius only if it calls the Token Factory inference API or runs on Nebius AI Cloud (Serverless Jobs, Serverless Endpoints, or DevPods). Neither has been done. C6 alone satisfies the rule; a real Serverless Jobs run (even one small shard) is what the Physical AI track description asks for and what the judges from Nebius will look for.",
+     "note": "Fan-out with done-markers, retry and resume is built. arrival fanout --backend nebius runs shards as Serverless AI Jobs with an Object Storage bucket, tested only against in-process fakes of both APIs. It has never run against Nebius. The hackathon rules count a project as running on Nebius only if it calls the Token Factory inference API or runs on Nebius AI Cloud (Serverless Jobs, Serverless Endpoints, or DevPods). Neither has been done. Not pursued for this submission: C6 meets the rule.",
      "authors": [
       "AvnehSBhatia",
       "Claude Code"

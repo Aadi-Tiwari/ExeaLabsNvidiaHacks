@@ -14,7 +14,8 @@ from pathlib import Path
 
 from arrival.tasks.propose import WORDINGS
 
-DEFAULT_CACHE = Path(__file__).resolve().parents[1] / "models" / "instruction_cache.json"
+DEFAULT_CACHE = Path("out") / "cache" / "instruction_cache.json"  # under the run's out/, never in the package: a cache there
+# answered later runs without calling Token Factory and dirtied the checkout
 
 FALLBACK_TEMPLATES = {
     "counter_to_sink": [
