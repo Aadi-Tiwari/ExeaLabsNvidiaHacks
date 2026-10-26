@@ -165,3 +165,14 @@ def test_fanout_bad_config_is_usage_error(tmp_path, capsys, kw, expected):
     err = capsys.readouterr().err
     assert err.startswith("fanout: ") and expected in err
     assert not (tmp_path / "fanout_store").exists()
+
+
+@pytest.mark.parametrize("command", ["sim", "eval", "work", "summary"])
+def test_families_help_lists_every_sim_family(command, capsys):
+    from arrival.sim.tasks import SIM_FAMILIES
+
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args([command, "--help"])
+    out = capsys.readouterr().out
+    assert [f for f in SIM_FAMILIES if f not in out] == []
+    assert [f.strip() for f in cli.FAMILY_NAMES.split(",")] == list(SIM_FAMILIES)
