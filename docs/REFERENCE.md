@@ -382,7 +382,7 @@ It needs the index page to load; the hero `roomplan.json` uploaded as `scan` to 
 ```bash
 python -m arrival research --room hero_kitchen             # appliances in the room's twin -> out/research/hero_kitchen_research.json
 python -m arrival research --query "dishwasher door latch" # one direct query -> out/research/query_research.json
-python -m arrival sim --tavily --episodes 2                # attach the research to the twin and the VLM planner prompt
+python -m arrival sim --planner vlm --tavily --episodes 2  # attach the research to the twin and the VLM planner prompt
 ```
 
 Only appliance fixtures present in the twin are looked up (the sink counts; counters and walls are skipped). The research shapes the planner prompt and tags tasks `tavily_enriched`; it does not change the physics.

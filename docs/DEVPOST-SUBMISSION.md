@@ -31,7 +31,7 @@ Arrival turns one iPhone LiDAR scan of a room into GR00T-ready training data for
 - **GR00T N1.7-3B**: the policy we fine-tune and score, with a modality config for our embodiment and a policy-server client used by the closed-loop eval.
 - **Nemotron on Nebius Token Factory**: plans each task from the instruction and the room's inventory (`sim --planner vlm`) and writes varied, held-out instruction wordings (`--instructions nemotron`). **[Say which Nemotron models you called and what `scripts/smoke_live_apis.py` measured. If that has not run, delete this bullet, because the rules only count a real runtime call.]**
 - **Nebius AI Cloud Serverless Jobs and Object Storage**: `arrival fanout --backend nebius` splits simulation into resumable shards, each run as a Serverless Job, with results in an Object Storage bucket. **[Say whether a real run happened, with the job count and time. If not, write "built and tested against fakes; not yet run on Nebius".]**
-- **Tavily**: researches the appliances found in each scan (hinges, clearances, safety guidance) and passes the findings to the Nemotron planner (`sim --tavily`). **[Confirm a real call happened.]**
+- **Tavily**: researches the appliances found in each scan (hinges, clearances, safety guidance) and passes the findings to the Nemotron planner (`sim --planner vlm --tavily`). **[Confirm a real call happened.]**
 
 ### How it is built
 
