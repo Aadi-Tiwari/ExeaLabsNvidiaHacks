@@ -34,6 +34,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("rooms", nargs="*", type=Path, help="room directories (default: every one under scans/)")
     args = ap.parse_args(argv)
     dirs = args.rooms or sorted(p for p in (ROOT / "scans").glob("*") if p.is_dir())
+    missing = [str(d) for d in dirs if not d.is_dir()]
+    if missing:
+        ap.error(f"no such room folder: {', '.join(missing)}")
     failed = measured = 0
     for d in dirs:
         mfile = d / "measurements.json"

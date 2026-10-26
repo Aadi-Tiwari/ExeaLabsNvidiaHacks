@@ -135,6 +135,13 @@ def test_measurements_validation(tmp_path):
         load_measurements(write({**good, "tolerance_m": -1}))
 
 
+def test_script_rejects_missing_room(tmp_path, capsys):
+    with pytest.raises(SystemExit) as e:
+        scan_accuracy.main([str(tmp_path / "no_such_room")])
+    assert e.value.code == 2
+    assert "no_such_room" in capsys.readouterr().err
+
+
 def _room(tmp_path, name, measurements=None):
     d = tmp_path / name
     d.mkdir()
