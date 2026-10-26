@@ -187,6 +187,21 @@ def test_drop_in_the_middle_reindexes_and_keeps_validity(tmp_path):
     assert t.column("index").to_pylist() == list(range(t.num_rows))
 
 
+def test_drop_of_a_whole_family_removes_it_from_info(tmp_path):
+    w = SimDatasetWriter(tmp_path / "ds", "qa_room", 20, RES, ("ego_view", "wrist"))
+    for i in range(5):
+        s, a = trace(60 + 2 * i, phase=i * 0.1)
+        w.add_episode(episode(s, a, seed=i), {"instruction": "open the drawer", "family": "open_drawer", "lighting": "day"})
+    s, a = trace()
+    w.add_episode(episode(np.repeat(s[:1], 64, 0), a),
+                  {"instruction": "pick up the cup", "family": "pick_place", "lighting": "day"})
+    w.finish(len(w.episodes))
+    quality.drop_flagged(tmp_path / "ds", tmp_path / "clean")
+    info = json.loads((tmp_path / "clean" / "meta" / "info.json").read_text())
+    assert info["arrival_families"] == ["open_drawer"]  # the web room page lists these as what the dataset holds
+    assert validate(tmp_path / "clean") == []
+
+
 def test_drop_refuses_existing_output_inside_source_and_all_flagged(ds, tmp_path):
     root, _ = ds
     (tmp_path / "exists").mkdir()
