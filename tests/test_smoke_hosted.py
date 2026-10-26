@@ -89,7 +89,8 @@ def test_wait_reports_a_job_the_worker_never_finished(arrival_url, capsys):
 
 
 @pytest.mark.parametrize("args, why", [(["--scan", "no_such_scan.json"], "no_such_scan.json"),
-                                       (["--timeout", "0"], "--timeout"), (["--wait", "-1"], "--wait")])
+                                       (["--timeout", "0"], "--timeout"), (["--timeout", "nan"], "--timeout"),
+                                       (["--wait", "-1"], "--wait"), (["--wait", "nan"], "--wait")])
 def test_bad_arguments_exit_2_before_any_request(args, why, capsys):
     with pytest.raises(SystemExit) as e:
         smoke.main(["http://127.0.0.1:9", *args])
