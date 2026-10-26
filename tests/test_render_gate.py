@@ -1,6 +1,14 @@
-from conftest import REPO
+import pytest
+from conftest import REPO, SHARD_ENV
 
 pytest_plugins = ["pytester"]
+
+
+@pytest.fixture(autouse=True)
+def _unsharded(monkeypatch):
+    # the inner runs load the real conftest and inherit the env; under CI's ARRIVAL_TEST_SHARD=3/3 their
+    # one-file suite falls in shard 1 and every inner test is deselected
+    monkeypatch.delenv(SHARD_ENV, raising=False)
 
 
 def test_no_render_covers_shared_fixtures(pytester):
