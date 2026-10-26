@@ -84,3 +84,12 @@ def test_cli_room(capsys):
     assert cl.main(["--room", "hero_kitchen"]) == 0
     assert "not loaded in RoboCasa" in capsys.readouterr().out
     assert math.isfinite(cl.TOL)
+
+
+@pytest.mark.parametrize("argv", [["--room", "no_such_room"], ["{tmp}"]])
+def test_cli_missing_input_is_a_usage_error_not_a_layout_fail(argv, tmp_path, capsys):
+    """Exit 1 means the layout failed the check, so a missing room or twin folder must not exit 1 too."""
+    with pytest.raises(SystemExit) as e:
+        cl.main([x.format(tmp=tmp_path) for x in argv])
+    assert e.value.code == 2
+    assert "No such file" in capsys.readouterr().err
