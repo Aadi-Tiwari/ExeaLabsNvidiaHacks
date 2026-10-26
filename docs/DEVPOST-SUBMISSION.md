@@ -31,7 +31,7 @@ Arrival turns one iPhone LiDAR scan of a room into GR00T-ready training data for
 - **GR00T N1.7-3B**: the policy we fine-tune and score, with a modality config for our embodiment and a policy-server client used by the closed-loop eval.
 - **Nemotron on Nebius Token Factory**: plans each task from the instruction and the room's inventory (`sim --planner vlm`) and writes varied, held-out instruction wordings (`--instructions nemotron`). Live, with `nvidia/nemotron-3-super-120b-a12b` for plans (about 2.6 s each) and `nvidia/Nemotron-3_5-Lightning` for wordings. On 15 indirect requests such as "let me check if we're out of milk", the Nemotron planner picked the right task 13 times against 6 for a keyword parser. On 54 wordings Lightning wrote, it was 52 against 47 (`scripts/planner_benchmark.py`).
 - **Nebius AI Cloud Serverless Jobs and Object Storage**: `arrival fanout --backend nebius` splits simulation into resumable shards, each run as a Serverless Job, with results in an Object Storage bucket. Built and tested against fakes; not yet run on Nebius.
-- **Tavily**: researches the appliances found in each scan (hinges, clearances, safety guidance) and passes the findings to the Nemotron planner (`sim --tavily`). Live: the fridge query, for example, returns the federal limit of 66.7 N (15 lb) to open an empty door, citing ecfr.gov and GE.
+- **Tavily**: researches the appliances found in each scan (hinges, clearances, safety guidance) and passes the findings to the Nemotron planner (`sim --planner vlm --tavily`). Live: the fridge query, for example, returns the federal limit of 66.7 N (15 lb) to open an empty door, citing ecfr.gov and GE.
 
 ### How it is built
 

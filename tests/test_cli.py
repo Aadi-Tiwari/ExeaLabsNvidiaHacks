@@ -32,6 +32,21 @@ def test_sim_negative_people_or_seed_is_a_usage_error_and_keeps_the_old_dataset(
     assert old.is_file()
 
 
+def test_sim_tavily_without_the_vlm_planner_is_a_usage_error(tmp_path, capsys, monkeypatch):
+    """Only the VLM planner reads the research: with --planner rule, --tavily made its lookups and changed nothing."""
+    pytest.importorskip("mujoco")
+    monkeypatch.chdir(tmp_path)  # resolve_scans falls back to the repo's scans/
+
+    def no_lookup(*a, **k):
+        raise AssertionError("research ran")
+
+    monkeypatch.setattr("arrival.tasks.tavily_research.TavilyResearchAgent", no_lookup)
+    assert cli.main(["sim", "--tavily", "--episodes", "1", "--families", "open_drawer",
+                     "--out", str(tmp_path)]) == cli.EXIT_USAGE
+    assert "--tavily needs --planner vlm" in capsys.readouterr().err
+    assert not (tmp_path / "datasets").exists()
+
+
 def test_research_missing_room_is_usage_error(tmp_path, capsys, monkeypatch):
     monkeypatch.setattr("arrival.tasks.tavily_research.TavilyResearchAgent", lambda *a, **k: object())
     assert cli.cmd_research(_ns(tmp_path)) == cli.EXIT_USAGE

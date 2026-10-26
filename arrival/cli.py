@@ -237,6 +237,10 @@ def cmd_sim(a) -> int:
     if not (math.isfinite(dart) and dart >= 0):  # -1 and nan ran with no noise but were written to info.json
         print("--dart must be a finite number >= 0 (0 = off)", file=sys.stderr)
         return EXIT_USAGE
+    if getattr(a, "tavily", False) and getattr(a, "planner", "rule") != "vlm":
+        # only VLMPlanner reads the research; with the rule planner the lookups ran and changed nothing
+        print("--tavily needs --planner vlm: the research only goes into the Nemotron planner's prompt", file=sys.stderr)
+        return EXIT_USAGE
     if getattr(a, "tavily", False):
         from arrival.tasks.tavily_research import TavilyResearchAgent
         agent = TavilyResearchAgent()
@@ -714,7 +718,7 @@ def build_parser() -> argparse.ArgumentParser:
                    help="DART: drive the arm with smooth noise, typical std RAD (each episode uses 0.4x to 1.6x), on the joint targets while the dataset "
                         "keeps the clean targets, so a policy sees off-plan states labelled with the way back; "
                         "0 (default) is off, 0.02 to 0.05 is a useful range. Recorded in the dataset provenance")
-    m.add_argument("--tavily", action="store_true", help="Enrich digital twin and VLM planning with Tavily appliance research")
+    m.add_argument("--tavily", action="store_true", help="Enrich digital twin and VLM planning with Tavily appliance research (needs --planner vlm)")
     m.set_defaults(fn=cmd_sim)
     f = sub.add_parser("fanout", help="run sim shards on a job backend, resumable, then merge (local by default)")
     f.add_argument("--backend", choices=["local", "nebius"], default="local",
