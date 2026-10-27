@@ -230,6 +230,19 @@ def reject_kind(reason: str) -> str:
     return next((kind for needle, kind in REJECT_KINDS if needle in reason), "other")
 
 
+def call_error_kind(e: Exception) -> str:
+    """Why a call got no reply, kept apart from reject_kind (a reply _parse_plan refused): "timeout" (the 60 s in
+    token_factory.complete, while connecting or reading), "http_<status>", else "other". A reply whose message
+    content is null is "no_content", set by the wrapper in main, which checks the reply rather than an exception."""
+    import urllib.error
+
+    if isinstance(e, TimeoutError) or isinstance(getattr(e, "reason", None), TimeoutError):
+        return "timeout"
+    if isinstance(e, urllib.error.HTTPError):
+        return f"http_{e.code}"
+    return "other"
+
+
 def rate(k: int, n: int) -> dict | None:
     from arrival.eval.harness import wilson
 
@@ -253,6 +266,7 @@ def score(rows: list[dict]) -> dict:
         "live_calls": len(live),
         "rejected": rate(sum(not r["reply_accepted"] for r in live), len(live)),
         "reject_reasons": dict(Counter(reject_kind(r["reject_reason"]) for r in live if r["reject_reason"])),
+        "call_errors": dict(Counter(r["call_error_kind"] for r in rows if r["call_error_kind"])),  # no reply at all
         "family": None, "object": None, "right": None,
         "confusion": confusion,
         "median_seconds": round(statistics.median(secs), 3) if secs else None,
@@ -358,11 +372,16 @@ def main(argv: list[str] | None = None) -> int:
                "temperature": kw.get("temperature")}
         calls.append(rec)
         try:
-            rec["reply"] = real_complete(*args, **kw)
+            reply = real_complete(*args, **kw)
         except Exception as e:
             rec["error"] = settings.redact(f"{type(e).__name__}: {e}")
+            rec["error_kind"] = call_error_kind(e)
             raise
-        return rec["reply"]
+        if reply is None:  # complete returns message.content as sent: null when no answer text came back
+            rec["error"], rec["error_kind"] = "the reply's message content was null", "no_content"
+        else:
+            rec["reply"] = reply
+        return reply
 
     now = datetime.now(timezone.utc)
     rows: list[dict] = []
@@ -410,6 +429,7 @@ def main(argv: list[str] | None = None) -> int:
                     "raw_reply": None if raw is None else settings.redact(raw), "reply_accepted": accepted,
                     "reject_reason": None if reason is None else settings.redact(reason),
                     "call_error": mine[0].get("error") if mine else "no call reached Token Factory",
+                    "call_error_kind": mine[0].get("error_kind") if mine else "no_call",
                     "nemotron_family_ok": (accepted and plan["family"] == fam) if scored else None,
                     "nemotron_object_ok": (accepted and plan.get("object") == obj) if moves else None,
                     "nemotron_plan_ok": (accepted and right(plan, fam, obj)) if scored else None,
@@ -472,6 +492,8 @@ def main(argv: list[str] | None = None) -> int:
               "rows": rows}
     for kind, s in summary.items():
         line = f"{kind:18} n={s['n']:3}  live {s['live_calls']}  rejected {s['rejected']['k'] if s['rejected'] else 0}"
+        if s["call_errors"]:
+            line += f"  no reply {s['call_errors']}"
         if s["family"]:
             nf, rf = s["family"]["nemotron"], s["family"]["rule"]
             line += (f"  family: nemotron {nf['k']}/{nf['n']} {nf['wilson_95']}"

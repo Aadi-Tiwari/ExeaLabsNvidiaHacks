@@ -2,6 +2,7 @@
 v1 report keys are checked with no network and no key."""
 import importlib.util
 import json
+import urllib.error
 
 import pytest
 
@@ -119,6 +120,67 @@ def test_scores_rejections_and_keeps_v1_keys(tmp_path, monkeypatch):
     listed = blind_s["listed_families"]
     assert listed["n"] == 1 and listed["family"]["nemotron"]["k"] == 1 and listed["family"]["rule"]["k"] == 1
     assert next(r for r in rep["rows"] if r["set"] == "blind" and r["inventory"] == "office")["nemotron_object_ok"]
+
+
+def test_a_timeout_is_a_call_error_not_a_rejection_and_spares_later_cases(tmp_path, monkeypatch):
+    # VLMPlanner goes offline after an OSError; a fresh planner per case keeps one timeout from turning every later
+    # case into a rule-parser answer
+    _env(monkeypatch)
+    seen = []
+    _stub(monkeypatch, seen)
+    import arrival.models.token_factory as tf
+
+    stub = tf.complete
+    first = bench.INDIRECT[0][0]
+
+    def complete(messages, role="super", **params):
+        if role == "super" and json.loads(messages[1]["content"])["instruction"] == first:
+            raise TimeoutError("timed out")
+        return stub(messages, role, **params)
+
+    monkeypatch.setattr("arrival.models.token_factory.complete", complete)
+    out = tmp_path / "r.json"
+    assert bench.main(["--sets", "indirect", "--out", str(out)]) == 1  # a case got no reply
+    rep = json.loads(out.read_text())
+    ind = rep["summary"]["indirect"]
+    assert ind["call_errors"] == {"timeout": 1} and ind["live_calls"] == 14
+    assert ind["reject_reasons"] == {"object_or_target_not_in_inventory": 1, "no_json_object": 1}
+    assert ind["confusion"]["nemotron"]["counter_to_sink"] == {"no_reply": 1, "counter_to_sink": 1}
+    assert [r["call_error_kind"] for r in rep["rows"]].count("timeout") == 1
+    assert sum(r["nemotron_source"] == "token_factory" for r in rep["rows"]) == 12  # 14 replies, 2 rejected
+
+
+def test_null_content_is_a_call_error(tmp_path, monkeypatch):
+    _env(monkeypatch)
+    seen = []
+    _stub(monkeypatch, seen)
+    import arrival.models.token_factory as tf
+
+    stub, first = tf.complete, bench.INDIRECT[0][0]
+
+    def complete(messages, role="super", **params):  # the real complete returns message.content, here null
+        if role == "super" and json.loads(messages[1]["content"])["instruction"] == first:
+            return None
+        return stub(messages, role, **params)
+
+    monkeypatch.setattr("arrival.models.token_factory.complete", complete)
+    out = tmp_path / "r.json"
+    assert bench.main(["--sets", "indirect", "--out", str(out)]) == 1
+    rep = json.loads(out.read_text())
+    row = next(r for r in rep["rows"] if r["instruction"] == first)
+    assert row["call_error_kind"] == "no_content" and not row["live_call"] and row["raw_reply"] is None
+    assert rep["summary"]["indirect"]["call_errors"] == {"no_content": 1}
+
+
+@pytest.mark.parametrize("err, kind", [(TimeoutError("timed out"), "timeout"),
+                                       (urllib.error.URLError(TimeoutError("timed out")),
+                                        "timeout"),
+                                       (urllib.error.HTTPError("u", 403, "Forbidden", {}, None),
+                                        "http_403"),
+                                       (TypeError("x"), "other"),
+                                       (ValueError("x"), "other")])
+def test_call_error_kind(err, kind):
+    assert bench.call_error_kind(err) == kind
 
 
 def test_placeholder_blind_rows_stop_before_any_call(tmp_path, monkeypatch, capsys):
