@@ -1007,3 +1007,30 @@ def test_index_shows_retention_note_buttons_for_owner_only_and_progress(make, mo
     _set_status(out, a["id"], status="running", stage="sim", progress={"done": 3, "total": 8})
     _, page, _ = _fetch(srv, "/")
     assert b"sim: 3/8 episodes" in page
+
+
+@pytest.mark.parametrize("template", ["bytes={}-", "bytes=0-{}", "bytes=-{}"])
+def test_preview_ignores_unparseable_range_numbers(make, template):
+    srv, out = make()
+    preview = out / "previews" / "test.png"
+    preview.parent.mkdir(parents=True, exist_ok=True)
+    preview.write_bytes(b"0123456789")
+    status, body, response = _fetch(srv, "/previews/test.png",
+                                    headers={"Range": template.format("9" * 4301)})
+    assert status == 200 and body == b"0123456789"
+    assert response.getheader("Content-Range") is None
+
+
+@pytest.mark.parametrize(("value", "code", "expected", "content_range"), [
+    ("bytes=2-4", 206, b"234", "bytes 2-4/10"),
+    ("bytes=-3", 206, b"789", "bytes 7-9/10"),
+    ("bytes=50-", 416, b"", "bytes */10"),
+])
+def test_preview_normal_ranges_keep_existing_behavior(make, value, code, expected, content_range):
+    srv, out = make()
+    preview = out / "previews" / "test.png"
+    preview.parent.mkdir(parents=True, exist_ok=True)
+    preview.write_bytes(b"0123456789")
+    status, body, response = _fetch(srv, "/previews/test.png", headers={"Range": value})
+    assert status == code and body == expected
+    assert response.getheader("Content-Range") == content_range
