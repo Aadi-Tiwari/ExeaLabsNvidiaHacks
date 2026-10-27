@@ -154,8 +154,10 @@ free to use).
 - The scan walk, the walker, the arm path and the points are illustrative animation, not captured data.
 - **The pitch status sheet is dated Oct 21 2026.** Scan, simulation, the dataset and the GR00T fine-tune are
   tagged done. The fine-tune line says 39 of 48 against 26 of 48, small samples. Real kitchen scans stay NEXT.
-  `pipeline.mp4` still ends on the older dashed "NEXT, NOT BUILT YET: GR00T fine-tune" card. The pitch does not
-  show that card: its clips are from 2.6 s, 5.8 s and 8.7 s of the pipeline.
+  The live page (`live/pipeline.html`, the one the site embeds) ends on a solid "DONE, SMALL SAMPLES: GR00T
+  FINE-TUNE: 39 OF 48 TRIALS" card since Oct 27. `pipeline.mp4` was not re-rendered and still ends on the older
+  dashed "NEXT, NOT BUILT YET" card. The pitch does not show that card: its clips are from 2.6 s, 5.8 s and 8.7 s
+  of the pipeline.
 
 ## Audio
 
