@@ -172,6 +172,45 @@ def test_null_content_is_a_call_error(tmp_path, monkeypatch):
     assert rep["summary"]["indirect"]["call_errors"] == {"no_content": 1}
 
 
+def test_429_and_5xx_are_retried_three_times_and_nothing_else(tmp_path, monkeypatch, capsys):
+    _env(monkeypatch)
+    seen = []
+    _stub(monkeypatch, seen)
+    import arrival.models.token_factory as tf
+
+    stub = tf.complete
+    busy, down, bad = (w for w, _, _ in bench.INDIRECT[:3])
+    tries = {busy: 0, down: 0, bad: 0}
+
+    def complete(messages, role="super", **params):
+        text = json.loads(messages[1]["content"])["instruction"] if role == "super" else None
+        if text in tries:
+            tries[text] += 1
+            if text == busy and tries[text] <= 2:
+                raise urllib.error.HTTPError("u", 529 if tries[text] == 1 else 429, "Busy", {}, None)
+            if text == down:
+                raise urllib.error.HTTPError("u", 503, "Unavailable", {}, None)
+            if text == bad:
+                raise urllib.error.HTTPError("u", 400, "Bad Request", {}, None)
+        return stub(messages, role, **params)
+
+    waits = []
+    monkeypatch.setattr("arrival.models.token_factory.complete", complete)
+    monkeypatch.setattr(bench.time, "sleep", waits.append)
+    out = tmp_path / "r.json"
+    assert bench.main(["--sets", "indirect", "--out", str(out)]) == 1  # two cases got no reply
+    assert tries == {busy: 3, down: 4, bad: 1} and waits == [2, 4, 2, 4, 8]
+    rows = {r["instruction"]: r for r in json.loads(out.read_text())["rows"]}
+    assert rows[busy]["retries"] == 2 and rows[busy]["live_call"] and rows[busy]["call_error"] is None
+    assert rows[down]["retries"] == 3 and rows[down]["call_error_kind"] == "http_503"
+    assert rows[bad]["retries"] == 0 and rows[bad]["call_error_kind"] == "http_400"
+    assert all(r["retries"] == 0 for t, r in rows.items() if t not in tries)
+    err = capsys.readouterr().err
+    assert f"retry 2/3 in 4 s after http_429: indirect {busy!r}" in err
+    assert f"retry 3/3 in 8 s after http_503: indirect {down!r}" in err and repr(bad) not in err
+    assert SECRET not in out.read_text()
+
+
 @pytest.mark.parametrize("err, kind", [(TimeoutError("timed out"), "timeout"),
                                        (urllib.error.URLError(TimeoutError("timed out")),
                                         "timeout"),

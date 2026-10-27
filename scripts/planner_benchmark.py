@@ -26,7 +26,9 @@ with the rule parser's answer; every v2 rate counts only plans from an accepted 
 token_factory.complete is wrapped inside this script (production code is unchanged) to keep each raw reply. Every
 call uses a throwaway cache, so each plan is a live call at temperature 0. Needs TOKEN_FACTORY_API_KEY with
 NEMOTRON_SUPER_MODEL and NEMOTRON_LIGHTNING_MODEL; exits 2 without them, or while the blind file has placeholder rows.
-Exits 1 when a case got no reply from Token Factory. The report keeps no key or header: of each call it records the
+Exits 1 when a case got no reply from Token Factory. An HTTP 429 or 5xx is retried up to 3 times, after 2, 4 and
+8 s, each retry logged with its case and counted in rows[].retries; timeouts, other errors and rejected replies are
+not retried. The report keeps no key or header: of each call it records the
 model id, the temperature and the base URL only.
 """
 
@@ -132,6 +134,7 @@ UNLISTED = [  # written by us, for the sim families the planner prompt leaves ou
 LISTED = tuple(FAMILIES)  # the 9 families the planner's system prompt names; SIM_FAMILIES has 15
 MOVES_OBJECT = {"counter_to_sink", "counter_to_counter", "put_in_drawer", "move_on_table", "load_dishwasher",
                 "unload_dishwasher"}
+RETRY_WAITS = (2, 4, 8)  # seconds before each retry of a 429 or 5xx: the first try and up to 3 retries
 SIM_SAMPLES = 200  # tasks make_tasks draws per family to list the objects it uses; it picks from the reachable pool
 # at random, so a draw this size leaves out none of the few objects a pool holds
 REJECT_KINDS = (("not in the scene", "object_or_target_not_in_inventory"), ("no known family", "unknown_family"),
@@ -241,6 +244,14 @@ def call_error_kind(e: Exception) -> str:
     if isinstance(e, urllib.error.HTTPError):
         return f"http_{e.code}"
     return "other"
+
+
+def retryable(e: Exception) -> bool:
+    """HTTP 429 or 5xx: Token Factory was busy, not the request wrong. Timeouts, other errors and replies
+    _parse_plan rejects are not retried."""
+    import urllib.error
+
+    return isinstance(e, urllib.error.HTTPError) and (e.code == 429 or 500 <= e.code < 600)
 
 
 def rate(k: int, n: int) -> dict | None:
@@ -364,6 +375,7 @@ def main(argv: list[str] | None = None) -> int:
 
     calls: list[dict] = []
     real_complete = tf.complete
+    case = ""  # what the next call is for, for the retry log
 
     def recording(*args, **kw):  # the planner and generate_instructions import complete per call, so they get this
         rec = {"role": kw.get("role", args[1] if len(args) > 1 else "super"),
@@ -371,12 +383,22 @@ def main(argv: list[str] | None = None) -> int:
                "model": kw.get("model") or config()["models"].get(kw.get("role", "super")),
                "temperature": kw.get("temperature")}
         calls.append(rec)
-        try:
-            reply = real_complete(*args, **kw)
-        except Exception as e:
-            rec["error"] = settings.redact(f"{type(e).__name__}: {e}")
-            rec["error_kind"] = call_error_kind(e)
-            raise
+        rec["retries"] = 0
+        while True:
+            try:
+                reply = real_complete(*args, **kw)
+                break
+            except Exception as e:
+                if retryable(e) and rec["retries"] < len(RETRY_WAITS):
+                    wait = RETRY_WAITS[rec["retries"]]
+                    rec["retries"] += 1
+                    print(f"retry {rec['retries']}/{len(RETRY_WAITS)} in {wait} s after {call_error_kind(e)}: {case}",
+                          file=sys.stderr)
+                    time.sleep(wait)
+                    continue
+                rec["error"] = settings.redact(f"{type(e).__name__}: {e}")
+                rec["error_kind"] = call_error_kind(e)
+                raise
         if reply is None:  # complete returns message.content as sent: null when no answer text came back
             rec["error"], rec["error_kind"] = "the reply's message content was null", "no_content"
         else:
@@ -393,6 +415,7 @@ def main(argv: list[str] | None = None) -> int:
             gen_cases = []
             if "generated" in sets:
                 for fam, (obj, obj_label, fx_label) in FAMILIES.items():
+                    case = f"wordings for {fam}"
                     gen = generate_instructions(fam, obj_label, fx_label, n=a.per_family, cache_path=d / "instr.json")
                     if gen.get("source") != "token_factory":
                         print(f"FAIL wordings for {fam}: source={gen.get('source')}", file=sys.stderr)
@@ -405,6 +428,7 @@ def main(argv: list[str] | None = None) -> int:
                 # one cache file each: no cache hits
                 planner = VLMPlanner(log=lambda *_: None, cache_path=d / f"plan{i}.json")
                 start = len(calls)
+                case = f"{kind} {text!r}"
                 t = time.perf_counter()
                 plan = planner.plan(text, objects, fixtures)
                 secs = time.perf_counter() - t
@@ -430,6 +454,7 @@ def main(argv: list[str] | None = None) -> int:
                     "reject_reason": None if reason is None else settings.redact(reason),
                     "call_error": mine[0].get("error") if mine else "no call reached Token Factory",
                     "call_error_kind": mine[0].get("error_kind") if mine else "no_call",
+                    "retries": sum(c["retries"] for c in mine),  # 429/5xx retries; nemotron_seconds includes the waits
                     "nemotron_family_ok": (accepted and plan["family"] == fam) if scored else None,
                     "nemotron_object_ok": (accepted and plan.get("object") == obj) if moves else None,
                     "nemotron_plan_ok": (accepted and right(plan, fam, obj)) if scored else None,
