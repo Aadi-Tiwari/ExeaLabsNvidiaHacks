@@ -31,6 +31,7 @@
  "tests/test_gr00t_preflight.py": 0.3,
  "tests/test_infra_files.py": 7.0,
  "tests/test_instruction_cache_shape.py": 0.1,
+ "tests/test_instruction_fallback_families.py": 0.1,
  "tests/test_instruction_parameters.py": 0.1,
  "tests/test_instruction_wording_dedup.py": 0.1,
  "tests/test_intake.py": 0.8,
