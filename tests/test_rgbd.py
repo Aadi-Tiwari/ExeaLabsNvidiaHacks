@@ -107,7 +107,10 @@ def test_frame_symlink_cannot_escape_bundle(tmp_path):
     outside = tmp_path / "outside.png"
     outside.write_bytes((root / "rgb" / "f000.png").read_bytes())
     (root / "rgb" / "f000.png").unlink()
-    (root / "rgb" / "f000.png").symlink_to(outside)
+    try:
+        (root / "rgb" / "f000.png").symlink_to(outside)
+    except OSError as e:  # Windows without Developer Mode or admin rights: WinError 1314, no symlink to test
+        pytest.skip(f"this machine cannot create symlinks ({e.__class__.__name__}: {e.strerror or e})")
     with pytest.raises(rgbd.ManifestError) as e:
         rgbd.load_manifest(root)
     assert e.value.code == "bad_path"
