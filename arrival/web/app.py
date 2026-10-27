@@ -37,7 +37,7 @@ from arrival.web.hardening import JOB_ID_RE
 
 ID_RE = re.compile(r"^[a-z0-9_]+$")
 BOUNDARY_RE = re.compile(r'boundary="?([^";]+)"?', re.I)
-NAME_RE = re.compile(rb'name="([^"]*)"', re.I)
+NAME_RE = re.compile(rb'(?:^|;\s*)name="([^"]*)"', re.I)
 FILENAME_RE = re.compile(rb'filename="([^"]*)"', re.I)
 READ_CHUNK = 1 << 20
 UPLOAD_DEADLINE = 600.0  # seconds for the whole body, on top of the per-read socket timeout
