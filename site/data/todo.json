@@ -3,15 +3,15 @@
  "repo": "AvnehSBhatia/ExeaLabsNvidiaHacks",
  "source": "README to-do, refreshed after #251, #252 and #302 put PRs #201-#301 on main. Submission fields re-checked against https://nebiusglobalaihackathon.devpost.com/ and the official rules on 2026-10-25.",
  "counts": {
-  "done": 63,
+  "done": 64,
   "review": 0,
   "todo": 1,
-  "blocked": 16,
+  "blocked": 15,
   "total": 80
  },
  "prs": {
-  "merged": 276,
-  "open": 1,
+  "merged": 277,
+  "open": 2,
   "closed_unmerged": 18
  },
  "groups": [
@@ -1071,13 +1071,16 @@
     {
      "id": "C4",
      "title": "Detect small objects from posed frames with a VLM",
-     "status": "blocked",
+     "status": "done",
      "owner_kind": "cloud",
      "size": "M",
      "priority": "should",
      "issue": 60,
-     "note": "Offline slice built: detection client, back-projection into the room, merge across frames and the worker's labelled fallback, tested on rendered frames with hand-written replies. The real model call is blocked on Token Factory credentials.",
-     "authors": []
+     "note": "Live on Oct 26: Nemotron 3.5 Super VL on Token Factory read the six rendered fixture frames, boxed the mug in all three mug frames and nothing in the empty ones; the mug was placed 1.2 cm from its true centre (docs/results/live-detect-2026-10-26.json). Rendered frames, not a real scan: real RGB-D frames wait on P1.",
+     "authors": [
+      "AvnehSBhatia",
+      "Claude Code"
+     ]
     },
     {
      "id": "C5",
