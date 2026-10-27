@@ -68,6 +68,7 @@
  "tests/test_render_gate.py": 1.3,
  "tests/test_retarget.py": 63.8,
  "tests/test_retention_age_controls.py": 0.1,
+ "tests/test_retention_empty_paths.py": 0.1,
  "tests/test_retention_timestamp.py": 0.1,
  "tests/test_retry_backoff_env.py": 0.1,
  "tests/test_retry_count_env.py": 0.1,
