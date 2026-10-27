@@ -76,6 +76,7 @@
  "tests/test_scans.py": 0.0,
  "tests/test_scanning_doc.py": 0.1,
  "tests/test_scene.py": 26.4,
+ "tests/test_se3_retarget.py": 25.8,
  "tests/test_shards.py": 45.9,
  "tests/test_sim.py": 151.8,
  "tests/test_smoke_hosted.py": 3.6,
