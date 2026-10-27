@@ -24,6 +24,7 @@
  "tests/test_fanout_describe_failure.py": 0.1,
  "tests/test_fanout_relative_paths.py": 0.1,
  "tests/test_fanout_status_schema.py": 0.1,
+ "tests/test_fanout_stops_local_shards.py": 0.1,
  "tests/test_fanout_unknown_room.py": 0.1,
  "tests/test_four_photo_image_validation.py": 0.3,
  "tests/test_four_photo_rerun.py": 0.1,
