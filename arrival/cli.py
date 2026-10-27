@@ -106,7 +106,7 @@ def cmd_demo(a) -> int:
 def cmd_validate(a) -> int:
     from arrival.export.validate import validate
 
-    per_episode = a.episodes or a.frames or bool(a.drop)
+    per_episode = a.episodes or a.frames or bool(a.drop) or bool(a.json)  # --json alone used to write nothing
     errors = validate(a.dataset_dir)
     if errors:  # with a per-episode pass requested, a bad episode is what we are here to find: keep going
         for e in errors:
@@ -687,7 +687,8 @@ def build_parser() -> argparse.ArgumentParser:
     v.add_argument("--frames", action="store_true", help="with --episodes: also decode videos and flag blank cameras")
     v.add_argument("--drop", metavar="CLEAN_DIR", default=None,
                    help="write a cleaned copy without the flagged episodes to CLEAN_DIR (implies --episodes)")
-    v.add_argument("--json", metavar="FILE", default=None, help="write the per-episode report as JSON")
+    v.add_argument("--json", metavar="FILE", default=None,
+                   help="write the per-episode report as JSON (implies --episodes)")
     v.set_defaults(fn=cmd_validate)
     s = sub.add_parser("serve", help="local page on 127.0.0.1")
     s.add_argument("--port", type=int, default=8000)
