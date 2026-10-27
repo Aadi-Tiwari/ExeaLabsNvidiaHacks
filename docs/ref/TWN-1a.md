@@ -12,7 +12,7 @@ The first three are required; the rest are optional extras (an extra the twin ca
 
 ## What is measured
 
-- **counter_length_m**: the longest contiguous counter run. Pieces are scanned `counter` fixtures that are not islands, not dining tables and not synthesized. A stove or dishwasher no taller than a counter (+5 cm) sits in the run, because a tape is run across the cooktop. Pieces join when their long axes are parallel, their centres are within 25 cm across the run and the gap along it is at most 5 cm. Length is the extent along the run.
+- **counter_length_m**: the longest contiguous counter run. Pieces are scanned `counter` fixtures that are not islands, not dining tables and not synthesized, plus the floor-standing `storage` cabinets at counter height within 30 cm of a wall: RoomPlan has no counter category, so a real export's base cabinets come in as storage. A stove or dishwasher no taller than a counter (+5 cm) sits in the run, because a tape is run across the cooktop. Pieces join when their long axes are parallel, their centres are within 25 cm across the run and the gap along it is at most 5 cm. Length is the extent along the run.
 - **L and U shapes**: pieces at another angle never join, so each leg is its own run and the longest leg is compared. Measure that leg on the tape, wall to wall or to the end of the cabinet, not around the corner. A second, separate counter is another run and counts only if it is longer.
 - **counter_height_m**: top of the longest counter piece in that run.
 - **sink_width_m**: the sink's extent along the counter front (`size[0]`); with several, the one over the longest run.
