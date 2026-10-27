@@ -1007,3 +1007,25 @@ def test_index_shows_retention_note_buttons_for_owner_only_and_progress(make, mo
     _set_status(out, a["id"], status="running", stage="sim", progress={"done": 3, "total": 8})
     _, page, _ = _fetch(srv, "/")
     assert b"sim: 3/8 episodes" in page
+
+
+@pytest.mark.parametrize("disposition", [
+    'form-data; filename="scan.json"; name="scan"',
+    'form-data; filename="scan.json";NAME="scan"',
+])
+def test_upload_accepts_filename_before_field_name(server, disposition):
+    srv, out = server
+    boundary = "arrival-parameter-order"
+    payload = b'{"room_id":"uploaded"}'
+    body = (f"--{boundary}\r\nContent-Disposition: {disposition}\r\n"
+            "Content-Type: application/json\r\n\r\n").encode() + payload + f"\r\n--{boundary}--\r\n".encode()
+    conn = http.client.HTTPConnection("127.0.0.1", srv.server_address[1], timeout=10)
+    try:
+        conn.request("POST", "/jobs", body=body,
+                     headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+        response = conn.getresponse()
+        data = json.loads(response.read())
+        assert response.status == 202, data
+        assert (out / "jobs" / data["id"] / "upload.bin").read_bytes() == payload
+    finally:
+        conn.close()
