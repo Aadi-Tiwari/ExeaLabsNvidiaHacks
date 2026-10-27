@@ -36,6 +36,21 @@ def rotated():
     return compile_twin(load_room("rotated_kitchen", SCANS))
 
 
+def _hinge_left_scan() -> dict:
+    """rotated_kitchen's scan with its fridge said to be hinged on the left, the corner side: the scan's hinge wins
+    over the one the compiler infers from the walls, so the stand spot beside the free edge is outside the room."""
+    scan = json.loads((REPO / SCANS / "rotated_kitchen" / "scan.json").read_text())
+    next(f for f in scan["fixtures"] if f["id"] == "fridge_w")["hinge"] = "left"
+    return scan
+
+
+@pytest.fixture(scope="module")
+def rotated_hinged_left():
+    from arrival.scan.bundle import validate
+
+    return compile_twin(validate(_hinge_left_scan()))
+
+
 @pytest.fixture(scope="module")
 def ushape():
     return compile_twin(load_room("u_kitchen_42", SCANS))
@@ -66,9 +81,9 @@ def test_mug_beyond_the_hands_reach_gets_a_base_that_reaches_it(rotated):
     assert any("mug_2 stands +0.10 m along" in line and "counter_e" in line for line in log)
 
 
-def test_fridge_in_the_corner_is_rejected_because_the_base_would_stand_outside(rotated):
+def test_fridge_in_the_corner_is_rejected_because_the_base_would_stand_outside(rotated_hinged_left):
     pre, log = {}, []
-    tasks = make_tasks(rotated, ["open_fridge", "open_drawer"], 6, seed=2, log=log.append, preflight=pre)
+    tasks = make_tasks(rotated_hinged_left, ["open_fridge", "open_drawer"], 6, seed=2, log=log.append, preflight=pre)
     assert {t["family"] for t in tasks} == {"open_drawer"}  # the fridge's free edge is at the corner of the room
     assert pre["families"] == ["open_fridge"] and pre["rejected"] == 1
     assert "outside the room" in pre["reasons"][0]["reason"] and "fridge_w" in pre["reasons"][0]["reason"]
@@ -213,8 +228,8 @@ def test_the_walker_crash_from_42_skips_the_task_at_build(rotated, tmp_path, mon
     assert _episodes(res) == 1
 
 
-def test_an_unreachable_task_is_not_an_attempt_and_the_run_still_finishes(rotated, tmp_path):
-    res = collect(rotated, ["open_fridge"], 2, tmp_path, people=0, res=32, log=QUIET)
+def test_an_unreachable_task_is_not_an_attempt_and_the_run_still_finishes(rotated_hinged_left, tmp_path):
+    res = collect(rotated_hinged_left, ["open_fridge"], 2, tmp_path, people=0, res=32, log=QUIET)
     r = res["report_data"]
     assert (r["attempts"], r["successes"], r["skipped_unreachable"]) == (0, 0, 1)
     assert _episodes(res) == 0 and r["families"] == {}
@@ -241,7 +256,7 @@ def _upload(out: Path, room: str) -> dict:
 
 def test_worker_reports_an_unsupported_layout_not_a_traceback(tmp_path):
     out = tmp_path / "out"
-    job = _upload(out, "rotated_kitchen")
+    job = create_job(out / "jobs", "rotated_kitchen.json", data=json.dumps(_hinge_left_scan()).encode())
     st = run_once(out, families=("open_fridge",), episodes=2, people=0, res=32, log=QUIET)
     assert st["id"] == job["id"] and st["status"] == "failed" and st["stage"] == "sim"
     assert st["error_kind"] == "unsupported_layout" and st["error"].startswith("unsupported layout: ")
