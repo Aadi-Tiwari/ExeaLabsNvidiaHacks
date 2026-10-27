@@ -124,3 +124,27 @@ def test_explicit_split_lists_must_match_every_frame(tmp_path, splits):
     with pytest.raises(rgbd.ManifestError) as e:
         rgbd.load_manifest(root)
     assert e.value.code == "split"
+
+
+@pytest.mark.parametrize(("field", "code"), [
+    ("timestamp", "timestamp"), ("fx", "intrinsics"), ("fy", "intrinsics"),
+    ("cx", "intrinsics"), ("world", "bad_matrix"), ("pose", "bad_matrix"),
+])
+def test_oversized_numbers_raise_manifest_error(tmp_path, field, code):
+    root = rgbd.write_synthetic_bundle(tmp_path)
+
+    def mutate(manifest):
+        frame = manifest["frames"][0]
+        if field == "timestamp":
+            frame[field] = 10 ** 400
+        elif field == "world":
+            manifest["arkit_world_to_room"][0] = 10 ** 400
+        elif field == "pose":
+            frame["camera_to_room"][0] = 10 ** 400
+        else:
+            frame["intrinsics"][field] = 10 ** 400
+
+    _edit(root, mutate)
+    with pytest.raises(rgbd.ManifestError) as error:
+        rgbd.load_manifest(root)
+    assert error.value.code == code
