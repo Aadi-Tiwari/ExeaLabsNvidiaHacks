@@ -14,7 +14,6 @@ import numpy as np
 YIELD = (0.25, 0.50)  # walkers: clearance (m) to the closest robot body at which they stand still, and above which they walk freely
 ROBOT_BODIES = ("robot_base",) + tuple(f"link{i}" for i in range(1, 8)) + ("hand", "finger_l", "finger_r")
 YIELD_BODIES = ROBOT_BODIES
-MOBILE_YIELD_BODIES = ("robot_base", "hand", "finger_l", "finger_r")
 
 
 def _seg_point_dist(a: np.ndarray, b: np.ndarray, p: np.ndarray) -> float:
@@ -41,9 +40,8 @@ class SafetyMonitor:
                        if model.geom_type[g] == mujoco.mjtGeom.mjGEOM_BOX else float(model.geom_size[g][0])
                        for g in self.geoms}
         self.half = {g: float(model.geom_size[g][1]) for g in self.geoms}
-        is_mobile = any(model.joint(j).name == "base_x" for j in range(model.njnt))
-        bodies = MOBILE_YIELD_BODIES if is_mobile else YIELD_BODIES
-        yb = {model.body(n).id for n in bodies}
+        # The same links can approach people whether the pedestal is fixed or driving.
+        yb = {model.body(n).id for n in YIELD_BODIES}
         self.yield_geoms = [g for g in self.geoms if model.geom_bodyid[g] in yb]
         self.people = []
         self.person_geoms = set()

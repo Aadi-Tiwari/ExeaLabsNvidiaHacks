@@ -250,25 +250,33 @@ def test_walker_yields_to_the_hand_and_resumes(twin):
     assert np.linalg.norm(w.pos[0] - p0) > 0.3 and mon.yield_geoms
 
 
-def test_walker_yields_to_arm_links(twin):
+@pytest.mark.parametrize("base_mode", ["fixed", "mobile"])
+def test_walker_yields_to_arm_links(twin, base_mode):
     """Yield uses the closest of the base and the arm-link bodies: a walker stands when a stretched
     link is near even if the hand and base sit farther, and walks when the arm is far (same as before)."""
-    from arrival.sim.safety import YIELD, SafetyMonitor
+    from arrival.sim.safety import ROBOT_BODIES, YIELD, SafetyMonitor
 
     base = (2.6, 1.0, 0.75)
-    m = mujoco.MjModel.from_xml_string(build_mjcf(twin, base, n_people=1, people_seed=3))
+    m = mujoco.MjModel.from_xml_string(build_mjcf(twin, base, n_people=1, people_seed=3, base=base_mode))
     d = mujoco.MjData(m)
     mon = SafetyMonitor(m)
+    assert {m.body(m.geom_bodyid[g]).name for g in mon.yield_geoms} == set(ROBOT_BODIES)
     old = [g for g in mon.geoms if m.body(m.geom_bodyid[g]).name in ("robot_base", "hand", "finger_l", "finger_r")]
     for j, v in zip(robot.ARM_JOINTS, (1.5, 1.0, 0.0, -0.2, 0.0, 0.2, 0.0)):
         d.qpos[int(m.joint(j).qposadr[0])] = v
+    if base_mode == "mobile":  # use current world geometry after driving and turning, not the parked pose
+        for j, v in zip(robot.BASE_JOINTS, (0.1, 0.2, 0.3)):
+            d.qpos[int(m.joint(j).qposadr[0])] = v
     mujoco.mj_forward(m, d)
     w = Walkers(1, (0.4, 1.65, 3.6, 2.7), seed=3, base_xy=base[:2], front_y=0.75,
                 fixtures=twin["fixtures"], fridge_visit=False)
     r, far, give = float(w.specs[0]["torso_r"]), np.array([3.4, 2.5]), mon.yield_clearance(d)
-    assert give(far, r) == pytest.approx(mon.clearance(d, far, r, old)) and give(far, r) > YIELD[1]
-    near = d.body("link4").xpos[:2].copy()
-    assert give(near, r) < mon.clearance(d, near, r, old) and give(near, r) < YIELD[0]
+    assert give(far, r) > YIELD[1] and mon.clearance(d, far, r, old) > YIELD[1]
+    # Approach the extended arm with positive clearance: the old mobile subset would still let us walk.
+    offset = d.body("robot_base").xmat.reshape(3, 3)[:2, :2] @ np.array([0.14, 0.74])
+    near = d.body("link4").xpos[:2] + offset
+    assert 0.0 < mon.clearance(d, near, r) < YIELD[0] < mon.clearance(d, near, r, old)
+    assert give(near, r) == pytest.approx(mon.clearance(d, near, r))
     w.wait[0] = 0.0
     w.pos[0] = near
     p0 = w.pos[0].copy()

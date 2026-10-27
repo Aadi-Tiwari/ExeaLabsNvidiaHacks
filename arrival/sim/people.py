@@ -322,7 +322,10 @@ def _interaction_loop(rng, floor, base_xy, front_y, prints: Footprints | None = 
     drive = [base + k / 8 * (end - base) for k in range(9)]  # points the loop must keep CLEAR from
     room = {1.0: x1 - hi, -1.0: lo - x0}  # the stop needs 0.8 m beside the base; pick a side that has it
     side = rng.choice([-1.0, 1.0]) if min(room.values()) >= 1.3 else max(room, key=room.get)
-    lane_y = min(max(base[1], end[1]) + rng.uniform(0.50, 0.56), y1 - 0.55)
+    # A carrying arm reaches behind the pedestal. Give mobile crossings another 15 cm so a walker
+    # yielding to its links can clear the route while the base waits for that same walker.
+    lane_offset = 0.15 if base_to is not None else 0.0
+    lane_y = min(max(base[1], end[1]) + rng.uniform(0.50, 0.56) + lane_offset, y1 - 0.55)
     near, far = (hi, lo) if side > 0 else (lo, hi)  # the stop sits beyond the route's end on its side
     x_lane0 = np.clip(far - side, x0, x1)
     lane = [np.array([x_lane0, lane_y]), np.array([np.clip(near + side, x0, x1), lane_y])]
