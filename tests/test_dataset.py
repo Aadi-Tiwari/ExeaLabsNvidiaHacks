@@ -347,3 +347,22 @@ def test_writer_rejects_video_pixel_coercion_before_writing(tmp_path):
         w.add_episode(z, z, [0, .05], "task", True, videos={"ego_view": bad})
     assert not list((tmp_path / "ds").glob("data/**/*.parquet"))
     w.close()
+
+
+def test_validator_reports_unreadable_parquet_and_continues(tmp_path):
+    import numpy as np
+
+    modality = {"state": {"arm": {"start": 0, "end": 2}},
+                "action": {"arm": {"start": 0, "end": 2, "absolute": True}},
+                "annotation": {"human.task_description": {}}}
+    writer = _writer(tmp_path, modality=modality)
+    for _ in range(2):
+        writer.add_episode(np.zeros((2, 2)), np.zeros((2, 2)), np.arange(2) / 20, "task", True)
+    writer.finish(2)
+    root = tmp_path / "ds"
+    assert validate(root) == []
+    corrupt = root / "data/chunk-000/episode_000000.parquet"
+    corrupt.write_bytes(b"PAR1truncated")
+    errors = validate(root)
+    assert any("episode_000000.parquet" in error and "cannot read" in error for error in errors)
+    assert not any("index is not continuous" in error for error in errors)
