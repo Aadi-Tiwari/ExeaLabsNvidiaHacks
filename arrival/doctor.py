@@ -179,6 +179,8 @@ def check_disk(out_dir: str | Path = "out") -> Check:
         probe = probe.parent
     if not probe.exists():
         return Check("disk", "fail", f"path does not exist and has no existing parent: {out_dir}")
+    if not probe.is_dir():  # a file partway along the path: the folder can never be created under it
+        return Check("disk", "fail", f"{out_dir} cannot be created: {probe} is a file, not a directory")
 
     try:
         free = shutil.disk_usage(probe).free / GIB
