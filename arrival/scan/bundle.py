@@ -111,7 +111,11 @@ def validate(bundle: dict) -> dict:
             if any(not isinstance(item.get(k), (list, tuple)) or len(item[k]) != 3 for k in ("size", "position")):
                 raise ScanBundleError(f"{item.get('id')}: size and position must have 3 values")
     for fl in bundle.get("floors", []):
-        if not isinstance(fl, dict) or len(fl.get("corners", [])) < 3 or any(len(c) != 2 for c in fl["corners"]):
+        if not isinstance(fl, dict):
+            raise ScanBundleError("floors entries must be objects")
+        corners = fl.get("corners")
+        if (not isinstance(corners, (list, tuple)) or len(corners) < 3
+                or any(not isinstance(c, (list, tuple)) or len(c) != 2 for c in corners)):
             raise ScanBundleError(f"{fl.get('id')}: floor corners must be 3 or more [x, y] points")
     for key in ("story", "story_count"):
         if key in bundle and not isinstance(bundle[key], int):
