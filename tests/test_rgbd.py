@@ -124,3 +124,11 @@ def test_explicit_split_lists_must_match_every_frame(tmp_path, splits):
     with pytest.raises(rgbd.ManifestError) as e:
         rgbd.load_manifest(root)
     assert e.value.code == "split"
+
+
+@pytest.mark.parametrize("content", [b"\xff", b'{"room_id":"\xff"}'])
+def test_manifest_invalid_utf8_is_a_bad_json_error(tmp_path, content):
+    (tmp_path / rgbd.MANIFEST_NAME).write_bytes(content)
+    with pytest.raises(rgbd.ManifestError) as error:
+        rgbd.load_manifest(tmp_path)
+    assert error.value.code == "bad_json"
