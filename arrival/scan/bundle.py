@@ -34,7 +34,7 @@ def numbers(value, n: int | None = None) -> list[float] | None:
 
 def _check_geometry(bundle: dict) -> None:
     """Finite, positive, plausible numbers everywhere the twin compiler and the scene builder read them."""
-    for w in bundle.get("walls", []):
+    for n, w in enumerate(bundle.get("walls", [])):
         wid = w.get("id") if isinstance(w, dict) else None
         ends = [numbers(w.get(k), 2) if isinstance(w, dict) else None for k in ("start", "end")]
         hv = numbers([w.get("height"), w.get("thickness")] if isinstance(w, dict) else None, 2)
@@ -42,6 +42,8 @@ def _check_geometry(bundle: dict) -> None:
             raise ScanBundleError(f"wall {wid}: start and end must be [x, y] numbers and height and thickness positive")
         if max(abs(v) for e in ends for v in e) > MAX_COORD_M or hv[0] > MAX_DIM_M or math.dist(*ends) > MAX_DIM_M:
             raise ScanBundleError(f"wall {wid}: longer than {MAX_DIM_M:g} m or beyond {MAX_COORD_M:g} m from the origin")
+        if not isinstance(wid, str) or not wid:  # the twin's layout and the sim's wall box are named after it
+            raise ScanBundleError(f"wall {n}: id must be a non-empty string, got {wid!r}")
     for key in ("fixtures", "objects"):
         for item in bundle.get(key, []):
             if not isinstance(item, dict):
@@ -77,6 +79,12 @@ def _check_geometry(bundle: dict) -> None:
     if dup:
         raise ScanBundleError(f"duplicate ids {dup}: every fixture and object needs its own id")
     walls = bundle.get("walls", [])
+    # a wall's box and an object's geom are both named by id in the sim's MuJoCo model (a fixture is a body, so a
+    # wall may share a fixture's id); a repeated name fails the model build of every task
+    taken = [w["id"] for w in walls] + [o["id"] for o in bundle.get("objects", [])]
+    dup = sorted({w["id"] for w in walls if taken.count(w["id"]) > 1})
+    if dup:
+        raise ScanBundleError(f"duplicate ids {dup}: every wall needs an id that no other wall and no object has")
     if walls:
         xs = [p[0] for w in walls for p in (w["start"], w["end"])]
         ys = [p[1] for w in walls for p in (w["start"], w["end"])]
