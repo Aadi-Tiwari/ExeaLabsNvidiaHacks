@@ -44,7 +44,7 @@ def run_demo(room: str = "hero_kitchen", episodes: int = 4, videos: str = "all",
 
     out_dir, scans_dir = Path(out_dir), resolve_scans(scans_dir)
     if not (scans_dir / room).is_dir():
-        raise SystemExit(f"room {room!r} not found under {scans_dir}")
+        raise SystemExit(f"room {room!r} not found under {scans_dir} ({scan_bundle.rooms_hint(room, scans_dir)})")
     if from_roomplan:
         rp_path = scans_dir / room / "roomplan.json"
         if not rp_path.is_file():
@@ -187,6 +187,13 @@ def _load_twin(room: str, out: str | Path, scans: str | Path) -> dict:
     return compile_twin(scan_bundle.load_room(room, resolve_scans(scans)))
 
 
+def _no_room(a) -> str:
+    from arrival.scan.bundle import rooms_hint
+
+    scans = resolve_scans(a.scans)
+    return f"no scan for room {a.room!r} under {scans} and no twin in {a.out}/twins ({rooms_hint(a.room, scans)})"
+
+
 def _sim_args(a):
     """Shared by sim and eval: (families, twin) or an error message."""
     try:
@@ -216,7 +223,7 @@ def _sim_args(a):
     try:
         twin = _load_twin(a.room, a.out, a.scans)
     except FileNotFoundError:
-        return f"no scan for room {a.room!r} under {resolve_scans(a.scans)} and no twin in {a.out}/twins"
+        return _no_room(a)
     return fams, twin
 
 
@@ -425,8 +432,7 @@ def cmd_research(a) -> int:
     try:
         twin = _load_twin(a.room, a.out, a.scans)
     except FileNotFoundError:
-        print(f"no scan for room {a.room!r} under {resolve_scans(a.scans)} and no twin in {a.out}/twins",
-              file=sys.stderr)
+        print(_no_room(a), file=sys.stderr)
         return EXIT_USAGE
 
     print(f"Researching appliances for room '{a.room}' via Tavily...")
