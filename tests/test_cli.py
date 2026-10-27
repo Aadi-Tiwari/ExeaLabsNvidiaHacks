@@ -94,7 +94,7 @@ def test_fanout_reports_invalid_merged_dataset(tmp_path, capsys, monkeypatch):
     monkeypatch.setattr("arrival.jobs.fanout.run_fanout",
                         lambda rec, cfg, out: {"dataset": str(tmp_path / "ds"), "ran": [0], "skipped": []})
     monkeypatch.setattr("arrival.export.validate.validate", lambda d: ["meta/info.json: missing"])
-    a = _ns(tmp_path, backend="local", run_id="r", shards=1)
+    a = _ns(tmp_path, room="hero_kitchen", backend="local", run_id="r", shards=1)
     assert cli.cmd_fanout(a) == cli.EXIT_INVALID
     assert "INVALID: meta/info.json: missing" in capsys.readouterr().err
 
@@ -220,7 +220,7 @@ def test_fanout_accepts_all_families(tmp_path, monkeypatch):
         return {"dataset": tmp_path, "ran": [0], "skipped": []}
     monkeypatch.setattr("arrival.jobs.fanout.run_fanout", fake_run)
     monkeypatch.setattr("arrival.export.validate.validate", lambda d: [])
-    ns = _ns(tmp_path, backend="local", run_id="r", shards=1, families="all")
+    ns = _ns(tmp_path, room="hero_kitchen", backend="local", run_id="r", shards=1, families="all")
     assert cli.cmd_fanout(ns) == cli.EXIT_OK
     assert seen == ["all"]
 
