@@ -54,6 +54,7 @@
  "tests/test_non_kitchen.py": 8.6,
  "tests/test_openings_sim.py": 0.1,
  "tests/test_people.py": 23.3,
+ "tests/test_planner_benchmark.py": 7.0,
  "tests/test_policy_server.py": 15.8,
  "tests/test_policy_wire_golden.py": 0.2,
  "tests/test_provenance.py": 3.5,

@@ -387,6 +387,28 @@ python -m arrival sim --planner vlm --tavily --episodes 2  # attach the research
 
 Only appliance fixtures present in the twin are looked up (the sink counts; counters and walls are skipped). The research shapes the planner prompt and tags tasks `tavily_enriched`; it does not change the physics.
 
+## Planner benchmark
+
+`scripts/planner_benchmark.py` scores the Nemotron planner (`VLMPlanner`) against the keyword parser (`rule_plan`), one live Token Factory call per request at temperature 0, each with a throwaway cache. It needs `TOKEN_FACTORY_API_KEY`, `NEMOTRON_SUPER_MODEL` and `NEMOTRON_LIGHTNING_MODEL` and exits 2 without them; it exits 1 when a request got no reply.
+
+```bash
+python scripts/planner_benchmark.py --dry-run            # no key, no network: the inventories and how many live calls a run makes
+python scripts/planner_benchmark.py                      # all five sets -> docs/results/planner-benchmark-<UTC date>.json
+python scripts/planner_benchmark.py --sets generated,indirect --per-family 4 --out /tmp/pb.json
+```
+
+| Flag | Meaning |
+|---|---|
+| `--per-family N` | Lightning wordings asked for per family in the `generated` set (default 6) |
+| `--out PATH` | Report path (default `docs/results/planner-benchmark-<UTC date>.json`) |
+| `--blind PATH` | Requests for the `blind` set (default `docs/results/planner-blind-requests.json`; its `about` field gives the schema). A live run refuses to start while any row has `"placeholder": true` |
+| `--sets LIST` | Comma-separated subset of `generated`, `indirect`, `blind`, `out_of_scope`, `unlisted_families` (default all) |
+| `--dry-run` | Print each inventory's ids and the number of live calls, then exit 0 |
+
+The sets: `generated` (Lightning's wordings) and `indirect` (requests we wrote that name the goal) run on the hero kitchen, as in the first report; `blind` comes from `--blind` and is scored twice, over all rows and over the rows asking for one of the 9 families the planner prompt lists (`listed_families`); `out_of_scope` (20, ours) names no family's verb, fixture or object and is reported as what each planner picked; `unlisted_families` (20, ours) asks for the six sim families the planner prompt does not list and is expected to fail; each family runs in the room whose twin has its fixture (oven and dishwasher in `kitchen_real_01`, faucet in the hero kitchen, table in `office`), recorded per row as `inventory`. Every scored row has `sim_executable` (`arrival.sim.tasks.make_tasks` makes that family, with that object, in that room; null without MuJoCo) and each set counts `sim_not_executable`; blind rows the sim cannot run are kept, since the blind set tests the language, not the sim. The inventories are the hero kitchen's ids and `tests/fixtures/roomplan/kitchen_real_01.json` and `office.json` built the way `python -m arrival demo --from-roomplan` builds a twin (seed 0). Of each call the report keeps only the model id, the temperature and the base URL. The report (`"version": 2`) keeps every key of the first one and adds, per set, family, object and plan accuracy, the rejected-reply rate with the reasons, Wilson 95% intervals (`arrival.eval.harness.wilson`), confusion counts and the median latency; each row keeps the raw reply and why `_parse_plan` rejected it. The v1 `nemotron_right` still counts a rejected reply under Nemotron with the parser's answer; the v2 rates count it as wrong.
+
+An HTTP 429 or 5xx is retried after 2, 4 and 8 s (four calls at most), each retry logged to stderr with its case and counted in `rows[].retries`; timeouts, other errors and rejected replies are not retried. The run of record is `docs/results/planner-benchmark-2026-10-27.json`; `planner-benchmark-2026-10-27-run1.json` is an earlier run that day on four sets, kept to show the run-to-run spread (temperature 0 is not deterministic on the endpoint). `planner-benchmark-2026-10-27-blind.json` reruns the blind set alone (`--sets blind`) on all 30 requests from both writers (w1, w2).
+
 ## Output layout
 
 `out/` is gitignored. Nothing under it is committed.
