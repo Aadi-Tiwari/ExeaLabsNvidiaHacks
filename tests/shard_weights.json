@@ -102,6 +102,7 @@
  "tests/test_tavily.py": 0.3,
  "tests/test_tavily_cache_shape.py": 0.1,
  "tests/test_teleop.py": 10.3,
+ "tests/test_token_factory_reply.py": 0.1,
  "tests/test_tree_rss_indexerror.py": 0.1,
  "tests/test_upload_realism.py": 18.3,
  "tests/test_variation.py": 5.3,
