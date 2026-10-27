@@ -231,7 +231,7 @@ Moving parts in the sim (`arrival.sim.scene.part_names(twin)`): each is a joint,
 
 | fixture type | joints |
 |---|---|
-| counter | `<id>_drawer0`, `<id>_drawer1` (slide, 0 to 0.4 m), `<id>_door` (hinge, 0 to 1.9 rad), `<id>_upper_door<k>` (hinge; one wall-cabinet door per 0.6 m of counter run, none over tables, islands or counters under 0.8 m) |
+| counter | `<id>_drawer0`, `<id>_drawer1` (slide, 0 to 0.4 m), `<id>_door` (hinge, 0 to 1.9 rad), `<id>_upper_door<k>` (hinge; one wall-cabinet door per 0.6 m of counter run, none over tables, islands or counters under 0.8 m). Drawers and door use the open front only (`scene.front_span`: not the part a neighbouring run stands against in a corner); against such a blind corner at the right end the drawers take that end and the door the open end (`drawers_at_right`). A front that cannot hold the 0.5 m stack and a door of at least 0.3 m (`MIN_DOOR_W`) has one door and no drawers (`has_drawers`), and the drawer and door task pools skip what a cabinet does not have |
 | sink inside a counter | `<sink_id>_faucet` (hinge, 0 to 1.2 rad; the lever up is water on) |
 | stove | `<id>_oven_door` (hinge about the bottom edge, 0 to 1.5 rad; closed is held by gravity) |
 | fridge_bottom_freezer | `<id>_door` (hinge, 0 to 2.0 rad). Optional fixture field `hinge`: `"left"` (default, and what a RoomPlan scan always gets) or `"right"`, which mirrors the door in the fixture's x (hinge on the right edge, free edge on the left, opening the same way: q > 0 is open). Left output is byte-identical to before the field |
