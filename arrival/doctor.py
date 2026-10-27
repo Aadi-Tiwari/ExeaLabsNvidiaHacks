@@ -129,8 +129,10 @@ def check_ffmpeg(exe: str | None = None) -> Check:
 
 
 def _env_file_names(paths: list[Path]) -> dict[str, Path]:
-    """Names of the non-empty KEY=value lines in each .env file, first file winning. Values are dropped on the spot."""
+    """Names the .env files give a non-empty value, with the file it comes from. As in `config.load_dotenv`, the first
+    line that names a key decides, even with an empty value. Values are dropped on the spot."""
     found: dict[str, Path] = {}
+    seen: set[str] = set()
     for path in paths:
         try:
             lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -142,7 +144,10 @@ def _env_file_names(paths: list[Path]) -> dict[str, Path]:
                 continue
             key, _, value = line.partition("=")
             key = key.removeprefix("export ").strip().strip("'\"")
-            if key and value.strip().strip("'\"") and key not in found:
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            if value.strip().strip("'\""):
                 found[key] = path
     return found
 
@@ -151,17 +156,30 @@ def check_env(environ: dict[str, str] | None = None, env_files: list[Path] | Non
     environ = os.environ if environ is None else environ
     files = [Path.cwd() / ".env", REPO / ".env"] if env_files is None else [Path(p) for p in env_files]
     in_file = _env_file_names(files)
+    # config.get's rules: ARRIVAL_DOTENV=0 turns the .env files off, and a .env never fills a variable the
+    # environment already sets, even to an empty value (which config.get then treats as unset)
+    dotenv_off = environ.get("ARRIVAL_DOTENV", "1") == "0"
+
+    def from_file(name: str) -> bool:
+        return name in in_file and not dotenv_off and name not in environ
+
     out = []
     for name, purpose in OPTIONAL_ENV:
         if environ.get(name):
             out.append(Check(name, "ok", "set in the environment"))
-        elif name in in_file:
+        elif from_file(name):
             out.append(Check(name, "ok", f"set in {in_file[name].name} (read by the module that needs it)"))
+        elif name in in_file and not dotenv_off:
+            out.append(Check(name, "warn", f"not set: an empty value in the environment hides the one in "
+                                           f"{in_file[name].name}; unset the variable to use it"))
+        elif name in in_file:
+            out.append(Check(name, "info", f"not set: {in_file[name].name} has it, but ARRIVAL_DOTENV=0 turns "
+                                           f".env files off (optional: {purpose})"))
         else:
             out.append(Check(name, "info", f"not set (optional: {purpose})"))
-    if environ.get("TOKEN_FACTORY_API_KEY") or "TOKEN_FACTORY_API_KEY" in in_file:
+    if environ.get("TOKEN_FACTORY_API_KEY") or from_file("TOKEN_FACTORY_API_KEY"):
         for name, purpose in TOKEN_FACTORY_MODELS:
-            if not (environ.get(name) or name in in_file):
+            if not (environ.get(name) or from_file(name)):
                 out.append(Check(name, "warn", f"not set, so {purpose} falls back offline even with the key (see .env.example)"))
     return out
 
