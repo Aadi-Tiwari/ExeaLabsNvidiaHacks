@@ -92,7 +92,7 @@ def load_manifest(directory) -> Manifest:
         _fail("missing_manifest", f"{path} not found")
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as e:
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
         _fail("bad_json", str(e))
     if not isinstance(raw, dict):
         _fail("bad_json", "manifest must be a JSON object")
