@@ -19,11 +19,11 @@ from arrival.export.validate import validate  # noqa: E402
 from arrival.jobs.queue import create_job  # noqa: E402
 from arrival.jobs.worker import run_once  # noqa: E402
 from arrival.scan.bundle import load_room  # noqa: E402
-from arrival.sim.collect import SimEnv, collect  # noqa: E402
+from arrival.sim.collect import SimEnv, collect, run_episode  # noqa: E402
 from arrival.sim.people import Walkers, frame  # noqa: E402
 from arrival.sim.policy import ScriptedExpert  # noqa: E402
 from arrival.sim.preflight import base_pose, check_task  # noqa: E402
-from arrival.sim.tasks import SIM_FAMILIES, make_tasks  # noqa: E402
+from arrival.sim.tasks import SIM_FAMILIES, finish_task, make_tasks  # noqa: E402
 from arrival.twin.compile import compile_twin, to_local  # noqa: E402
 
 SCANS = "tests/fixtures/scans"
@@ -118,7 +118,9 @@ def test_start_offsets_run_along_the_counter_whatever_wall_it_is_on(rotated):
         seen.add(src["id"])
         a, b = to_local(objs[t["object_id"]]["position"][:2], src), to_local(t["start"][:2], src)
         got = (round(b[0] - a[0], 4), round(b[1] - a[1], 4))
-        assert got in offsets, (t["task_id"], src["id"], got)
+        # along the same axis and way as a POSE_OFFSETS entry; shorter only where it would cross the counter's edge
+        assert any(all((g == 0) == (c == 0) and g * c >= 0 and abs(g) <= abs(c) for g, c in zip(got, o))
+                   for o in offsets), (t["task_id"], src["id"], got)
         assert abs(b[0]) < src["size"][0] / 2 and abs(b[1]) < src["size"][1] / 2  # still on the counter top
     assert {"counter_w", "counter_s"} <= seen  # a west wall run (yaw -90) and a south wall run (yaw 180)
 
@@ -302,6 +304,37 @@ def test_no_strip_in_front_of_the_run_falls_back_to_a_floor_walk_with_a_note(rot
         assert front is None and base is not None and "no free strip" in note
     finally:
         env.close()
+
+
+@pytest.mark.parametrize("room", ["rotated_kitchen", "u_kitchen_42"])
+def test_start_offsets_keep_the_object_on_its_counter(room, rotated, ushape):
+    """The -0.08 m offset put u_kitchen_42's mug 0.04 m past storage_sink's end and rotated_kitchen's bowl 0.025 m
+    past counter_w's; the offset now stops short of the edge."""
+    twin = {"rotated_kitchen": rotated, "u_kitchen_42": ushape}[room]
+    fx = {f["id"]: f for f in twin["fixtures"]}
+    half = {o["id"]: max(o["size"][:2]) / 2 for o in twin["objects"]}
+    starts = 0
+    for holdout in (False, True):
+        for mobile in (False, True):
+            for t in make_tasks(twin, list(SIM_FAMILIES), 200, seed=0, holdout=holdout, mobile=mobile, log=QUIET):
+                if "start" not in t:
+                    continue
+                starts += 1
+                src, h = fx[t["source"]], half[t["object_id"]]
+                lx, ly = to_local(t["start"], src)
+                assert abs(lx) + h <= src["size"][0] / 2 + 1e-9 and abs(ly) + h <= src["size"][1] / 2 + 1e-9,                     (t["family"], t["object_id"], t["start"])
+    assert starts
+
+
+def test_unload_dishwasher_puts_the_mug_back_on_the_counter_from_the_offset_nearest_the_dishwasher(ushape):
+    """unload_dishwasher sets the object down at its offset start. At storage_sink's end, next to the dishwasher,
+    the mug went half over the edge and fell onto the dishwasher top (2 of 8 eval episodes at seed 1)."""
+    tasks = make_tasks(ushape, ["unload_dishwasher"], 12, seed=1, log=QUIET)
+    task = finish_task(min(tasks, key=lambda t: t["start"][1]))
+    sink_counter = next(f for f in ushape["fixtures"] if f["id"] == task["source"])
+    ep = run_episode(SimEnv(ushape, task, res=32), ScriptedExpert(), task)
+    assert ep["success"], ep["detail"]
+    assert ep["detail"]["object_pos"][2] > sink_counter["size"][2]  # on the counter top, not the dishwasher (0.885 m)
 
 
 def _drawer_task(twin: dict, fixture: str) -> dict:
