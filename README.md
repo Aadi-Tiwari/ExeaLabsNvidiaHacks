@@ -331,8 +331,7 @@ Nebius x NVIDIA Global AI Hackathon, https://nebiusglobalaihackathon.devpost.com
 ### Known limits
 
 - GR00T trains on our datasets (three fine-tunes, `docs/07-eval.md`), but every score is from 24 to 48 paired trials and the same checkpoint has scored 2 of 12 and 7 of 12 on the same 12 trials: only large paired differences mean anything.
-- The mobile base (L13) is behind `--base mobile` and the real Franka behind `--arm menagerie`; the defaults are still the fixed Panda-style arm. The Menagerie arm was measured over all families only at seed 5 with no people.
-- A 28-episode run at 64 px after the door joint-limit fix (#152) succeeds 28 of 28 with 0 episodes flagged by the quality check. It was not rerun at 224 px.
+- The mobile base (L13) is behind `--base mobile` and the real Franka behind `--arm menagerie`; the defaults are still the fixed Panda-style arm. The Menagerie arm was measured over all families at seed 5 with no people and, on Oct 27 (main `897aa05`), at seeds 0 and 3 with two people walking: 12 of 14 and 13 of 14, no human contacts, no episode flagged. `open_oven` missed in both of those runs (0 of 2), and one `counter_to_sink` at seed 0.
 - With a fixed base, drawers and `close_door` on the U-kitchen's corner cabinet stay unreachable and are skipped. The rotated kitchen's fridge, whose right side is in the room's corner, is hinged on that side since the hinge is inferred from the walls (`hinge_source: inferred_from_walls`), and opens. Only the corner cabinet's `open_door` takes a shifted stand spot. The reach planner checks the arm's IK, not collisions.
 - With `--base mobile`, walker yield still ignores the arm links.
 - The job memory limit (`ARRIVAL_MAX_JOB_MB`) counts resident memory across the process tree (`/proc` on Linux, `Toolhelp32`/`psapi` on Windows, `ps` on macOS; `docs/ref/MEMCAP.md`).
