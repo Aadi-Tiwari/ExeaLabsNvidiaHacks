@@ -3,10 +3,10 @@
  "repo": "AvnehSBhatia/ExeaLabsNvidiaHacks",
  "source": "README to-do, refreshed after #251, #252 and #302 put PRs #201-#301 on main. Submission fields re-checked against https://nebiusglobalaihackathon.devpost.com/ and the official rules on 2026-10-25.",
  "counts": {
-  "done": 64,
+  "done": 65,
   "review": 0,
   "todo": 1,
-  "blocked": 15,
+  "blocked": 14,
   "total": 80
  },
  "prs": {
@@ -914,11 +914,15 @@
     {
      "id": "G2",
      "title": "Real GR00T policy server: chunking, both camera keys, golden-file test",
-     "status": "blocked",
+     "status": "done",
      "owner_kind": "gpu",
      "size": "M",
      "priority": "must",
-     "note": "Wire-format golden test and the 8-float and 11-float schemas are done. The shim has not run against a real GR00T server.",
+     "pr": [
+      83,
+      164
+     ],
+     "note": "Ran against real GR00T on Oct 21 (Isaac-GR00T dac54b3, N1.7-3B, one 96 GB GPU): /act returns 16-step action chunks for a request with both camera keys, and eval --policy vla scored the fine-tunes through it (docs/ref/POL-3.md). The wire-format golden test and the 8-float and 11-float schemas are done.",
      "authors": [
       "AvnehSBhatia",
       "Claude Code"
