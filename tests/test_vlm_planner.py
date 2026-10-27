@@ -21,19 +21,32 @@ def test_rule_plan_parsing():
 
 
 def test_vlm_planner_cache_hit(tmp_path):
+    from arrival.sim.tasks import SIM_FAMILIES
+
     cache_file = tmp_path / "test_cache.json"
-    cache_file.write_text(json.dumps({
-        "grab the mug and drop in sink::['mug_1']::['sink_1']": {
-            "family": "counter_to_sink",
-            "object": "mug_1",
-            "target": "sink_1",
-        }
-    }))
+    key = "grab the mug and drop in sink::['mug_1']::['sink_1']::families=" + "|".join(SIM_FAMILIES)  # no twin: all 15
+    cache_file.write_text(json.dumps({key: {"family": "counter_to_sink", "object": "mug_1", "target": "sink_1"}}))
 
     planner = VLMPlanner(log=lambda *_: None, cache_path=cache_file)
     plan = planner.plan("grab the mug and drop in sink", ["mug_1"], ["sink_1"])
     assert planner.source == "cache"
     assert plan == {"family": "counter_to_sink", "object": "mug_1", "target": "sink_1"}
+
+
+def test_a_plan_cached_under_another_offer_never_answers(monkeypatch, tmp_path):
+    # the same instruction and inventory offered different families is a different question
+    planner = VLMPlanner(log=lambda *_: None, cache_path=tmp_path / "c.json")
+    args = ("Open the oven", ["mug_1"], ["stove_1"])
+    nine = ("counter_to_sink", "counter_to_counter", "open_drawer", "open_door", "close_drawer", "close_door",
+            "put_in_drawer", "wipe_counter", "open_fridge")  # what the prompt offered everywhere before
+    keys = {planner._cache_key(*args, families=f) for f in (nine, nine + ("open_oven",), None)}
+    assert len(keys) == 3 and planner._cache_key(*args) == planner._cache_key(*args, families=None)
+    old = "open the oven::['mug_1']::['stove_1']"  # the key format before the offer was part of it
+    (tmp_path / "c.json").write_text(json.dumps({old: {"family": "open_door", "object": None, "target": None}}))
+    monkeypatch.setattr("arrival.models.token_factory.complete",
+                        lambda *a, **k: '{"family": "open_oven", "object": null, "target": "stove_1"}')
+    planner = VLMPlanner(log=lambda *_: None, cache_path=tmp_path / "c.json")
+    assert planner.plan(*args)["family"] == "open_oven" and planner.source == "token_factory"  # asked, not cached
 
 
 def test_vlm_planner_falls_back_when_unconfigured(monkeypatch, tmp_path):
@@ -121,7 +134,7 @@ def test_sim_collect_ignores_plan_for_another_family(tmp_path, monkeypatch):
     twin = compile_twin(load_room("hero_kitchen", "scans"))
     assert "counter_b" in [f["id"] for f in twin["fixtures"]]
 
-    def plan(self, instruction, objects, fixtures, research_context=None):
+    def plan(self, instruction, objects, fixtures, research_context=None, **_):  # collect also passes twin, mobile
         self.source = "token_factory"
         return {"family": "wipe_counter", "object": None, "target": "counter_b"}
 
@@ -191,6 +204,68 @@ def test_planner_calls_at_temperature_zero(monkeypatch, tmp_path):
                         lambda *a, **k: seen.update(k) or '{"family": "open_door", "object": null, "target": null}')
     VLMPlanner(log=lambda *_: None, cache_path=tmp_path / "c.json").plan("Open the door", [], [])
     assert seen["temperature"] == 0
+
+
+def _offered(system: str) -> list[str]:
+    return system.split("one of ")[1].split(",")[0].split("|")
+
+
+def _prompt_sent(monkeypatch, tmp_path, **kw) -> str:
+    seen = []
+    monkeypatch.setattr("arrival.models.token_factory.complete",
+                        lambda messages, **k: seen.append(messages) or '{"family": "open_fridge", "object": null, "target": null}')
+    cache = tmp_path / f"c{len(list(tmp_path.glob('c*.json')))}.json"  # a fresh cache: a hit sends nothing
+    VLMPlanner(log=lambda *_: None, cache_path=cache).plan("Check the milk", [], ["fridge_1"], **kw)
+    return seen[0][0]["content"]
+
+
+def test_planner_prompt_without_a_twin_offers_every_sim_family(monkeypatch, tmp_path):
+    # the prompt listed 9 of the 15 families _parse_plan accepts, everywhere; with no twin it now offers all 15
+    from arrival.sim.tasks import SIM_FAMILIES
+
+    system = _prompt_sent(monkeypatch, tmp_path)
+    assert _offered(system) == list(SIM_FAMILIES) and system == VLMPlanner._system_prompt()
+
+
+def _twins() -> dict:
+    pytest.importorskip("mujoco")  # place_default_objects for the RoomPlan rooms
+    from arrival.scan.bundle import load_room
+    from arrival.scan.roomplan import load as load_roomplan
+    from arrival.twin.compile import compile_twin, place_default_objects
+
+    twins = {"hero_kitchen": compile_twin(load_room("hero_kitchen", "scans"))}
+    for room in ("kitchen_real_01", "office"):
+        bundle = load_roomplan(Path(__file__).parent / "fixtures" / "roomplan" / f"{room}.json", room)
+        bundle["objects"] = place_default_objects(compile_twin(bundle), seed=0)
+        twins[room] = compile_twin(bundle)
+    return twins
+
+
+def test_planner_prompt_offers_the_families_whose_fixture_the_room_has(monkeypatch, tmp_path):
+    # by fixture type, whatever the base and the reach: no table or dishwasher in the hero kitchen, no sink in the
+    # office (and STORAGE-01 is not built as a cabinet, so no door or drawer), no sink in kitchen_real_01
+    from arrival.sim.tasks import SIM_FAMILIES, room_families
+
+    twins = _twins()
+    expect = {"hero_kitchen": ({"counter_to_counter", "open_oven", "turn_on_faucet"},
+                               {"move_on_table", "open_dishwasher", "load_dishwasher", "unload_dishwasher"}),
+              "office": ({"move_on_table"}, {"counter_to_sink", "turn_on_faucet", "open_door", "close_door"}),
+              "kitchen_real_01": ({"open_dishwasher", "open_oven"}, {"counter_to_sink", "turn_on_faucet"})}
+    for room, (present, absent) in expect.items():
+        offered = _offered(_prompt_sent(monkeypatch, tmp_path, twin=twins[room]))
+        assert offered == list(room_families(twins[room]))  # derived from the twin, in SIM_FAMILIES order
+        assert offered == [f for f in SIM_FAMILIES if f in offered]
+        assert present <= set(offered) and not absent & set(offered), room
+
+
+def test_planner_rejects_a_family_the_room_was_not_offered(monkeypatch, tmp_path):
+    twin = _twins()["hero_kitchen"]
+    planner = _planner_with_reply(monkeypatch, tmp_path, '{"family": "move_on_table", "object": "mug_1", "target": null}')
+    planner.plan("Shift the mug down the counter", ["mug_1"], ["counter_a"], twin=twin)
+    assert planner.source == "rule_based" and not (tmp_path / "c.json").exists()  # rejected, so the parser answered
+    with pytest.raises(ValueError, match="not offered"):
+        VLMPlanner._parse_plan('{"family": "move_on_table"}', [], [], ("counter_to_sink",))
+    assert VLMPlanner._parse_plan('{"family": "move_on_table"}', [], [])["family"] == "move_on_table"  # no list given
 
 
 def test_planner_takes_first_json_object_of_a_chatty_reply(monkeypatch, tmp_path):
