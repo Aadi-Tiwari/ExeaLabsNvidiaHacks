@@ -284,8 +284,8 @@ A GPU host with 40 GB or more, or a Linux box.
 | G4 | Generic-RoboCasa baseline dataset and fine-tune | M | must | Blocked | issue #64 | unassigned |
 | G5 | Dockerfile.gpu, run_finetune.sh, train and serve targets Dockerfile.gpu, scripts/run_finetune.sh and the train, eval-policy and serve-policy targets are written and never run on a GPU. Unverified items are listed in the build log. | L | must | Blocked | issue #63 | @AvnehSBhatia, Claude Code |
 | G6 | Prove layout.yaml loads in real RoboCasa Offline checker scripts/check_layout.py compares layout.yaml with the twin. Loading in real RoboCasa is not checked. | M | must | Blocked | issue #69 | @AvnehSBhatia, Claude Code |
-| G7 | Real MimicGen retargeting for counter_to_sink | L | should | Blocked | issue #62 | unassigned |
-| G8 | Scan-appearance composite replacing the splat stub | L | should | Blocked | issue #61 | unassigned |
+| G7 | Real MimicGen retargeting for counter_to_sink Native object-centric SE(3) retargeting of counter_to_sink landed in #356 (arrival/generate/se3_retarget.py, physics-checked, small runs). Upstream MimicGen is not integrated (arrival/generate/mimicgen.py only probes for RoboCasa), and issue #62's seed-set and 100-episode benchmark has not run. | L | should | Blocked | #356 | unassigned |
+| G8 | Scan-appearance composite replacing the splat stub The depth compositor landed in #194 (arrival/render/splat.py: a static view and the moving geometry, same camera, by depth). No Gaussian splat is trained and no scan appearance is captured yet. | L | should | Blocked | #194 | unassigned |
 
 ### Needs cloud (7)
 
@@ -299,7 +299,7 @@ Cloud accounts, billing or deploy access.
 | C2 | Hosted HTTPS demo with a pre-seeded room The static demo site is live at https://arrival.exealabs.org (Vercel). The hosted upload-to-dataset demo is not: smoke test (#115), /healthz, docker-compose.yml and docs/DEPLOY.md are written and tested on a laptop. The Devpost form does not require a demo URL on the Physical AI track. | M | must | Blocked | #115 | @JmarbinGG |
 | C3 | Measured time and cost per demo against the teleop baseline Added arrival cost CLI subcommand with automated P3 teleop baseline comparison. Cloud dollar cost per demo and full C3 comparison remains to be measured with real usage. | S | should | Blocked | issue #67 | @amanx98 |
 | C4 | Detect small objects from posed frames with a VLM Live on Oct 26: Nemotron 3.5 Super VL on Token Factory read the six rendered fixture frames, boxed the mug in all three mug frames and nothing in the empty ones; the mug was placed 1.2 cm from its true centre (docs/results/live-detect-2026-10-26.json). Rendered frames, not a real scan: real RGB-D frames wait on P1. | M | should | Shipped | issue #60 | @AvnehSBhatia, Claude Code |
-| C5 | Real Cosmos variation on a tenth of validated frames | M | nice | Blocked | issue #70 | unassigned |
+| C5 | Real Cosmos variation on a tenth of validated frames The restyle stage and its Cosmos client landed in #93 (arrival/render/variation.py, SIM-7a): about 10% of frames, edge and mask checks, honest labels. It has run only against a local mock server, never a real Cosmos endpoint. | M | nice | Blocked | #93 | unassigned |
 
 ### Needs people or an iPhone (6)
 
