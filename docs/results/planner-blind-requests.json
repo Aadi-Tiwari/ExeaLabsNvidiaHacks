@@ -1,0 +1,8 @@
+{
+  "about": "Blind set for scripts/planner_benchmark.py (--blind). Requests written by two people who had not seen the planner prompt or its family list. One object per request: text is the request as written; inventory is hero_kitchen, kitchen_real_01 or office (python scripts/planner_benchmark.py --dry-run prints each one's object and fixture ids); family is the task the request asks for, one of arrival.sim.tasks.SIM_FAMILIES; object is the object id it names in that inventory, or null; author is A or B; placeholder is true on the example rows below. The script refuses to run the blind set while any row has placeholder true.",
+  "requests": [
+    {"text": "PLACEHOLDER: could you get the fridge open for me?", "inventory": "hero_kitchen", "family": "open_fridge", "object": null, "author": "A", "placeholder": true},
+    {"text": "PLACEHOLDER: the cup needs a wash, pop it in the dishwasher.", "inventory": "kitchen_real_01", "family": "load_dishwasher", "object": "cup_1", "author": "B", "placeholder": true},
+    {"text": "PLACEHOLDER: nudge the book along the table so I have room to write.", "inventory": "office", "family": "move_on_table", "object": "book_1", "author": "A", "placeholder": true}
+  ]
+}
