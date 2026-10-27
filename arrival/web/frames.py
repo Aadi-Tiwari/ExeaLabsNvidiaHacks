@@ -80,7 +80,7 @@ def extract(src, offset: int, length: int, dest: Path) -> int:
     root = dest.resolve()
     try:
         zf = zipfile.ZipFile(io.BufferedReader(_Slice(src, offset, length)))
-    except zipfile.BadZipFile as e:
+    except (zipfile.BadZipFile, UnicodeDecodeError) as e:
         raise FramesError("bad_zip", f"frames file is not a readable zip: {e}") from None
     seen: set[str] = set()
     total = written = 0
@@ -114,7 +114,7 @@ def extract(src, offset: int, length: int, dest: Path) -> int:
                         if size > cap or total > MAX_TOTAL_BYTES:
                             raise FramesError("too_large", f"{name!r} or the bundle exceeds the unpacked size limit")
                         fout.write(chunk)
-            except (zipfile.BadZipFile, EOFError, RuntimeError, OSError) as e:
+            except (zipfile.BadZipFile, EOFError, RuntimeError, OSError, UnicodeDecodeError) as e:
                 raise FramesError("bad_zip", f"{name!r} could not be read from the zip: {e}") from None
             written += 1
     return written
