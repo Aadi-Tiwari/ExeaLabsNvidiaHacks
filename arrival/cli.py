@@ -316,6 +316,11 @@ def cmd_fanout(a) -> int:
     except ShardError as e:
         print(f"fanout: {e}", file=sys.stderr)
         return EXIT_USAGE
+    scans = resolve_scans(a.scans)
+    if a.backend == "local" and not (scans / a.room / "scan.json").is_file():
+        # every shard's sim would fail to load it, three times each, and run.json would keep the misspelt room
+        print(f"fanout: no scan for room {a.room!r} under {scans}", file=sys.stderr)
+        return EXIT_USAGE
     if a.backend == "nebius":
         from arrival.jobs.nebius import NebiusBackend, NebiusNotConfigured
 
