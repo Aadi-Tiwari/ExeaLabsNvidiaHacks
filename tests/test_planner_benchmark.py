@@ -230,9 +230,11 @@ def test_placeholder_blind_rows_stop_before_any_call(tmp_path, monkeypatch, caps
 
     monkeypatch.setattr("arrival.models.token_factory.complete", no_network)
     out = tmp_path / "r.json"
-    assert bench.main(["--out", str(out)]) == 2  # the shipped file holds only placeholder rows
+    placeholder = tmp_path / "placeholder.json"
+    placeholder.write_text(json.dumps({"requests": [dict(BLIND[0], placeholder=True)]}))
+    assert bench.main(["--blind", str(placeholder), "--out", str(out)]) == 2
     assert not out.exists() and "placeholder" in capsys.readouterr().err
-    assert bench.main(["--dry-run"]) == 0
+    assert bench.main(["--dry-run"]) == 0  # the shipped file loads
     bad = tmp_path / "bad.json"
     bad.write_text(json.dumps({"requests": [{"text": "x", "inventory": "office", "family": "fold_laundry"}]}))
     assert bench.main(["--blind", str(bad), "--out", str(out)]) == 2
