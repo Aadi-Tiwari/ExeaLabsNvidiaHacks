@@ -373,7 +373,7 @@ Fine-tune GR00T N1.7, score in the twin   docs/GR00T-FINETUNE.md, docs/07-eval.m
 | `arrival/tasks/` | Task and variation proposer |
 | `arrival/sim/` | MuJoCo scene, robot, IK, people, policies, data collection |
 | `arrival/export/` | LeRobot v2 writer and validator |
-| `arrival/generate/`, `arrival/render/` | Scripted placeholder generator, schematic renderer, MimicGen and splat stubs |
+| `arrival/generate/`, `arrival/render/` | Scripted placeholder, physics seed replay and native SE(3) retargeting; external MimicGen and splat stubs |
 | `arrival/models/` | Nebius Token Factory (Nemotron) client |
 | `arrival/web/`, `arrival/jobs/` | Local web page and upload queue |
 | `scans/` | Sample rooms |
@@ -457,7 +457,7 @@ LiDAR iPhones/iPads: iPhone 12 Pro or newer Pro models, or iPad Pro 2020+.
 - **DAT-1: GR00T modality config.** Write the config for our 7+1 embodiment, then confirm GR00T's real data loader reads `out/datasets/hero_kitchen_sim`.
 - **DAT-2: Fine-tune smoke test.** Run a 100-step GR00T N1.7 fine-tune on the sim dataset, then a full run. The command is in `docs/REFERENCE.md`.
 - **DAT-3: Evaluation.** Compare base GR00T, GR00T fine-tuned on generic RoboCasa data, and GR00T fine-tuned on our room. Use 50 episodes per cell on held-out poses and wordings, following the protocol in `docs/07-eval.md`.
-- **DAT-4: MimicGen / scale.** Generate thousands of physics demos per room from a few seeds, and track success and throughput.
+- **DAT-4: MimicGen / scale.** Generate thousands of physics demos per room from a few seeds, and track success and throughput. A native same-object SE(3) prototype now retargets recorded `counter_to_sink` rollouts with physics checks (`arrival/generate/se3_retarget.py`); upstream MimicGen integration and the 100-episode seed-set benchmark remain open (G7, issue #62).
 
 ### OPS: Nebius scale & backend (2)
 
