@@ -66,7 +66,7 @@ def encode_request(obs: dict, instruction: str, schema: str = "arm") -> dict:
     schema "arm" sends the first 8 state floats (an 11-float sim state loses its base columns); "mobile" needs 11."""
     if not isinstance(instruction, str) or not instruction.strip():
         raise ProtocolError("instruction must be a non-empty string")
-    state = np.asarray(obs["state"], dtype=float)
+    state = _numeric_array(obs["state"], "state")
     dim = _schema(schema)
     if state.ndim != 1 or state.shape[0] < dim or state.shape[0] not in SCHEMA_DIM.values():
         raise ProtocolError(f"state must be 8 or 11 floats and at least the {dim} the {schema!r} schema needs "
@@ -126,10 +126,7 @@ def _numeric_array(value, key: str) -> np.ndarray:
 
 def encode_response(chunk: np.ndarray) -> dict:
     """chunk [T,8] (7 arm targets + gripper) or [T,11] (plus base x, y, yaw) -> response body."""
-    try:
-        chunk = np.asarray(chunk, dtype=float)
-    except (TypeError, ValueError, OverflowError) as e:
-        raise ProtocolError(f"chunk is not numeric: {e}") from e
+    chunk = _numeric_array(chunk, "chunk")
     if chunk.ndim != 2 or chunk.shape[1] not in SCHEMA_DIM.values() or chunk.shape[0] < 1:
         raise ProtocolError(f"chunk must be [T,8] (arm schema) or [T,11] (mobile schema), got shape {list(chunk.shape)}")
     if not np.isfinite(chunk).all():
