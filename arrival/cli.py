@@ -38,7 +38,6 @@ def run_demo(room: str = "hero_kitchen", episodes: int = 4, videos: str = "all",
     from arrival.generate.scripted import generate
     from arrival.render.sim_texture import room_center_x
     from arrival.scan import bundle as scan_bundle
-    from arrival.scan import roomplan
     from arrival.tasks.propose import propose, write_tasks
     from arrival.twin.compile import compile_twin, write_twin
 
@@ -49,17 +48,9 @@ def run_demo(room: str = "hero_kitchen", episodes: int = 4, videos: str = "all",
         rp_path = scans_dir / room / "roomplan.json"
         if not rp_path.is_file():
             raise SystemExit(f"no RoomPlan export at {rp_path} (room {room!r}; --scans {scans_dir})")
-        bundle = roomplan.load(rp_path, room)
-        # RoomPlan captures no small objects: place catalog objects on a counter top (seeded), never borrowed.
-        from arrival.twin.compile import place_default_objects
-        bundle["objects"] = place_default_objects(compile_twin(bundle), seed=seed)
+        twin = roomplan_twin(rp_path, room, seed)
     else:
-        bundle = scan_bundle.load_room(room, scans_dir)
-    twin = compile_twin(bundle)
-    if from_roomplan and twin["objects"]:
-        from arrival.export.provenance import note_seed
-
-        note_seed(twin, "default_objects", seed)
+        twin = compile_twin(scan_bundle.load_room(room, scans_dir))
     twin_dir = out_dir / "twins" / room
     write_twin(twin, twin_dir)
     tasks = propose(twin)
@@ -174,16 +165,38 @@ def cmd_doctor(a) -> int:
     return EXIT_INVALID if doctor.exit_code(checks) else EXIT_OK
 
 
+def roomplan_twin(rp_path: Path, room: str, seed: int = 0) -> dict:
+    """The twin of a RoomPlan export. RoomPlan captures no small objects: catalog objects are placed on a counter
+    top (seeded), never borrowed, and the seed is noted in the twin's provenance."""
+    from arrival.export.provenance import note_seed
+    from arrival.scan import roomplan
+    from arrival.twin.compile import compile_twin, place_default_objects
+
+    bundle = roomplan.load(rp_path, room)
+    bundle["objects"] = place_default_objects(compile_twin(bundle), seed=seed)
+    twin = compile_twin(bundle)
+    if twin["objects"]:
+        note_seed(twin, "default_objects", seed)
+    return twin
+
+
 def _load_twin(room: str, out: str | Path, scans: str | Path) -> dict:
-    """The compiled twin under <out>/twins, unless scans/<room>/scan.json was saved after it was written;
-    then the scan is compiled again. Raises FileNotFoundError when neither exists."""
+    """The compiled twin under <out>/twins, unless scans/<room>/scan.json (or roomplan.json) was saved after it
+    was written; then the scan is compiled again. A room with only a roomplan.json, as a phone capture lands, is
+    built as `demo --from-roomplan` builds it (objects placed with seed 0). Raises FileNotFoundError when there
+    is no twin and no scan."""
     from arrival.scan import bundle as scan_bundle
     from arrival.twin.compile import compile_twin
 
+    room_dir = resolve_scans(scans) / room
+    scan_path = room_dir / "scan.json"
+    if not scan_path.is_file() and (room_dir / "roomplan.json").is_file():
+        scan_path = room_dir / "roomplan.json"
     twin_path = Path(out) / "twins" / room / "twin.json"
-    scan_path = resolve_scans(scans) / room / "scan.json"
     if twin_path.is_file() and not (scan_path.is_file() and scan_path.stat().st_mtime > twin_path.stat().st_mtime):
         return json.loads(twin_path.read_text())
+    if scan_path.name == "roomplan.json":
+        return roomplan_twin(scan_path, room)
     return compile_twin(scan_bundle.load_room(room, resolve_scans(scans)))
 
 
@@ -407,7 +420,7 @@ def cmd_fanout(a) -> int:
         print(f"fanout: {e}", file=sys.stderr)
         return EXIT_USAGE
     scans = resolve_scans(a.scans)
-    if a.backend == "local" and not (scans / a.room / "scan.json").is_file():
+    if a.backend == "local" and not any((scans / a.room / f).is_file() for f in ("scan.json", "roomplan.json")):
         # every shard's sim would fail to load it, three times each, and run.json would keep the misspelt room
         print(f"fanout: no scan for room {a.room!r} under {scans}", file=sys.stderr)
         return EXIT_USAGE

@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 
 import pytest
 
@@ -130,6 +131,27 @@ def test_cached_twin_is_recompiled_after_the_scan_changes(tmp_path):
     scans, twin, scan, os = _room(tmp_path)
     os.utime(twin, (1_000_000, 1_000_000))
     assert "cached" not in _twin(tmp_path, scans)
+
+
+def test_a_room_with_only_a_roomplan_export_is_built_like_demo_from_roomplan(tmp_path):
+    """A phone capture lands as scans/<room>/roomplan.json; sim, eval and research read only scan.json and refused
+    the room, while the hint listed it among the rooms that exist."""
+    import json
+    import os
+    import shutil
+
+    scans = tmp_path / "scans"
+    (scans / "kitchen_real_01").mkdir(parents=True)
+    rp = scans / "kitchen_real_01" / "roomplan.json"
+    shutil.copy(Path(cli.__file__).resolve().parents[1] / "tests" / "fixtures" / "roomplan" / "kitchen_real_01.json", rp)
+    twin = cli._load_twin("kitchen_real_01", tmp_path / "out", scans)
+    assert twin == cli.roomplan_twin(rp, "kitchen_real_01")  # what demo --from-roomplan writes (seed 0)
+    assert twin["objects"] and twin["provenance"]["seeds"]["default_objects"] == 0
+    cached = tmp_path / "out" / "twins" / "kitchen_real_01" / "twin.json"
+    cached.parent.mkdir(parents=True)
+    cached.write_text(json.dumps({"cached": True}))
+    os.utime(rp, (1_000_000, 1_000_000))
+    assert cli._load_twin("kitchen_real_01", tmp_path / "out", scans) == {"cached": True}  # newer than the export
 
 
 def test_sim_exits_1_when_every_task_errors(tmp_path, capsys, monkeypatch):
