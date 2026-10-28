@@ -1,0 +1,150 @@
+[
+ {
+  "episode_index": 0,
+  "attempt": 0,
+  "steps": 13406,
+  "outcome": "skip_length_outlier"
+ },
+ {
+  "episode_index": 1,
+  "attempt": 2,
+  "steps": 476,
+  "outcome": "source",
+  "source_id": "9d1fbbb84b4c8e3a8299fd2d4bf54175c80cf4c4a252c5e85520d7d46779c592",
+  "object": "bowl_1"
+ },
+ {
+  "episode_index": 2,
+  "attempt": 3,
+  "steps": 640,
+  "outcome": "source",
+  "source_id": "403d1cb5cf6705ac241dd15c305e5037eb40c148e60daedc78389a1964669622",
+  "object": "mug_1"
+ },
+ {
+  "episode_index": 3,
+  "attempt": 4,
+  "steps": 361,
+  "outcome": "source",
+  "source_id": "009bde52faf5dc2edc6b8a252c7f965168c7c6499ac183d2ba418692d0e3dec0",
+  "object": "bowl_1"
+ },
+ {
+  "episode_index": 4,
+  "attempt": 5,
+  "steps": 432,
+  "outcome": "source",
+  "source_id": "fe31c46edb6349090c32e568d56aa187cd2183c3ab0502d108fef2d784eb4e20",
+  "object": "mug_1"
+ },
+ {
+  "episode_index": 5,
+  "attempt": 6,
+  "steps": 372,
+  "outcome": "skip_replay_fail"
+ },
+ {
+  "episode_index": 6,
+  "attempt": 8,
+  "steps": 874,
+  "outcome": "source",
+  "source_id": "e157d8a1b417ba6d16fc4e1f7a1ea8ba55ccbff02316f525326dff495e0a7db1",
+  "object": "mug_1"
+ },
+ {
+  "episode_index": 7,
+  "attempt": 9,
+  "steps": 462,
+  "outcome": "source",
+  "source_id": "51e6254cb2d5fa54931dc086cbdb5c4569b6c42cc3a961657dd7fa981dc9e151",
+  "object": "bowl_1"
+ },
+ {
+  "episode_index": 8,
+  "attempt": 11,
+  "steps": 688,
+  "outcome": "source",
+  "source_id": "1ac02d59025c268343df872f97ea0655ac1aa7560050434d199976022866ccba",
+  "object": "mug_1"
+ },
+ {
+  "episode_index": 9,
+  "attempt": 12,
+  "steps": 449,
+  "outcome": "source",
+  "source_id": "980c831576ab35c70fc54c00ea0f59c191602015a3ee243250ba719bcba9a843",
+  "object": "mug_1"
+ },
+ {
+  "episode_index": 10,
+  "attempt": 13,
+  "steps": 314,
+  "outcome": "skip_replay_fail"
+ },
+ {
+  "episode_index": 11,
+  "attempt": 16,
+  "steps": 403,
+  "outcome": "skip_replay_fail"
+ },
+ {
+  "episode_index": 12,
+  "attempt": 17,
+  "steps": 541,
+  "outcome": "source",
+  "source_id": "5b562989468a58fb66c10e23f0bf22664b187e0a46c0cf240eae5f84b7656e0c",
+  "object": "bowl_1"
+ },
+ {
+  "episode_index": 13,
+  "attempt": 18,
+  "steps": 923,
+  "outcome": "source",
+  "source_id": "f410afaab52695f9cad02cb02db66c0020e27eba6561c555073a0d178bc71902",
+  "object": "bowl_1"
+ },
+ {
+  "episode_index": 14,
+  "attempt": 19,
+  "steps": 469,
+  "outcome": "skip_replay_fail"
+ },
+ {
+  "episode_index": 15,
+  "attempt": 20,
+  "steps": 367,
+  "outcome": "source",
+  "source_id": "be88c0e7b75c413d0ed52e7a6200599a55255ed052e7ae20b89a324214b93bdf",
+  "object": "bowl_1"
+ },
+ {
+  "episode_index": 16,
+  "attempt": 21,
+  "steps": 440,
+  "outcome": "source",
+  "source_id": "bab6ca466027f34813803c6c726dd0e06f5fc8fed6e2392adcf746183014be3a",
+  "object": "bowl_1"
+ },
+ {
+  "episode_index": 17,
+  "attempt": 22,
+  "steps": 293,
+  "outcome": "source",
+  "source_id": "473124ee19717066b3154cdaa611ad7bbeb4975091474154e73a7b4cd7d77835",
+  "object": "mug_1"
+ },
+ {
+  "episode_index": 18,
+  "attempt": 23,
+  "steps": 393,
+  "outcome": "skip_replay_fail"
+ },
+ {
+  "episode_index": 19,
+  "attempt": 25,
+  "steps": 366,
+  "outcome": "source",
+  "source_id": "f54005f4671c9d808d859e2d66ea165df19bd658ef8a5aa9cb4fd4660964f105",
+  "object": "bowl_1"
+ }
+]

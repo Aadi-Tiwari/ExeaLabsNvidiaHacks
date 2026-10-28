@@ -1,0 +1,39 @@
+{
+  "room_id": "hero_kitchen",
+  "generator": "mujoco_scripted_ik",
+  "policy": "scripted",
+  "planner": "rule",
+  "attempts": 40,
+  "skipped_unreachable": 0,
+  "skipped_error": 0,
+  "skipped": 0,
+  "skip_reasons": [],
+  "successes": 40,
+  "dropped": 0,
+  "seconds": 144.62,
+  "demos_per_hour": 995.7,
+  "human_contacts": 0,
+  "fridge_visits": 0,
+  "door_contacts": 0,
+  "families": {
+    "counter_to_sink": {
+      "attempts": 40,
+      "successes": 40,
+      "human_contacts": 0,
+      "fridge_visits": 0,
+      "door_contacts": 0,
+      "seconds": 144.58,
+      "success_rate": 1.0
+    }
+  },
+  "people": 0,
+  "resolution": 64,
+  "physics_checked_success": true,
+  "grasp": "friction",
+  "base": "fixed",
+  "arm": "procedural",
+  "cameras": [
+    "ego_view",
+    "wrist"
+  ]
+}

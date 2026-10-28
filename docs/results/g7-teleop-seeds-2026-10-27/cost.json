@@ -1,0 +1,112 @@
+{
+  "rows": [
+    {
+      "source": "report",
+      "room": "hero_kitchen",
+      "family": null,
+      "attempts": 140,
+      "successes": 104,
+      "seconds": 1581.8789493999993,
+      "human_contacts": null,
+      "frames": null,
+      "dropped": 36,
+      "drop_rate": 0.2571,
+      "demos_per_hour": 236.7,
+      "seconds_per_demo": 15.21,
+      "attempts_per_demo": 1.346,
+      "local_cpu_wall_seconds": 1581.8789493999993
+    },
+    {
+      "source": "report",
+      "room": "hero_kitchen",
+      "family": "counter_to_sink",
+      "attempts": 140,
+      "successes": 104,
+      "seconds": 1581.8789493999993,
+      "human_contacts": 0,
+      "frames": null,
+      "dropped": 36,
+      "drop_rate": 0.2571,
+      "demos_per_hour": 236.7,
+      "seconds_per_demo": 15.21,
+      "attempts_per_demo": 1.346,
+      "local_cpu_wall_seconds": 1581.8789493999993
+    }
+  ],
+  "dollars": {
+    "local_cpu": {
+      "usd": 0,
+      "measured": true
+    },
+    "token_factory": {
+      "usd": null,
+      "measured": false
+    },
+    "serverless_jobs": {
+      "usd": null,
+      "measured": false
+    },
+    "cosmos": {
+      "usd": null,
+      "measured": false
+    },
+    "object_storage": {
+      "usd": null,
+      "measured": false
+    },
+    "endpoint": {
+      "usd": null,
+      "measured": false
+    }
+  },
+  "teleop_baseline": {
+    "task": "counter_to_sink",
+    "room": "hero_kitchen",
+    "n_success": 20,
+    "n_attempts": 26,
+    "operator_seconds_total": 1230.359,
+    "cost_basis_usd": 0.6835,
+    "operator_usd_per_hour": 2.0,
+    "setup_usd": 0.0,
+    "setup_assumptions": [
+      "Human keyboard input. Hourly rate is an operator-supplied assumption, not an invoiced cost.",
+      "keyboard teleop in the MuJoCo twin of hero_kitchen, 0 walking people, success by the sim oracle",
+      "operator time per attempt runs from scene ready to judgement and includes failed attempts"
+    ],
+    "measured": true,
+    "created_unix": 1792557942,
+    "attempts_log": "reports/hero_kitchen_teleop_attempts.jsonl",
+    "seconds_per_success": 61.518,
+    "usd_per_success": 0.0342
+  },
+  "comparison": {
+    "measured": true,
+    "task": "counter_to_sink",
+    "room": "hero_kitchen",
+    "generated": {
+      "n_success": 104,
+      "scope": "task",
+      "seconds_per_success": 15.21,
+      "usd_per_success": null,
+      "usd_measured": false
+    },
+    "teleop": {
+      "n_success": 20,
+      "seconds_per_success": 61.518,
+      "usd_per_success": 0.0342
+    },
+    "seconds_ratio_teleop_over_generated": 4.04,
+    "note": "generated seconds are local wall time of the generate call; teleop seconds are operator time"
+  },
+  "metering": {
+    "jobs": 0,
+    "wall_seconds": null,
+    "episodes_attempted": null,
+    "episodes_succeeded": null,
+    "frames": null,
+    "upload_bytes": null,
+    "zip_bytes": null,
+    "dataset_bytes": null,
+    "note": "measured on the local machine by arrival work; not priced (local CPU is $0, no Nebius product was used)"
+  }
+}

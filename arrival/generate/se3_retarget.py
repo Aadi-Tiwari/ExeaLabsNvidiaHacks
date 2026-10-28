@@ -90,42 +90,58 @@ def interpolate(a, b, steps=BRIDGE_STEPS) -> list[np.ndarray]:
     return frames
 
 
-class _Recorder(ScriptedExpert):
+class _Recorder(Policy):
+    """Wraps the policy that drives the source demo (the scripted expert unless given) and logs each step."""
+    def __init__(self, inner=None):
+        self.inner = inner or ScriptedExpert()
+
     def reset(self, env, task):
-        super().reset(env, task)
-        self.samples = []
-        self.task = task
+        self.inner.reset(env, task)
+        self.env, self.task, self.samples = env, task, []
+        self.plan = getattr(self.inner, "plan", ())  # run_episode sizes its step budget from it
 
     def act(self, obs):
-        action = super().act(obs)
-        self.samples.append((eef_frame(self.env), float(action[7]),
-                             float(self.env.body_pos(self.task["object_id"])[2])))
+        action = self.inner.act(obs)
+        self.samples.append((eef_frame(self.env), float(action[7]), self.env.body_pos(self.task["object_id"]).copy()))
         return action
 
+    def done(self):
+        return getattr(self.inner, "done", lambda: False)()
 
-def record_source(env, task: dict) -> dict:
+
+def record_source(env, task: dict, policy=None, generator: str = "mujoco_scripted_ik",
+                  moved: float | None = None) -> dict:
     """Record actual pre-action eef poses and commanded gripper openings during a verified physics demo.
+    `policy` drives the demo (the scripted expert by default, a teleop replay for human seeds) and `generator`
+    names it in the source.
 
     The object anchor covers approach, grasp and lift. The sink anchor covers transport, place and retreat.
-    The switch is the first closed-gripper sample with the object lifted at least 15 cm off its start.
+    The switch is the first closed-gripper sample with the object lifted at least 15 cm off its start. With
+    `moved` (metres) it is instead the first sample with the object that far from its start, gripper open or not:
+    human demos mostly slide the object to the sink rather than lift it.
     """
     target, obj = sink_frame(env, task), object_frame(env, task)
-    recorder = _Recorder()
+    recorder = _Recorder(policy)
     episode = run_episode(env, recorder, task)
     if not episode["success"] or episode["safety"]["human_contact"]:
         raise ValueError("source demonstration failed physics or had human contact")
-    split = next((i for i, (_, g, z) in enumerate(recorder.samples)
-                  if g < env.finger_open / 2 and z > obj[2, 3] + 0.15), None)
+    if moved is None:
+        split = next((i for i, (_, g, p) in enumerate(recorder.samples)
+                      if g < env.finger_open / 2 and p[2] > obj[2, 3] + 0.15), None)
+    else:
+        split = next((i for i, (_, _, p) in enumerate(recorder.samples)
+                      if np.linalg.norm(p - obj[:3, 3]) >= moved), None)
     if split is None or split == 0:
-        raise ValueError("source demonstration has no closed-gripper lift")
+        raise ValueError("source demonstration has no closed-gripper lift" if moved is None else
+                         f"the object never moved {moved} m in the source demonstration")
     samples = []
     for i, (eef, g, _) in enumerate(recorder.samples):
         segment = "object" if i < split else "sink"
         anchor = obj if segment == "object" else target
         samples.append({"segment": segment, "eef_relative": (inverse(anchor) @ eef).tolist(), "gripper": g})
     source = {"schema_version": 1, "family": "counter_to_sink", "task": dict(task),
-              "source_generator": "mujoco_scripted_ik", "source_seed": task.get("seed"),
-              "provenance": run_record(env.twin, seed=task.get("seed"), generator="mujoco_scripted_ik"),
+              "source_generator": generator, "source_seed": task.get("seed"),
+              "provenance": run_record(env.twin, seed=task.get("seed"), generator=generator),
               "object_spec": {k: env.objs[task["object_id"]][k] for k in ("catalog_id", "size")},
               "object_frame": obj.tolist(), "sink_frame": target.tolist(), "split": split, "fps": FPS,
               "samples": samples, "states": episode["states"].tolist(), "actions": episode["actions"].tolist(),
@@ -228,11 +244,14 @@ class Unreachable(ValueError):
     """A transformed pose cannot be reached within the position or orientation tolerance."""
 
 
-def generate(twin, out_dir="out", *, source=None, attempts=2, seed=0, res=64, offsets=None, log=print):
+def generate(twin, out_dir="out", *, source=None, sources=None, attempts=2, seed=0, res=64, offsets=None,
+             log=print):
     """Record one source if absent; export successful replays at sampled (dx, dy, yaw) object offsets.
 
     Sink anchors always come from the actual target twin. A source may be reused in another compatible twin
-    with the same object identity. Nothing changes object qpos after the initial episode setup.
+    with the same object identity. Nothing changes object qpos after the initial episode setup. `sources` (a list,
+    e.g. the teleop seeds from arrival.generate.teleop_seeds) takes the place of `source`: attempt i retargets
+    sources[i % len(sources)].
     """
     if attempts < 1 or seed < 0 or res <= 0 or res % 16:
         raise ValueError("attempts must be positive, seed nonnegative, res a positive multiple of 16")
@@ -242,25 +261,34 @@ def generate(twin, out_dir="out", *, source=None, attempts=2, seed=0, res=64, of
     offsets = np.asarray(offsets, dtype=float)
     if offsets.ndim != 2 or offsets.shape[1] != 3 or not len(offsets) or not np.isfinite(offsets).all():
         raise ValueError("offsets must be a nonempty finite list of (dx, dy, yaw_radians)")
-    if source is None:
+    if source is not None and sources is not None:
+        raise ValueError("give source or sources, not both")
+    if sources is not None and not sources:
+        raise ValueError("sources is empty")
+    if source is None and sources is None:
         tasks = make_tasks(twin, ["counter_to_sink"], 1, seed=seed, people=0, log=log)
         if not tasks:
             raise ValueError("no reachable counter_to_sink source task in the twin")
         finish_task(tasks[0])
         with SimEnv(twin, tasks[0], res=res, cameras=()) as env:
             source = record_source(env, tasks[0])
-    validate_source(source)
-    check_twin(twin, source)
+    one = sources is None
+    pool = [source] if one else list(sources)
+    for s in pool:
+        validate_source(s)
+        check_twin(twin, s)
     out_dir = Path(out_dir)
     writer = SimDatasetWriter(out_dir / "datasets" / f"{twin['room_id']}_se3_retarget", twin["room_id"], FPS, res,
                               ("ego_view", "wrist"), provenance=run_record(twin, seed=seed, generator=GENERATOR))
-    (writer.root / "meta" / "se3_source.json").write_text(json.dumps(source, indent=2, allow_nan=False))
+    source_ref = "meta/se3_source.json" if one else "meta/se3_sources.json"
+    (writer.root / source_ref).write_text(json.dumps(pool[0] if one else pool, indent=2, allow_nan=False))
     rows, start_time = [], time.perf_counter()
     for i, (dx, dy, yaw) in enumerate(offsets):
+        source = pool[i % len(pool)]
         task = dict(source["task"], task_id=f"se3_{i:06d}", seed=seed * 1000 + i,
                     start=[source["task"]["start"][0] + dx, source["task"]["start"][1] + dy,
                            source["task"]["start"][2]])
-        row = {"attempt": i, "offset": [float(dx), float(dy), float(yaw)]}
+        row = {"attempt": i, "source_id": source["source_id"], "offset": [float(dx), float(dy), float(yaw)]}
         policy = RetargetPolicy(source)
         try:
             with SimEnv(twin, task, res=res) as env:
@@ -290,14 +318,24 @@ def generate(twin, out_dir="out", *, source=None, attempts=2, seed=0, res=64, of
         log(f"[se3_retarget] attempt {i}: {row['outcome']}")
     elapsed = time.perf_counter() - start_time
     successes = len(writer.episodes)
-    info = writer.finish(len(rows), extra={"generator": GENERATOR, "source_id": source["source_id"],
-                         "source_seed": source["source_seed"], "source_ref": "meta/se3_source.json",
+    ids, seeds = [s["source_id"] for s in pool], [s["source_seed"] for s in pool]
+    info = writer.finish(len(rows), extra={"generator": GENERATOR, "source_id": ids[0] if one else ids,
+                         "source_seed": seeds[0] if one else seeds, "source_ref": source_ref,
                          "dropped": len(rows) - successes,
                          "retarget": "executed eef SE(3) segments with minimum-jerk bridges; native Arrival, not upstream MimicGen"})
-    report = {"generator": GENERATOR, "source_id": source["source_id"], "attempts": len(rows),
-              "source_seed": source["source_seed"], "source_generator": source["source_generator"],
+    report = {"generator": GENERATOR, "source_id": ids[0] if one else ids, "attempts": len(rows),
+              "source_seed": seeds[0] if one else seeds,
+              "source_generator": pool[0]["source_generator"] if one else sorted({s["source_generator"] for s in pool}),
+              "per_source": [{"source_id": s["source_id"], "object": s["object_spec"]["catalog_id"],
+                              "attempts": sum(r["source_id"] == s["source_id"] for r in rows),
+                              "successes": sum(r["source_id"] == s["source_id"] and r["outcome"] == "success"
+                                               for r in rows)} for s in pool],
               "successes": successes, "dropped": len(rows) - successes, "seconds": elapsed,
               "success_rate": successes / len(rows), "demos_per_hour": successes * 3600 / elapsed,
+              # room_id and families let `arrival cost` set this run beside the teleop baseline (C3)
+              "room_id": twin["room_id"], "families": {"counter_to_sink": {
+                  "attempts": len(rows), "successes": successes, "seconds": elapsed,
+                  "human_contacts": sum(bool(r.get("human_contact")) for r in rows)}},
               "timing_scope": "attempt loop: IK, physics, rendering and episode export; excludes source and final metadata",
               "drop_reasons": {name: sum(r["outcome"] == f"drop_{name}" for r in rows)
                                for name in ("unreachable", "physics_fail")},
