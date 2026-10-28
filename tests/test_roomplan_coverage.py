@@ -363,3 +363,27 @@ def test_degenerate_polygon_cannot_supply_a_missing_height():
     raw["walls"][0]["polygonCorners"] = [[-3, 0], [3, 0]]
     with pytest.raises(ValueError, match="positive length and height"):
         roomplan.to_bundle(raw, "r")
+
+
+@pytest.mark.parametrize(("ids", "expected"), [
+    (["a", "a", "a_2"], ["a", "a_3", "a_2"]),
+    (["a", "a_2", "a", "a_3"], ["a", "a_2", "a_4", "a_3"]),
+    (["a", "a", "a"], ["a", "a_2", "a_3"]),
+    (["a", "a", "a_2", "a_2"], ["a", "a_3", "a_2", "a_2_2"]),
+])
+def test_duplicate_ids_do_not_claim_existing_suffixes(ids, expected):
+    items = [{"id": ident} for ident in ids]
+    roomplan._unique(items)
+    assert [item["id"] for item in items] == expected
+
+
+def test_roomplan_duplicate_wall_ids_preserve_suffixed_parent():
+    raw = _room()
+    for wall, ident in zip(raw["walls"], ["a", "a", "a_2", "west"]):
+        wall["identifier"] = ident
+    raw["windows"] = [_surface("window", "window", "a_2", W / 2, FLOOR_Y + 1.5, 0,
+                               0.8, 1.0, yaw=math.pi / 2)]
+    bundle = roomplan.to_bundle(raw, "r")
+    assert [wall["id"] for wall in bundle["walls"]] == ["a", "a_3", "a_2", "west"]
+    assert bundle["windows"][0]["wall_id"] == "a_2"
+    assert len(compile_twin(bundle)["walls"]) == 4
