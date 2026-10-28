@@ -1070,4 +1070,19 @@ def test_invalid_manifest_encoding_is_a_validation_response(make):
     blob = _zip_of({"frames_manifest.json": b"\xff"})
     status, data, _ = _post(srv, [("scan", "hero.json", HERO_SCAN), ("frames", "frames.zip", blob)])
     assert status == 422 and data["code"] == "bad_json" and data["field"] == "frames", data
+@pytest.mark.parametrize("location", ["central", "local", "both"])
+def test_invalid_utf8_zip_entry_name_returns_archive_error(make, location):
+    import struct
+
+    blob = bytearray(_zip_of({"frames_manifest.json": b"{}"}))
+    central = blob.index(b"PK\x01\x02")
+    if location in ("local", "both"):
+        struct.pack_into("<H", blob, 6, 0x800)
+        blob[30] = 0xff
+    if location in ("central", "both"):
+        struct.pack_into("<H", blob, central + 8, 0x800)
+        blob[central + 46] = 0xff
+    srv, out = make()
+    status, data, _ = _post(srv, [("scan", "hero.json", HERO_SCAN), ("frames", "frames.zip", bytes(blob))])
+    assert status == 400 and data["code"] == "bad_zip" and data["field"] == "frames", data
     assert not _job_dirs(out)
