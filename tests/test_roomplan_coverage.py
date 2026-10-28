@@ -277,3 +277,89 @@ def test_portal_on_a_curved_wall_names_the_chord_it_sits_on():
     assert w["wall_id"] == "north_5"
     assert _seg_dist(w["position"][:2], next(s for s in chords if s["id"] == "north_5")) < 0.05
     assert all(_seg_dist(w["position"][:2], s) > 0.15 for s in chords if s["id"] != "north_5")
+
+
+@pytest.mark.parametrize("dimensions", ["missing", "zero", "negative", "undersized"])
+@pytest.mark.parametrize("encoding", ["xy", "xyz", "dict"])
+@pytest.mark.parametrize("with_floor", [False, True])
+def test_wall_polygon_supplies_bounds_and_asymmetric_centres(dimensions, encoding, with_floor):
+    raw = _room(floors=None if with_floor else [])
+    expected = roomplan.to_bundle(raw, "polygon_walls")
+    for wall in raw["walls"]:
+        length = wall["dimensions"][0]
+        # A non-centred local polygon represents exactly the original world wall, including yawed walls.
+        cx, cy = 0.75, 0.3
+        points = [[-length / 2 + cx, -H / 2 + cy, 0], [length / 2 + cx, H / 2 + cy, 0]]
+        wall["polygonCorners"] = ([p[:2] for p in points] if encoding == "xy" else
+                                  [dict(zip(("x", "y", "z"), p)) for p in points] if encoding == "dict" else points)
+        m = wall["transform"]
+        for row in range(3):
+            m[12 + row] -= m[row] * cx + m[4 + row] * cy
+        if dimensions == "missing":
+            del wall["dimensions"]
+        else:
+            wall["dimensions"] = {"zero": [0, 0, 0], "negative": [-1, -1, 0],
+                                  "undersized": [length / 2, H / 2, 0]}[dimensions]
+    untouched = copy.deepcopy(raw)
+    bundle = roomplan.to_bundle(raw, "polygon_walls")
+    assert raw == untouched
+    assert bundle == expected
+    twin = compile_twin(bundle)
+    assert twin["walls"] == compile_twin(expected)["walls"]
+    ends = [p for wall in twin["walls"] for p in (wall["start"], wall["end"])]
+    assert all(sum(math.dist(p, q) < 1e-8 for q in ends) == 2 for p in ends)
+    assert all(w["height"] == H and w["thickness"] == roomplan.MIN_WALL_THICKNESS for w in twin["walls"])
+
+
+@pytest.mark.parametrize("axis", [0, 1])
+def test_wall_polygon_refines_each_axis_independently(axis):
+    raw = _room()
+    wall = raw["walls"][0]
+    wall["dimensions"][axis] /= 2
+    wall["polygonCorners"] = [[-W / 2, -H / 2, 0], [W / 2, H / 2, 0]]
+    assert roomplan.to_bundle(raw, "r") == roomplan.to_bundle(_room(), "r")
+
+
+@pytest.mark.parametrize("delta", [0.0, 1e-10, -0.5])
+def test_matching_or_smaller_wall_polygons_preserve_dimensions_exactly(delta):
+    raw = _room()
+    expected = roomplan.to_bundle(raw, "r")
+    for wall in raw["walls"]:
+        length = wall["dimensions"][0]
+        wall["polygonCorners"] = [[-(length + delta) / 2, -(H + delta) / 2, 0],
+                                  [(length + delta) / 2, (H + delta) / 2, 0]]
+    assert roomplan.to_bundle(raw, "r") == expected
+
+
+def test_equal_span_asymmetric_polygon_moves_the_wall_without_changing_its_size():
+    raw = _room()
+    wall = raw["walls"][0]
+    wall["polygonCorners"] = [[-W / 2 + .5, -H / 2 + .25], [W / 2 + .5, H / 2 + .25]]
+    w = next(w for w in roomplan.to_bundle(raw, "r")["walls"] if w["id"] == "north")
+    assert w["start"] == [0.5, D] and w["end"] == [W + .5, D]
+    assert w["height"] == H
+
+
+@pytest.mark.parametrize("corner", [[float("nan"), 0, 0], [0, float("inf"), 0], [0, 0, float("-inf")],
+                                     ["bad", 0], [True, 1, 0], [0], [0, 0, 0, 0], {"x": 0},
+                                     {"x": 0, "y": 0, "z": "bad"}, "not-a-point"])
+def test_invalid_wall_polygon_points_name_the_wall_and_field(corner):
+    raw = _room()
+    raw["walls"][0]["polygonCorners"] = [[-3, -1], [3, 1], corner]
+    with pytest.raises(ValueError, match=r"wall 0 .*north.*polygonCorners point 2.*finite numeric"):
+        roomplan.to_bundle(raw, "r")
+
+
+def test_invalid_wall_polygon_container_is_rejected():
+    raw = _room()
+    raw["walls"][0]["polygonCorners"] = "invalid"
+    with pytest.raises(ValueError, match="polygonCorners must be a list"):
+        roomplan.to_bundle(raw, "r")
+
+
+def test_degenerate_polygon_cannot_supply_a_missing_height():
+    raw = _room()
+    raw["walls"][0]["dimensions"] = [0, 0, 0]
+    raw["walls"][0]["polygonCorners"] = [[-3, 0], [3, 0]]
+    with pytest.raises(ValueError, match="positive length and height"):
+        roomplan.to_bundle(raw, "r")
