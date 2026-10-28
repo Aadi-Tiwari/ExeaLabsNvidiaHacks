@@ -731,8 +731,12 @@ def cmd_summary(a) -> int:
         return EXIT_USAGE
     rooms = [r.strip() for r in a.rooms.split(",") if r.strip()] if a.rooms else None
     kw = {"rooms": rooms} if rooms else {}
-    summary = summarize(out_dir=a.out, scans_dir=resolve_scans(a.scans), episodes=a.episodes, res=a.res,
-                        people=a.people, families=tuple(fams), seed=a.seed, **kw)
+    try:
+        summary = summarize(out_dir=a.out, scans_dir=resolve_scans(a.scans), episodes=a.episodes, res=a.res,
+                            people=a.people, families=tuple(fams), seed=a.seed, **kw)
+    except ValueError as e:
+        print(str(e), file=sys.stderr)
+        return EXIT_USAGE
     jp, mp = write_summary(summary, a.out)
     print(to_markdown(summary))
     print(f"summary: {jp}\nsummary: {mp}")

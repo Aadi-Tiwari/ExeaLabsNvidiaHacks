@@ -176,6 +176,18 @@ def summarize(rooms=DEFAULT_ROOMS, out_dir: str | Path = "out/summary", scans_di
               episodes: int = 2, res: int = 64, people: int = 1,
               families: tuple[str, ...] = ("counter_to_sink", "open_drawer"), seed: int = 0, log=print) -> dict:
     out_dir, scans_dir = Path(out_dir), Path(scans_dir)
+    rooms = tuple(rooms)
+    seen = {}
+    for spec in rooms:
+        try:
+            room, _ = resolve_room(spec, scans_dir)
+        except FileNotFoundError:
+            continue  # keep missing inputs as failed normalize cells
+        output = (out_dir / "twins" / room).resolve()
+        if output in seen:
+            raise ValueError(f"rooms {seen[output]!r} and {spec!r} share output id {room!r}; "
+                             "rename one scan or run them separately")
+        seen[output] = spec
     rows = []
     for spec in rooms:
         log(f"[summary] {spec}")

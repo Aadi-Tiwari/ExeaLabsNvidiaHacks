@@ -35,6 +35,35 @@ def test_missing_room_message_lists_the_rooms_under_scans():
 
 
 
+@pytest.mark.parametrize("names", [("a-b", "a_b"), ("Kitchen", "kitchen")])
+def test_summary_refuses_colliding_room_ids_before_running(tmp_path, monkeypatch, names):
+    paths = [tmp_path / f"{name}.json" for name in names]
+    for path in paths:
+        path.write_text("{}")
+    out = tmp_path / "out"
+    monkeypatch.setattr(summary, "run_room", lambda *a, **k: pytest.fail("started a colliding room"))
+    with pytest.raises(ValueError, match="share output id"):
+        summary.summarize(rooms=[str(path) for path in paths], out_dir=out)
+    assert not out.exists()
+
+
+def test_summary_refuses_aliases_of_the_same_output_path(tmp_path, monkeypatch):
+    monkeypatch.setattr(summary, "run_room", lambda *a, **k: pytest.fail("started an aliased room"))
+    with pytest.raises(ValueError, match="share output id"):
+        summary.summarize(rooms=["hero_kitchen", "./hero_kitchen"], out_dir=tmp_path / "out", scans_dir=SCANS)
+    assert not (tmp_path / "out").exists()
+
+
+def test_cli_summary_reports_colliding_room_ids(tmp_path, capsys):
+    paths = [tmp_path / name for name in ("a-b.json", "a_b.json")]
+    for path in paths:
+        path.write_text("{}")
+    out = tmp_path / "out"
+    assert cli.main(["summary", "--rooms", ",".join(map(str, paths)), "--out", str(out)]) == cli.EXIT_USAGE
+    assert "share output id" in capsys.readouterr().err
+    assert not out.exists()
+
+
 def test_generic_scan_file_names_take_the_folder_name():
     # two rooms given as scan.json files were both "scan", and their datasets shared scan_sim
     a = summary.resolve_room("tests/fixtures/scans/rotated_kitchen/scan.json", SCANS)
