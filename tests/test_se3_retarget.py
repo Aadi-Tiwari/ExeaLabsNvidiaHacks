@@ -184,3 +184,12 @@ def test_cli_rejects_bad_arguments_without_outputs(args, tmp_path):
         main([*args, "--out", str(out)])
     assert error.value.code == 2
     assert not out.exists()
+
+
+def test_cli_missing_room_lists_existing_rooms(tmp_path, capsys):
+    out = tmp_path / "out"
+    with pytest.raises(SystemExit) as error:
+        main(["--room", "hero_kitchn", "--out", str(out)])
+    assert error.value.code == 2
+    err = capsys.readouterr().err
+    assert "no scan for room 'hero_kitchn'" in err and "hero_kitchen" in err

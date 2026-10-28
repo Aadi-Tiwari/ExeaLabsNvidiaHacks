@@ -306,11 +306,18 @@ def main(argv=None):
     args = ap.parse_args(argv)
     if args.attempts < 1 or args.seed < 0 or args.res <= 0 or args.res % 16:
         ap.error("attempts must be positive, seed nonnegative, res a positive multiple of 16")
+    from arrival.cli import resolve_scans
+    from arrival.scan.bundle import rooms_hint
+    scans = resolve_scans(args.scans)
     try:
         source = json.loads(args.source.read_text()) if args.source else None
         if source is not None:
             validate_source(source)
-        twin = compile_twin(load_room(args.room, args.scans))
+        try:
+            bundle = load_room(args.room, scans)
+        except FileNotFoundError:
+            ap.error(f"no scan for room {args.room!r} under {scans} ({rooms_hint(args.room, scans)})")
+        twin = compile_twin(bundle)
         result = generate(twin, args.out, source=source, attempts=args.attempts, seed=args.seed, res=args.res)
     except (OSError, ValueError, KeyError, TypeError) as error:
         ap.error(str(error))
