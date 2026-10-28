@@ -258,3 +258,10 @@ def test_scan_validation_collects_unreadable_notes_problem(tmp_path, monkeypatch
     problems = it.validate_scan_dir(tmp_path)
     assert any("notes.md" in problem and "cannot be read" in problem for problem in problems)
     assert any("measurements.json is missing" in problem for problem in problems)
+
+
+def test_huge_integer_in_measurements_json_is_a_problem_not_a_crash(tmp_path):
+    (tmp_path / "measurements.json").write_text(json.dumps({
+        "counter_length_m": 10 ** 400, "counter_height_m": 0.9, "sink_width_m": 0.5}), encoding="utf-8")
+    problems = it.validate_scan_dir(tmp_path)
+    assert any("measurements.json is invalid" in problem and "positive number" in problem for problem in problems)
