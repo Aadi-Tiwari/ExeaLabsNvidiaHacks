@@ -717,14 +717,14 @@ def portal_wall(p: dict, walls: list[dict]) -> dict | None:
     return walls[i] if d <= PORTAL_SNAP else None
 
 
-def portal_xml(kind: str, k: int, p: dict, wall: dict) -> list[str]:
+def portal_xml(kind: str, k: int, p: dict, wall: dict, room_center=None) -> list[str]:
     """Visual-only geoms for the k-th door, window or opening, named `{kind}{k}_{part}`, in the plane of `wall`: the
     scanned rectangle is put on the wall's line and clipped to its length and height, and the frame sits inside it.
     Every box runs through the wall and stands proud of both faces (PROUD), so it shows from either side without
-    knowing which one is the room. A closed door is two jambs, a head, a wood leaf and a knob; an open door and an
-    opening are jambs and a head around a dark recess (RoomPlan gives no hinge side, and a leaf swung into the room
-    would be something the arm and the walkers pass through); a window is jambs, a head, a sill, a pane and a mullion;
-    an opening that starts above the floor gets a sill too."""
+    knowing which one is the room. An open door adds a visual leaf and knob swung 90 degrees toward the room
+    centre, hinged on the lower-u jamb by default (hinge="left"), or the upper-u jamb (hinge="right"). This is a
+    drawing convention when RoomPlan omits the hinge, not measured articulation. A window is jambs, a head, a sill,
+    a pane and a mullion; an opening that starts above the floor gets a sill too."""
     (x0, y0), (x1, y1) = wall["start"], wall["end"]
     length = math.hypot(x1 - x0, y1 - y0)
     if length < PORTAL_MIN:
@@ -768,6 +768,23 @@ def portal_xml(kind: str, k: int, p: dict, wall: dict) -> list[str]:
         kz = z0 + min(KNOB_Z, (z1 - b - z0) / 2)
         g.append(f'<geom name="{kind}{k}_knob" type="cylinder" fromto="{kx + uy * r:.4f} {ky - ux * r:.4f} {kz:.4f} '
                  f'{kx - uy * r:.4f} {ky + ux * r:.4f} {kz:.4f}" size="{KNOB_R}" rgba="{STEEL}" {VIS}/>')
+    elif kind == "door":
+        # Only static world geoms: no bodies, mass, joints, sites or collision masks are added.
+        nx, ny = -uy, ux
+        if room_center is not None and (room_center[0] - x0) * nx + (room_center[1] - y0) * ny < 0:
+            nx, ny = -nx, -ny
+        hinge_u = u1 - b if p.get("hinge") == "right" else u0 + b
+        hx, hy = on_line(hinge_u)
+        width, thickness = u1 - u0 - 2 * b, 0.04
+        leaf_yaw = math.atan2(ny, nx)
+        g.append(_box(f"{kind}{k}_leaf", (hx + nx * width / 2, hy + ny * width / 2, (z0 + z1 - b) / 2),
+                      (width, thickness, z1 - b - z0), LEAF, f'euler="0 0 {leaf_yaw}" {VIS}'))
+        latch = max(width - KNOB_IN, width / 2)
+        kx, ky = hx + nx * latch, hy + ny * latch
+        kz, r = z0 + min(KNOB_Z, (z1 - b - z0) / 2), thickness / 2 + PROUD["knob"]
+        g.append(f'<geom name="{kind}{k}_knob" type="cylinder" '
+                 f'fromto="{kx + ux * r:.4f} {ky + uy * r:.4f} {kz:.4f} '
+                 f'{kx - ux * r:.4f} {ky - uy * r:.4f} {kz:.4f}" size="{KNOB_R}" rgba="{STEEL}" {VIS}/>')
     return g
 
 
@@ -776,11 +793,13 @@ def portals_xml(twin: dict) -> list[str]:
     its wall (portal_wall). Visual only: they change renders, never contacts, and a twin without any builds as
     before."""
     g = []
+    points = [point for w in twin["walls"] for point in (w["start"], w["end"])]
+    room_center = tuple((min(p[i] for p in points) + max(p[i] for p in points)) / 2 for i in (0, 1)) if points else None
     for key, kind in PORTALS:
         for k, p in enumerate(twin.get(key) or []):
             wall = portal_wall(p, twin["walls"])
             if wall is not None:
-                g += portal_xml(kind, k, p, wall)
+                g += portal_xml(kind, k, p, wall, room_center)
     return g
 
 
