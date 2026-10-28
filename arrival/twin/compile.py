@@ -293,8 +293,14 @@ def place_default_objects(twin: dict, seed: int = 0) -> list[dict]:
     # a big table outside a kitchen: things lie along its long edges, where someone sits (and a fixed arm reaches),
     # not in the middle of a 1.6 m top
     edges = kind != "kitchen" and sy > 2 * TABLE_EDGE_BAND
+    # the sim builds an object square to the world, and the expert pinches across the run (its gripper yaw is the
+    # counter's): on a run closer to world Y a book left lying along world X is pinched across its 18 cm length,
+    # wider than the 10 cm opening (the study's desk, yaw -90 deg: the fingers stopped 2 cm high on its cover)
+    across = abs(math.sin(counter.get("yaw", 0.0))) > abs(math.cos(counter.get("yaw", 0.0)))
     for label in ROOM_OBJECTS[kind]:
         size = sample_size(label, rng)
+        if across:  # lie along the run; round objects are unchanged
+            size = [size[1], size[0], size[2]]
         half = max(size[0], size[1]) / 2 + PLACE_MARGIN
         if sx / 2 <= half or sy / 2 <= half:
             continue
