@@ -112,6 +112,7 @@
  "tests/test_subset_no_video.py": 0.1,
  "tests/test_summary.py": 6.7,
  "tests/test_summary_empty_tape.py": 0.1,
+ "tests/test_summary_tape_verdict.py": 0.4,
  "tests/test_tasks.py": 0.1,
  "tests/test_tavily.py": 0.3,
  "tests/test_tavily_cache_shape.py": 0.1,
