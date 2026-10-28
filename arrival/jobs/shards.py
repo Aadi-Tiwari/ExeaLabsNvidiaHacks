@@ -202,9 +202,16 @@ def _exec_noise(info: dict) -> float:
     return float(info.get("arrival_exec_noise_rad") or ((info.get("arrival_provenance") or {}).get("run") or {}).get("exec_noise") or 0.0)
 
 
+def _scan_sha256(info: dict) -> str | None:
+    """The scan a shard's twin was compiled from: the provenance input's bundle_sha256, a hash of the scan's content
+    (a re-saved file with the same content keeps it). None for a shard with no provenance."""
+    return ((info.get("arrival_provenance") or {}).get("input") or {}).get("bundle_sha256")
+
+
 def merge_shards(sources: list[str | Path], out_dir: str | Path = "out", log=print) -> dict:
     """Join finished shard datasets into out_dir/datasets/<room>_sim. Refuses an incomplete or mixed set (a missing
-    shard, shards of different runs, an unfinished shard with no info.json) instead of writing a short dataset.
+    shard, shards of different runs or simulated from different scans, an unfinished shard with no info.json) instead
+    of writing a short or mixed dataset.
     Returns {"dataset", "report", "info"}; the caller validates the dataset."""
     from arrival.sim.export import SimDatasetWriter
 
@@ -230,6 +237,10 @@ def merge_shards(sources: list[str | Path], out_dir: str | Path = "out", log=pri
         if _exec_noise(s["info"]) != _exec_noise(first["info"]):
             raise ShardError(f"shard {s['shard']['index']} differs from shard 0 in arrival_exec_noise_rad: "
                              f"{_exec_noise(s['info'])!r} vs {_exec_noise(first['info'])!r}; they are not from one run")
+        scans = _scan_sha256(s["info"]), _scan_sha256(first["info"])
+        if None not in scans and scans[0] != scans[1]:  # the scan was edited between the shard runs
+            raise ShardError(f"shard {s['shard']['index']} was simulated from another scan than shard 0 (provenance "
+                             f"input bundle_sha256 {scans[0][:12]} vs {scans[1][:12]}); they are not from one run")
         if s["modality"] != first["modality"] or s["embodiment"] != first["embodiment"]:
             raise ShardError(f"shard {s['shard']['index']} has a different modality or embodiment than shard 0")
     cursor = 0
