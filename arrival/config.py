@@ -68,8 +68,21 @@ def dotenv_paths() -> list[Path]:
     return [Path.cwd() / ".env", REPO_ROOT / ".env"]
 
 
+def _dotenv_value(value: str) -> str:
+    """The value part of a .env line: a quoted value is what lies between its quotes, an unquoted one ends where
+    ` #` starts a comment (as python-dotenv and a shell read the line); a `#` with no space before it is kept."""
+    if len(value) >= 2 and value[0] in "'\"":
+        end = value.find(value[0], 1)
+        while end > 0:
+            rest = value[end + 1:].lstrip()
+            if not rest or rest.startswith("#"):
+                return value[1:end]
+            end = value.find(value[0], end + 1)
+    return re.split(r"\s+#", value, maxsplit=1)[0]
+
+
 def load_dotenv(paths: list[Path] | None = None) -> None:
-    """Tiny stdlib .env reader: KEY=VALUE lines, '#' comments, optional `export` and quotes; variables already
+    """Tiny stdlib .env reader: KEY=VALUE lines, '#' comments (also after a value), optional `export` and quotes; variables already
     set to a value win, and an empty one (`export KEY=`, an undefined CI secret) is filled like an unset one, as
     `get` treats it. With no `paths` it reads `dotenv_paths()`, unless ARRIVAL_DOTENV=0."""
     if paths is None:
@@ -84,9 +97,7 @@ def load_dotenv(paths: list[Path] | None = None) -> None:
             if not line or line.startswith("#") or "=" not in line:
                 continue
             key, value = line.removeprefix("export ").split("=", 1)
-            key, value = key.strip(), value.strip()
-            if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
-                value = value[1:-1]
+            key, value = key.strip(), _dotenv_value(value.strip())
             if key and not os.environ.get(key):
                 os.environ[key] = value
 

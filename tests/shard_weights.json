@@ -17,6 +17,7 @@
  "tests/test_docs_claims.py": 0.4,
  "tests/test_doctor.py": 0.7,
  "tests/test_doctor_dotenv.py": 0.1,
+ "tests/test_dotenv_inline_comment.py": 0.1,
  "tests/test_empty_video_quality.py": 0.2,
  "tests/test_eval.py": 59.0,
  "tests/test_eval_compare.py": 0.2,
