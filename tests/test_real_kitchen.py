@@ -123,10 +123,13 @@ def test_cup_stays_in_the_pads_on_the_way_to_the_dishwasher(twin):
     assert ep["success"], ep["detail"]
 
 
-def test_plate_stays_in_the_rim_pinch_on_a_mobile_carry(twin):
+@pytest.mark.parametrize("arm", ["procedural", "menagerie"])
+def test_plate_stays_in_the_rim_pinch_on_a_mobile_carry(twin, arm):
     # the plate hangs from its rim pinch during the drive and rolled about the pinch line until it fell out (0 of 5
-    # plate trials on --base mobile, seeds 5, 7, 11 and --holdout); the pads' rolling friction holds it
+    # plate trials on --base mobile, seeds 5, 7, 11 and --holdout); the pads' rolling friction holds it. The real
+    # hand lost it within a few steps of the lift
     pytest.importorskip("mujoco")
+    from arrival.sim import menagerie
     from arrival.sim.collect import SimEnv, run_episode
     from arrival.sim.policy import ScriptedExpert
     from arrival.twin.compile import place_default_objects
@@ -139,6 +142,8 @@ def test_plate_stays_in_the_rim_pinch_on_a_mobile_carry(twin):
             "instruction": "Pick up the plate from the counter and place it onto the other counter.",
             "wording_index": 0, "lighting": "neutral", "holdout": False, "people": 2, "seed": 10006003,
             "split": "train", "start": [2.658621, 2.224057, 0.97195], "task_id": "sim_counter_to_counter_0003"}
-    with SimEnv(twin, task, res=32, cameras=(), base="mobile") as env:
+    if arm == "menagerie" and not menagerie.available():
+        pytest.skip("run python scripts/fetch_menagerie.py")
+    with SimEnv(twin, task, res=32, cameras=(), base="mobile", arm=arm) as env:
         ep = run_episode(env, ScriptedExpert(), task)
     assert ep["success"], ep["detail"]
