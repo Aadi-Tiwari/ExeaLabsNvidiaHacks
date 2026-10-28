@@ -115,6 +115,30 @@ def test_demo_20_report(tmp_path):
     assert validate(res["dataset"]) == []
 
 
+@pytest.mark.parametrize("value", [None, -1, True, 0.5, "0"])
+def test_validate_cli_reports_invalid_total_videos(tmp_path, capsys, value):
+    import numpy as np
+
+    modality = {"state": {"arm": {"start": 0, "end": 2}},
+                "action": {"arm": {"start": 0, "end": 2, "absolute": True}},
+                "annotation": {"human.task_description": {}}}
+    writer = _writer(tmp_path, modality=modality)
+    writer.add_episode(np.zeros((2, 2)), np.zeros((2, 2)), np.arange(2) / 20, "task", True)
+    writer.finish(1)
+    root = tmp_path / "ds"
+    assert main(["validate", str(root)]) == 0
+    capsys.readouterr()
+    path = root / "meta/info.json"
+    info = json.loads(path.read_text())
+    if value is None:
+        del info["total_videos"]
+    else:
+        info["total_videos"] = value
+    path.write_text(json.dumps(info))
+    assert main(["validate", str(root)]) == 1
+    assert "info.total_videos must be a nonnegative integer" in capsys.readouterr().err
+
+
 def test_validator_rejects_broken(tmp_path):
     res = run_demo("hero_kitchen", 2, "all", out_dir=tmp_path, scans_dir=SCANS, log=lambda *a: None)
     ds = res["dataset"]
@@ -461,27 +485,3 @@ def test_validator_reports_invalid_modality_before_sorting(tmp_path, group, fiel
         data[group]["arm"][field] = value
     path.write_text(json.dumps(data))
     assert any(f"modality {group}.arm" in error for error in validate(root))
-
-
-@pytest.mark.parametrize("value", [None, -1, True, 0.5, "0"])
-def test_validate_cli_reports_invalid_total_videos(tmp_path, capsys, value):
-    import numpy as np
-
-    modality = {"state": {"arm": {"start": 0, "end": 2}},
-                "action": {"arm": {"start": 0, "end": 2, "absolute": True}},
-                "annotation": {"human.task_description": {}}}
-    writer = _writer(tmp_path, modality=modality)
-    writer.add_episode(np.zeros((2, 2)), np.zeros((2, 2)), np.arange(2) / 20, "task", True)
-    writer.finish(1)
-    root = tmp_path / "ds"
-    assert main(["validate", str(root)]) == 0
-    capsys.readouterr()
-    path = root / "meta/info.json"
-    info = json.loads(path.read_text())
-    if value is None:
-        del info["total_videos"]
-    else:
-        info["total_videos"] = value
-    path.write_text(json.dumps(info))
-    assert main(["validate", str(root)]) == 1
-    assert "info.total_videos must be a nonnegative integer" in capsys.readouterr().err
