@@ -353,6 +353,12 @@ def test_writer_rejects_video_pixel_coercion_before_writing(tmp_path):
 def test_validator_reports_invalid_chunk_size_without_crashing(tmp_path, size):
 def test_validator_reports_unreadable_parquet_and_continues(tmp_path):
     import numpy as np
+@pytest.mark.parametrize(("annotation", "message"), [
+    (999, "not in tasks.jsonl"), (1, "does not match episodes.jsonl tasks"),
+])
+def test_validator_resolves_training_annotation_tasks(tmp_path, annotation, message):
+    import numpy as np
+    import pyarrow as pa
 
     modality = {"state": {"arm": {"start": 0, "end": 2}},
                 "action": {"arm": {"start": 0, "end": 2, "absolute": True}},
@@ -378,3 +384,15 @@ def test_validator_reports_unreadable_parquet_and_continues(tmp_path):
     errors = validate(root)
     assert any("episode_000000.parquet" in error and "cannot read" in error for error in errors)
     assert not any("index is not continuous" in error for error in errors)
+    for task in ("task0", "task1"):
+        writer.add_episode(np.zeros((2, 2)), np.zeros((2, 2)), np.arange(2) / 20, task, True)
+    writer.finish(2)
+    root = tmp_path / "ds"
+    assert validate(root) == []
+    path = root / "data/chunk-000/episode_000000.parquet"
+    table = pq.read_table(path)
+    column = "annotation.human.task_description"
+    table = table.set_column(table.schema.get_field_index(column), column,
+                             pa.array([annotation, annotation], type=pa.int64()))
+    pq.write_table(table, path)
+    assert any(column in error and message in error for error in validate(root))
