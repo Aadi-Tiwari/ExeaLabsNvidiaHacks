@@ -73,7 +73,7 @@ export function renderEvaluate(stats) {
     return `<b>Cost against teleoperation.</b> On <code>${cmp.task}</code> in ${cmp.room}: ${time}. Machine seconds against human seconds, no dollar saving is claimed.`;
   };
   document.getElementById('todo').innerHTML = [
-    `<b>GR00T policy server and the held-out comparison (G2, G3).</b> The fine-tune ran (G1, self-reported, small samples). The policy shim has not run against a real GR00T server, and the protocol that compares the base model, generic data and this-room data at 50 episodes per cell has produced no results yet.`,
+    `<b>The held-out comparison (G3).</b> The fine-tune ran (G1, self-reported, small samples) and was scored through the policy shim against a real GR00T server (G2). The protocol that compares the base model, generic data and this-room data at 50 episodes per cell has produced no results yet.`,
     `<b>Measured real kitchens (P1, P2).</b> One kitchen scanned with the capture app on an iPhone 13 Pro Max has run end to end, but it has no tape measurements, the RGB-D recorder is not done, and the point cloud on this page is simulated.`,
     costLine(c.comparison),
   ].map((s) => `<li>${s}</li>`).join('');

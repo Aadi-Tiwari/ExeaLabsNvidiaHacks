@@ -46,4 +46,14 @@ def complete(messages: list[dict], role: str = "super", model: str | None = None
         headers={"Authorization": f"Bearer {cfg['api_key']}", "Content-Type": "application/json"},
     )
     with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return json.load(resp)["choices"][0]["message"]["content"]
+        reply = json.load(resp)
+    # a reply can come back with no text: empty `choices`, `content: null` when the token limit ran out during
+    # reasoning, or an `error` object; say so instead of an IndexError/KeyError or None reaching the caller's parser
+    choices = reply.get("choices") if isinstance(reply, dict) else None
+    first = choices[0] if isinstance(choices, list) and choices and isinstance(choices[0], dict) else {}
+    message = first.get("message")
+    content = message.get("content") if isinstance(message, dict) else None
+    if not isinstance(content, str):
+        raise ValueError(f"Token Factory reply from {model} has no message text "
+                         f"(finish_reason={first.get('finish_reason')!r}): {json.dumps(reply)[:200]}")
+    return content

@@ -183,6 +183,25 @@ class LocalBackend:
         return {"state": "running" if code is None else f"exited {code}",
                 "reason": f"exit code {code}, log {log}" if code else None, "resources": None}
 
+    def cancel_open(self) -> list[str]:
+        """Stop every shard process still running (run_fanout stops nothing when a shard fails its last attempt, and a
+        child left running would race the rerun's process for that shard in the same scratch folder). Returns the ids
+        of processes that would not exit."""
+        left = []
+        for job_id, (proc, _, _, log) in self._jobs.items():
+            if proc.poll() is None:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    try:
+                        proc.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        left.append(job_id)
+            log.close()
+        return left
+
 
 class NebiusBackendStub:
     """UNTESTED interface stub for Nebius Serverless Jobs plus Nebius Object Storage. Not implemented, never run
