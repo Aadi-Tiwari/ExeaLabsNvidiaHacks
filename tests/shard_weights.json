@@ -8,6 +8,7 @@
  "tests/test_compile.py": 0.1,
  "tests/test_config.py": 0.5,
  "tests/test_cost.py": 0.7,
+ "tests/test_cost_placeholder.py": 0.1,
  "tests/test_dart.py": 91.5,
  "tests/test_dataset.py": 8.7,
  "tests/test_delete_job_identity.py": 0.1,
