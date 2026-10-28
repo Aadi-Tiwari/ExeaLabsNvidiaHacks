@@ -1040,3 +1040,28 @@ def test_upload_accepts_filename_before_field_name(server, disposition):
         assert (out / "jobs" / data["id"] / "upload.bin").read_bytes() == payload
     finally:
         conn.close()
+@pytest.mark.parametrize("template", ["bytes={}-", "bytes=0-{}", "bytes=-{}"])
+def test_preview_ignores_unparseable_range_numbers(make, template):
+    srv, out = make()
+    preview = out / "previews" / "test.png"
+    preview.parent.mkdir(parents=True, exist_ok=True)
+    preview.write_bytes(b"0123456789")
+    status, body, response = _fetch(srv, "/previews/test.png",
+                                    headers={"Range": template.format("9" * 4301)})
+    assert status == 200 and body == b"0123456789"
+    assert response.getheader("Content-Range") is None
+
+
+@pytest.mark.parametrize(("value", "code", "expected", "content_range"), [
+    ("bytes=2-4", 206, b"234", "bytes 2-4/10"),
+    ("bytes=-3", 206, b"789", "bytes 7-9/10"),
+    ("bytes=50-", 416, b"", "bytes */10"),
+])
+def test_preview_normal_ranges_keep_existing_behavior(make, value, code, expected, content_range):
+    srv, out = make()
+    preview = out / "previews" / "test.png"
+    preview.parent.mkdir(parents=True, exist_ok=True)
+    preview.write_bytes(b"0123456789")
+    status, body, response = _fetch(srv, "/previews/test.png", headers={"Range": value})
+    assert status == code and body == expected
+    assert response.getheader("Content-Range") == content_range

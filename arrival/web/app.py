@@ -820,13 +820,17 @@ class Handler(BaseHTTPRequestHandler):
         m = re.match(r"bytes=(\d*)-(\d*)$", self.headers.get("Range", ""))
         start, end, code = 0, size - 1, 200
         if m and (m.group(1) or m.group(2)):
-            if m.group(1):
-                start, end = int(m.group(1)), min(int(m.group(2) or size - 1), size - 1)
+            try:
+                if m.group(1):
+                    start, end = int(m.group(1)), min(int(m.group(2) or size - 1), size - 1)
+                else:
+                    start = max(size - int(m.group(2)), 0)
+            except ValueError:  # ignore ranges exceeding Python's integer conversion limit
+                start, end = 0, size - 1
             else:
-                start = max(size - int(m.group(2)), 0)
-            if start > end or start >= size:
-                return self._send(416, b"", ctype, {"Content-Range": f"bytes */{size}"})
-            code = 206
+                if start > end or start >= size:
+                    return self._send(416, b"", ctype, {"Content-Range": f"bytes */{size}"})
+                code = 206
         extra = {"Accept-Ranges": "bytes"}
         if code == 206:
             extra["Content-Range"] = f"bytes {start}-{end}/{size}"
