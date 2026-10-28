@@ -73,7 +73,7 @@ def arm_xml(base_pos: tuple[float, float, float], base_yaw_deg: float, mobile: b
                 f'<inertial pos="0 0 0.03" mass="0.05" diaginertia="1e-5 1e-5 1e-5"/>'
                 f'<joint name="finger_{s}" type="slide" axis="0 {sg} 0" range="0 {FINGER_OPEN}" damping="5"/>'
                 f'<geom type="box" size="0.015 0.006 0.03" pos="0 {sg * 0.012} 0.05" rgba="0.1 0.1 0.1 1" '
-                f'friction="2.0 0.05 0.001" condim="6" {COL}/>'
+                f'friction="2.0 0.05 0.05" condim="6" {COL}/>'
                 + _vis("box", GREY, size="0.0155 0.007 0.026", pos=f"0 {sg * 0.021} 0.0236")
                 + '</body>'
                 for s, sg in (("l", 1), ("r", -1)))

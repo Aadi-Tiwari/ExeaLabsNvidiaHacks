@@ -121,3 +121,24 @@ def test_cup_stays_in_the_pads_on_the_way_to_the_dishwasher(twin):
     with SimEnv(twin, task, res=32, cameras=()) as env:
         ep = run_episode(env, ScriptedExpert(), task)
     assert ep["success"], ep["detail"]
+
+
+def test_plate_stays_in_the_rim_pinch_on_a_mobile_carry(twin):
+    # the plate hangs from its rim pinch during the drive and rolled about the pinch line until it fell out (0 of 5
+    # plate trials on --base mobile, seeds 5, 7, 11 and --holdout); the pads' rolling friction holds it
+    pytest.importorskip("mujoco")
+    from arrival.sim.collect import SimEnv, run_episode
+    from arrival.sim.policy import ScriptedExpert
+    from arrival.twin.compile import place_default_objects
+
+    twin = copy.deepcopy(twin)
+    place_default_objects(twin, seed=0)
+    task = {"family": "counter_to_counter", "source": "11793D80-8BE3-45F9-AF2F-34068D45F7C2",
+            "target": "CC64C90B-5AD3-4C42-8E56-3D8B4FE9C9B9", "target_x": 0.948737, "target_y": 2.203715,
+            "object_id": "plate_1", "object_label": "plate",
+            "instruction": "Pick up the plate from the counter and place it onto the other counter.",
+            "wording_index": 0, "lighting": "neutral", "holdout": False, "people": 2, "seed": 10006003,
+            "split": "train", "start": [2.658621, 2.224057, 0.97195], "task_id": "sim_counter_to_counter_0003"}
+    with SimEnv(twin, task, res=32, cameras=(), base="mobile") as env:
+        ep = run_episode(env, ScriptedExpert(), task)
+    assert ep["success"], ep["detail"]

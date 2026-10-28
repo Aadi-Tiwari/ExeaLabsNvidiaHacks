@@ -27,7 +27,7 @@ HAND = {"flap_bar": 0.0084, "flap_up": 0.3,  # see robot.HAND
         # front 3.4 cm short of it, so the door never moved (0 of 6 over seeds 0, 3, 5 with 0 and 2 people); each
         # flatter tilt opens it 6 of 6
         "flap_tilts": {"open_oven": (0.0, 0.35, 0.7)}}
-PAD_FRICTION = {"friction": "2.0 0.05 0.001", "condim": "6"}  # same pads as robot.py's fingers
+PAD_FRICTION = {"friction": "2.0 0.05 0.001", "condim": "6"}  # robot.py's pads, before their rolling friction rose to 0.05
 FETCH_HINT = "Menagerie Panda not found; run: python scripts/fetch_menagerie.py"
 
 
