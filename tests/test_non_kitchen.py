@@ -2,6 +2,7 @@
 a room the arm can work in: the table is a table, furniture is solid, the room holds office things (a laptop, a book,
 a cup) instead of a mug and plate, and move_on_table episodes pass physics."""
 
+import math
 import random
 from pathlib import Path
 
@@ -72,9 +73,21 @@ def test_people_walk_the_office_without_crashing(office):
     assert ep["success"], ep["detail"]
 
 
-def test_desk_behind_a_chair_gets_no_task():
-    # study: the desk's only free long side is where its chair stands, so a fixed base has nowhere to stand
-    assert make_tasks(_room("study"), ["move_on_table"], 4, log=lambda *_: None) == []
+@pytest.mark.parametrize("base", ["fixed", "mobile"])
+def test_desk_behind_a_chair_is_worked_from_beside_the_chair(base):
+    # study: the chair stands on the midway spot of the desk's only free long side (the other is against the wall).
+    # table_move used to drop the desk there, so every family came up empty and `sim` wrote 0 episodes; now the
+    # reach planner stands 0.25 m further along the edge, clear of the chair, and the book is moved
+    study = _room("study")
+    desk = next(f for f in study["fixtures"] if is_table(f))
+    book = next(o for o in study["objects"] if o["label"] == "book")
+    assert abs(desk["yaw"]) == pytest.approx(math.pi / 2)  # the desk runs along world Y ...
+    assert book["size"][0] < book["size"][1]  # ... and so does the book, pinched across its 8 cm width
+    tasks = make_tasks(study, list(SIM_FAMILIES), 2, seed=1, mobile=base == "mobile", log=lambda *_: None)
+    assert tasks and {t["family"] for t in tasks} == {"move_on_table"} and tasks[0]["base_shift"]
+    ep = run_episode(SimEnv(study, tasks[0], res=32, base=base, cameras=()), ScriptedExpert(), tasks[0])
+    assert ep["success"], ep["detail"]
+    assert ep["detail"]["target_error_m"] < 0.02
 
 
 # ---- L9: room-appropriate objects ----

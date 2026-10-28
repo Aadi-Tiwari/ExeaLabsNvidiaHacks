@@ -79,8 +79,10 @@ def table_move(table: dict, obj: dict, fixtures: list[dict], walls: list[dict], 
     """move_on_table variation for an object on a scanned table: which long edge the robot stands at (the one
     nearer the object), the target spot TABLE_MOVE along that edge (toward the middle of the table, else the other
     way), and the base position. None when the object is out of reach of that edge, or in neither direction is
-    the target on the table, free of other objects (it would be set down on one) and reachable from a base that
-    clears furniture and walls."""
+    the target on the table and free of other objects (it would be set down on one). The direction whose base
+    clears furniture and walls is preferred; when neither does, the first is kept anyway and the pre-flight
+    decides, so the reach planner (`find_shift`) can stand further along the edge, as it does for every other
+    family."""
     from arrival.twin.compile import _rect_distance
 
     sx, sy = table["size"][0], table["size"][1]
@@ -92,6 +94,7 @@ def table_move(table: dict, obj: dict, fixtures: list[dict], walls: list[dict], 
         return None
     toward_middle = -TABLE_MOVE if lx > 0 else TABLE_MOVE
     half = max(obj["size"][:2]) / 2
+    blocked = None
     for step in (toward_middle, -toward_middle):  # the other way along the edge when the first spot is taken
         tx = lx + step
         if abs(tx) > sx / 2 - 0.12:
@@ -101,6 +104,7 @@ def table_move(table: dict, obj: dict, fixtures: list[dict], walls: list[dict], 
                for o in objects if o is not obj):  # an object set down on another one lands on it and misses
             continue
         base = to_world(((lx + tx) / 2, side * (sy / 2 + 0.28)), table)
+        blocked = blocked or {"side": side, "target_xy": list(target), "base_xy": list(base)}
         xs = [p[0] for w in walls for p in (w["start"], w["end"])]
         ys = [p[1] for w in walls for p in (w["start"], w["end"])]
         if xs and not (min(xs) + BASE_CLEAR <= base[0] <= max(xs) - BASE_CLEAR
@@ -109,7 +113,9 @@ def table_move(table: dict, obj: dict, fixtures: list[dict], walls: list[dict], 
         if any(_rect_distance(base, f) < BASE_CLEAR for f in fixtures if f is not table and f["type"] != "sink"):
             continue
         return {"side": side, "target_xy": list(target), "base_xy": list(base)}
-    return None
+    # the study's desk: its chair stands on the midway spot of the only open edge, and returning None here hid the
+    # desk from the reach planner, which stands 0.25 m further along, 0.18 m clear of the chair
+    return blocked
 
 
 def _fx(twin: dict, fid: str) -> dict:
