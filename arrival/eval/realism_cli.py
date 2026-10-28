@@ -132,6 +132,8 @@ def load_frame(m: rgbd.Manifest, f: rgbd.Frame, max_side: int = MAX_SIDE, min_co
         conf = np.asarray(_open_image(f.confidence, "L", f.id))
         if conf.shape != depth.shape:
             raise RealismError(f"frame {f.id}: confidence map is {conf.shape[::-1]}, depth is {depth.shape[::-1]}")
+        if np.any(conf > 2):
+            raise RealismError(f"frame {f.id}: confidence map must use ARKit levels 0, 1 or 2")
         valid &= conf >= min_confidence
     w, h = m.rgb_size
     scale = min(1.0, max_side / max(w, h))
