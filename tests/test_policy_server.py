@@ -121,6 +121,17 @@ def test_server_answers_400_for_an_integer_too_large_for_a_float():
         assert e.value.code == 400
 
 
+@pytest.mark.parametrize("chunk", [0, -1])
+def test_mock_refuses_a_chunk_shorter_than_one_step(chunk, capsys):
+    from arrival.policy_server import mock_server
+
+    with pytest.raises(ValueError, match="chunk"):  # before binding a port, like a bad mode
+        MockPolicyServer(chunk=chunk)
+    with pytest.raises(SystemExit) as e:
+        mock_server.main(["--port", "0", "--chunk", str(chunk)])
+    assert e.value.code == 2 and "--chunk must be at least 1" in capsys.readouterr().err
+
+
 def test_client_rejects_malformed_server_reply(monkeypatch):
     from arrival.policy_server import mock_server  # a reply the server's own encoder would refuse to build
     monkeypatch.setattr(mock_server, "encode_response", lambda chunk: {"action.single_arm": [], "action.gripper": []})

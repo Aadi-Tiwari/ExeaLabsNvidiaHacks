@@ -156,6 +156,36 @@ def _start_variants(twin: dict, v: dict) -> list:
     return [_offset_start(src, v["start"], off, half) for off in POSE_OFFSETS]
 
 
+def family_fixtures(twin: dict) -> dict[str, list[dict]]:
+    """The fixtures each family acts on in this twin, by fixture type and what the sim models on it: a counter run
+    (tables count) for the counter families, a cabinet with drawers or a door, a table, a stove, a dishwasher, a sink
+    in a counter run for the faucet, a fridge. make_tasks builds its variations on these lists and the pre-flight
+    then checks reach; room_families offers the families with any. Objects and reach play no part here."""
+    fx = twin["fixtures"]
+    counters = [f for f in fx if is_counter_host(f)]
+    cabinets = [c for c in counters if not is_table(c)]  # tables have no drawers or doors
+    sinks = [f for f in fx if f["type"] == "sink"]
+    drawers = [c for c in cabinets if has_drawers(c, fx)]
+    doors = [c for c in cabinets if has_door(c, fx)]  # a narrow cabinet is one door, no drawers
+    dishwashers = [f for f in fx if f["type"] == "dishwasher"]
+    return {"counter_to_sink": sinks if counters else [], "counter_to_counter": counters,
+            "open_drawer": drawers, "close_drawer": drawers, "put_in_drawer": drawers,
+            "open_door": doors, "close_door": doors, "wipe_counter": counters,
+            "move_on_table": [c for c in counters if is_table(c)],
+            "open_oven": [f for f in fx if f["type"] == "stove"],
+            "open_dishwasher": dishwashers, "load_dishwasher": dishwashers, "unload_dishwasher": dishwashers,
+            # the sink sits in a counter run; the lever is pushed from in front of that counter
+            "turn_on_faucet": [s for s in sinks if _holder(s, counters) is not None],
+            "open_fridge": [f for f in fx if f["type"].startswith("fridge")]}
+
+
+def room_families(twin: dict) -> tuple[str, ...]:
+    """The SIM_FAMILIES whose fixture this twin has (family_fixtures), in SIM_FAMILIES order: what the planner is
+    offered. Independent of the base and of reach, which make_tasks' pre-flight checks."""
+    on = family_fixtures(twin)
+    return tuple(fam for fam in SIM_FAMILIES if on.get(fam))
+
+
 def make_tasks(twin: dict, families: list[str], n: int, seed: int = 0, people: int = 0, holdout: bool = False,
                split: str = "train", use_generated_instructions: bool = False,
                mobile: bool = False, log=print, preflight: dict | None = None, arm: str = "procedural") -> list[dict]:
@@ -171,9 +201,8 @@ def make_tasks(twin: dict, families: list[str], n: int, seed: int = 0, people: i
     are excluded. holdout=True draws only those; families with 3 templates keep all 3 either way.
     use_generated_instructions draws from the Nemotron cache (or the template fallback) for `split` instead."""
     rng = random.Random(seed)
-    counters = [f for f in twin["fixtures"] if is_counter_host(f)]
-    cabinets = [c for c in counters if not is_table(c)]  # tables have no drawers or doors
-    sinks = [f for f in twin["fixtures"] if f["type"] == "sink"]
+    on = family_fixtures(twin)
+    counters, sinks = on["counter_to_counter"], on["counter_to_sink"]  # every worktop (tables too); every sink
     pools: dict[str, list[dict]] = {}
     pre = preflight if preflight is not None else {}
     pre.update({"rejected": 0, "shifted": 0, "families": [], "reasons": []})
@@ -208,8 +237,8 @@ def make_tasks(twin: dict, families: list[str], n: int, seed: int = 0, people: i
             for o in twin["objects"]:
                 if o["catalog_id"] != "mug":
                     continue
-                src = _holder(o, cabinets)
-                if src is None or not has_drawers(src, twin["fixtures"]) or (
+                src = _holder(o, counters)
+                if src is None or src not in on[fam] or (
                         abs(to_local(o["position"], src)[0] - drawer_x(src, twin["fixtures"])) > 0.6):
                     continue  # the base parks beside the open drawer, so the mug must be within reach of that spot
                 pool.append({"object_id": o["id"], "object_label": o["label"], "source": src["id"], "fixture": src["id"],
@@ -223,11 +252,9 @@ def make_tasks(twin: dict, families: list[str], n: int, seed: int = 0, people: i
                     pool.append({"object_id": o["id"], "object_label": o["label"], "source": src["id"],
                                  "fixture": src["id"], "start": list(o["position"])})
         elif fam in ("open_drawer", "open_door", "close_drawer", "close_door"):
-            has = has_door if fam.endswith("_door") else has_drawers  # a narrow cabinet is one door, no drawers
-            pool = [{"fixture": c["id"], "name": c["id"].replace("_", " ")} for c in cabinets
-                    if has(c, twin["fixtures"])]
+            pool = [{"fixture": c["id"], "name": c["id"].replace("_", " ")} for c in on[fam]]
         elif fam == "move_on_table":
-            for c in (c for c in counters if is_table(c)):
+            for c in on[fam]:
                 for o in twin["objects"]:
                     if o["catalog_id"] not in TABLE_MOVABLE:
                         continue
@@ -236,16 +263,15 @@ def make_tasks(twin: dict, families: list[str], n: int, seed: int = 0, people: i
                         pool.append({"object_id": o["id"], "object_label": o["label"], "source": c["id"],
                                      "target": c["id"], "start": list(o["position"]), **m})
         elif fam == "open_oven":
-            pool = [{"fixture": f["id"], "name": f["id"].replace("_", " ")} for f in twin["fixtures"] if f["type"] == "stove"]
+            pool = [{"fixture": f["id"], "name": f["id"].replace("_", " ")} for f in on[fam]]
         elif fam == "open_dishwasher":
-            pool = [{"fixture": f["id"], "name": f["id"].replace("_", " ")} for f in twin["fixtures"]
-                    if f["type"] == "dishwasher"]
+            pool = [{"fixture": f["id"], "name": f["id"].replace("_", " ")} for f in on[fam]]
         elif fam == "turn_on_faucet":  # the sink sits in a counter run; the lever is pushed from in front of that counter
-            pool = [{"fixture": s["id"], "name": "faucet"} for s in sinks if _holder(s, counters) is not None]
+            pool = [{"fixture": s["id"], "name": "faucet"} for s in on[fam]]
         elif fam in ("load_dishwasher", "unload_dishwasher"):
             # the base parks beside the dishwasher in front of the counter, so the object (or its spot on the
             # counter for unloading) has to be within reach of that parking spot
-            for d in (f for f in twin["fixtures"] if f["type"] == "dishwasher"):
+            for d in on[fam]:
                 for o in twin["objects"]:
                     if o["catalog_id"] not in PICKABLE:
                         continue
@@ -259,8 +285,7 @@ def make_tasks(twin: dict, families: list[str], n: int, seed: int = 0, people: i
                     pool.append({"object_id": o["id"], "object_label": o["label"], "source": src["id"],
                                  "fixture": d["id"], "start": list(o["position"])})
         elif fam == "open_fridge":
-            pool = [{"fixture": f["id"], "name": "fridge"} for f in twin["fixtures"]
-                    if f["type"].startswith("fridge")]
+            pool = [{"fixture": f["id"], "name": "fridge"} for f in on[fam]]
         kept = []
         for v in pool:
             why = None

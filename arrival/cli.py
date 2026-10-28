@@ -1,4 +1,4 @@
-"""python -m arrival demo | validate | serve | sim | merge-shards | subset | eval | eval-compare | realism | work | gc | doctor | summary | export-site | cost"""
+"""python -m arrival demo | validate | serve | sim | retarget | merge-shards | subset | eval | eval-compare | realism | work | gc | doctor | summary | export-site | cost"""
 
 from __future__ import annotations
 
@@ -106,7 +106,7 @@ def cmd_demo(a) -> int:
 def cmd_validate(a) -> int:
     from arrival.export.validate import validate
 
-    per_episode = a.episodes or a.frames or bool(a.drop)
+    per_episode = a.episodes or a.frames or bool(a.drop) or bool(a.json)  # --json alone used to write nothing
     errors = validate(a.dataset_dir)
     if errors:  # with a per-episode pass requested, a bad episode is what we are here to find: keep going
         for e in errors:
@@ -248,6 +248,11 @@ def cmd_sim(a) -> int:
     if not (math.isfinite(dart) and dart >= 0):  # -1 and nan ran with no noise but were written to info.json
         print("--dart must be a finite number >= 0 (0 = off)", file=sys.stderr)
         return EXIT_USAGE
+    if getattr(a, "split", "train") == "eval" and getattr(a, "instructions", "template") != "nemotron":
+        # only the generated wordings have an eval split; the template run was the train split labelled eval
+        print("--split eval needs --instructions nemotron: the template wordings have no eval split for sim "
+              "(eval --holdout holds theirs out)", file=sys.stderr)
+        return EXIT_USAGE
     if getattr(a, "tavily", False) and getattr(a, "planner", "rule") != "vlm":
         # only VLMPlanner reads the research; with the rule planner the lookups ran and changed nothing
         print("--tavily needs --planner vlm: the research only goes into the Nemotron planner's prompt", file=sys.stderr)
@@ -303,6 +308,84 @@ def cmd_sim(a) -> int:
     return EXIT_OK
 
 
+def cmd_retarget(a) -> int:
+    """Retarget seed demonstrations with physical SE(3) trajectory mapping or seed replay."""
+    try:
+        import mujoco  # noqa: F401
+    except ImportError:
+        print("mujoco is not installed: pip install -e '.[sim]'", file=sys.stderr)
+        return EXIT_USAGE
+
+    if getattr(a, "attempts", 1) < 1:
+        print("--attempts must be >= 1", file=sys.stderr)
+        return EXIT_USAGE
+    if getattr(a, "seed", 0) < 0:
+        print("--seed must be >= 0", file=sys.stderr)
+        return EXIT_USAGE
+    if getattr(a, "res", 16) <= 0 or getattr(a, "res", 16) % 16 != 0:
+        print("--res must be a positive multiple of 16", file=sys.stderr)
+        return EXIT_USAGE
+
+    try:
+        twin = _load_twin(a.room, a.out, a.scans)
+    except FileNotFoundError:
+        print(_no_room(a), file=sys.stderr)
+        return EXIT_USAGE
+
+    method = getattr(a, "method", "se3")
+    out_dir = Path(a.out)
+
+    if method == "se3":
+        if getattr(a, "baseline", False):
+            print("--baseline is only supported with --method seed_replay", file=sys.stderr)
+            return EXIT_USAGE
+        fam = getattr(a, "family", "counter_to_sink")
+        if fam != "counter_to_sink":
+            print(f"--method se3 currently supports 'counter_to_sink' only (got {fam!r})", file=sys.stderr)
+            return EXIT_USAGE
+        from arrival.generate import se3_retarget
+
+        source = None
+        if getattr(a, "source", None):
+            src_path = Path(a.source)
+            try:
+                source = json.loads(src_path.read_text())
+                se3_retarget.validate_source(source)
+            except (OSError, ValueError, KeyError, TypeError) as e:
+                print(f"invalid --source {src_path}: {e}", file=sys.stderr)
+                return EXIT_USAGE
+        try:
+            res = se3_retarget.generate(twin, out_dir, source=source, attempts=a.attempts,
+                                        seed=a.seed, res=a.res)
+        except Exception as e:
+            print(f"retarget failed: {e}", file=sys.stderr)
+            return EXIT_INVALID
+    elif method == "seed_replay":
+        if getattr(a, "source", None):
+            print("--source is only supported with --method se3", file=sys.stderr)
+            return EXIT_USAGE
+        from arrival.generate import retarget as seed_retarget
+
+        fam = getattr(a, "family", "counter_to_sink")
+        if fam not in seed_retarget.FAMILIES:
+            print(f"unknown family {fam!r} for seed_replay (choose from {', '.join(seed_retarget.FAMILIES)})", file=sys.stderr)
+            return EXIT_USAGE
+        try:
+            res = seed_retarget.retarget(twin, out_dir, attempts=a.attempts, seed=a.seed,
+                                         res=a.res, family=fam, baseline=getattr(a, "baseline", False))
+        except Exception as e:
+            print(f"retarget failed: {e}", file=sys.stderr)
+            return EXIT_INVALID
+    else:
+        print(f"unknown retarget method {method!r} (choose from 'se3', 'seed_replay')", file=sys.stderr)
+        return EXIT_USAGE
+
+    rep = res["report_data"]
+    summary = {k: v for k, v in rep.items() if k != "rows"}
+    print(json.dumps(summary, indent=2))
+    return EXIT_OK
+
+
 def cmd_fanout(a) -> int:
     """Run the sim shards resumably on the local fake backend (a directory as object storage) or, with
     `--backend nebius`, as Nebius Serverless AI Jobs with an Object Storage bucket, and merge them."""
@@ -345,10 +428,10 @@ def cmd_fanout(a) -> int:
         print(f"fanout: {e}", file=sys.stderr)
         return EXIT_USAGE
     finally:
-        if a.backend == "nebius":  # remote jobs outlive this process unless cancelled
-            left = rec.cancel_open()
-            if left:
-                print(f"fanout: could not cancel Nebius jobs {left}; cancel them by hand", file=sys.stderr)
+        # remote jobs outlive this process unless cancelled, and so do the local backend's `arrival sim` children
+        left = rec.cancel_open()
+        if left:
+            print(f"fanout: could not cancel {a.backend} jobs {left}; cancel them by hand", file=sys.stderr)
     problems = validate(res["dataset"])
     for p in problems:
         print(f"INVALID: {p}", file=sys.stderr)
@@ -687,7 +770,8 @@ def build_parser() -> argparse.ArgumentParser:
     v.add_argument("--frames", action="store_true", help="with --episodes: also decode videos and flag blank cameras")
     v.add_argument("--drop", metavar="CLEAN_DIR", default=None,
                    help="write a cleaned copy without the flagged episodes to CLEAN_DIR (implies --episodes)")
-    v.add_argument("--json", metavar="FILE", default=None, help="write the per-episode report as JSON")
+    v.add_argument("--json", metavar="FILE", default=None,
+                   help="write the per-episode report as JSON (implies --episodes)")
     v.set_defaults(fn=cmd_validate)
     s = sub.add_parser("serve", help="local page on 127.0.0.1")
     s.add_argument("--port", type=int, default=8000)
@@ -718,7 +802,8 @@ def build_parser() -> argparse.ArgumentParser:
     m.add_argument("--instructions", choices=["template", "nemotron"], default="template",
                    help="Instruction source: template (fixed wordings) or nemotron (varied wordings with train/eval split)")
     m.add_argument("--split", choices=["train", "eval"], default="train",
-                   help="Dataset instruction split: train or held-out eval")
+                   help="with --instructions nemotron: draw the train or the held-out eval wordings "
+                        "(the template wordings have no split here; eval --holdout holds theirs out)")
     m.add_argument("--base", choices=["fixed", "mobile"], default="fixed",
                    help="mobile: the pedestal drives (MAN-3); counter_to_counter becomes reachable")
     m.add_argument("--arm", choices=["procedural", "menagerie"], default="procedural",
@@ -741,6 +826,22 @@ def build_parser() -> argparse.ArgumentParser:
                         "0 (default) is off, 0.02 to 0.05 is a useful range. Recorded in the dataset provenance")
     m.add_argument("--tavily", action="store_true", help="Enrich digital twin and VLM planning with Tavily appliance research (needs --planner vlm)")
     m.set_defaults(fn=cmd_sim)
+    rt = sub.add_parser("retarget", help="retarget demonstrations with SE(3) trajectory mapping or seed replay")
+    rt.add_argument("--room", default="hero_kitchen", help="scanned room name")
+    rt.add_argument("--scans", default="scans", help="folder containing scans/<room>/scan.json")
+    rt.add_argument("--out", default="out", help="output directory")
+    rt.add_argument("--method", default="se3", choices=("se3", "seed_replay"),
+                    help="retargeting generator: native SE(3) physical retargeting (default) or seed replay")
+    rt.add_argument("--attempts", type=int, default=6, help="number of retargeting attempts (>= 1)")
+    rt.add_argument("--seed", type=int, default=0, help="random seed (>= 0)")
+    rt.add_argument("--res", type=int, default=64, help="camera resolution, positive multiple of 16")
+    rt.add_argument("--family", default="counter_to_sink",
+                    help="task family for seed_replay (counter_to_sink, counter_to_counter)")
+    rt.add_argument("--source", type=Path, default=None,
+                    help="reuse a previously recorded meta/se3_source.json (se3 method only)")
+    rt.add_argument("--baseline", action="store_true",
+                    help="also benchmark the scripted expert (seed_replay method only)")
+    rt.set_defaults(fn=cmd_retarget)
     f = sub.add_parser("fanout", help="run sim shards on a job backend, resumable, then merge (local by default)")
     f.add_argument("--backend", choices=["local", "nebius"], default="local",
                    help="local subprocesses and a directory, or Nebius Serverless AI Jobs and Object Storage "
@@ -769,7 +870,7 @@ def build_parser() -> argparse.ArgumentParser:
     u.add_argument("--out", default="out", help="the subset goes to <out>/datasets/<room>_sim")
     u.add_argument("--families", default="", help="comma list of families to keep (default: all)")
     u.add_argument("--min-drawer-opening", type=float, default=None, metavar="M",
-                   help="drop open_drawer episodes whose final drawer opening is under M metres (the clean expert ends at 0.300)")
+                   help="drop open_drawer episodes whose final drawer opening is under M metres (a clean pull ends at 0.2997, so 0.28 keeps every clean demo)")
     u.set_defaults(fn=cmd_subset)
     r = sub.add_parser("research", help="Tavily AI research on kitchen appliances and safety guidelines")
     r.add_argument("--room", default="hero_kitchen")

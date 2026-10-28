@@ -153,6 +153,23 @@ def validate_source(source):
             raise ValueError("invalid source segment or gripper opening")
 
 
+def check_twin(twin, source):
+    """The source's object (same catalog item and size), counter and sink must exist under the same ids in `twin`.
+    Checked before anything is written, so a source from another room is refused with its ids, not a KeyError."""
+    task = source["task"]
+    fixtures = {f["id"] for f in twin["fixtures"]}
+    obj = next((o for o in twin["objects"] if o["id"] == task["object_id"]), None)
+    missing = ([] if obj else [task["object_id"]]) + [fid for fid in (task["source"], task["target"])
+                                                      if fid not in fixtures]
+    if missing:
+        raise ValueError(f"the source needs {', '.join(missing)}, which {twin['room_id']} does not have; "
+                         "a source replays only in a twin with its object, counter and sink ids "
+                         "(omit --source to record one here)")
+    if {k: obj[k] for k in ("catalog_id", "size")} != source["object_spec"]:
+        raise ValueError(f"{task['object_id']} in {twin['room_id']} is not the source's object "
+                         f"({source['object_spec']['catalog_id']}, size {source['object_spec']['size']})")
+
+
 def retarget_trajectory(samples, anchors, initial):
     """Re-anchor each recorded pose and bridge the object-to-sink handoff while holding the grasp."""
     targets, previous, segment = [], rigid(initial), None
@@ -233,6 +250,7 @@ def generate(twin, out_dir="out", *, source=None, attempts=2, seed=0, res=64, of
         with SimEnv(twin, tasks[0], res=res, cameras=()) as env:
             source = record_source(env, tasks[0])
     validate_source(source)
+    check_twin(twin, source)
     out_dir = Path(out_dir)
     writer = SimDatasetWriter(out_dir / "datasets" / f"{twin['room_id']}_se3_retarget", twin["room_id"], FPS, res,
                               ("ego_view", "wrist"), provenance=run_record(twin, seed=seed, generator=GENERATOR))
@@ -306,11 +324,18 @@ def main(argv=None):
     args = ap.parse_args(argv)
     if args.attempts < 1 or args.seed < 0 or args.res <= 0 or args.res % 16:
         ap.error("attempts must be positive, seed nonnegative, res a positive multiple of 16")
+    from arrival.cli import resolve_scans
+    from arrival.scan.bundle import rooms_hint
+    scans = resolve_scans(args.scans)
     try:
         source = json.loads(args.source.read_text()) if args.source else None
         if source is not None:
             validate_source(source)
-        twin = compile_twin(load_room(args.room, args.scans))
+        try:
+            bundle = load_room(args.room, scans)
+        except FileNotFoundError:
+            ap.error(f"no scan for room {args.room!r} under {scans} ({rooms_hint(args.room, scans)})")
+        twin = compile_twin(bundle)
         result = generate(twin, args.out, source=source, attempts=args.attempts, seed=args.seed, res=args.res)
     except (OSError, ValueError, KeyError, TypeError) as error:
         ap.error(str(error))

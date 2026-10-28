@@ -2,6 +2,8 @@
 
     python scripts/check_layout.py out/twins/hero_kitchen [--json]
     python scripts/check_layout.py --room hero_kitchen        # compile from scans/ in memory
+    python scripts/check_layout.py --room rotated_kitchen --scans tests/fixtures/scans
+    python scripts/check_layout.py --roomplan tests/fixtures/roomplan/kitchen_real_01.json
 
 This compares the YAML with the twin it was emitted from. It does NOT prove RoboCasa loads the file.
 Checks: frame and units, full sizes (not half-extents), position within 5 cm, yaw as z_rot, wall endpoints
@@ -145,20 +147,36 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("twin_dir", nargs="?", help="folder with twin.json and layout.yaml")
     p.add_argument("--room", help="compile scans/<room> in memory instead of reading a folder")
+    p.add_argument("--scans", default="scans", help="folder containing scans/<room>/scan.json")
+    p.add_argument("--roomplan", help="compile and check a RoomPlan export JSON directly")
     p.add_argument("--json", action="store_true")
     a = p.parse_args(argv)
-    if not (a.room or a.twin_dir):
-        p.error("give a twin folder or --room")
+    inputs = [bool(a.twin_dir), bool(a.room), bool(a.roomplan)]
+    if sum(inputs) != 1:
+        p.error("give exactly one of twin folder, --room, or --roomplan")
     try:
-        if a.room:
+        if a.roomplan:
+            from arrival.scan import roomplan
+            from arrival.twin.compile import compile_twin, layout_dict
+            rp = Path(a.roomplan)
+            twin = compile_twin(roomplan.load(rp, rp.stem))
+            layout = yaml.safe_load(yaml.safe_dump(layout_dict(twin), sort_keys=False))
+        elif a.room:
+            from arrival.cli import resolve_scans
             from arrival.scan.bundle import load_room
             from arrival.twin.compile import compile_twin, layout_dict
-            twin = compile_twin(load_room(a.room))
+            scans = resolve_scans(a.scans)
+            twin = compile_twin(load_room(a.room, scans))
             layout = yaml.safe_load(yaml.safe_dump(layout_dict(twin), sort_keys=False))
         else:
             d = Path(a.twin_dir)
             twin, layout = json.loads((d / "twin.json").read_text()), yaml.safe_load((d / "layout.yaml").read_text())
     except FileNotFoundError as e:
+        if getattr(a, "room", None):
+            from arrival.cli import resolve_scans
+            from arrival.scan.bundle import rooms_hint
+            scans = resolve_scans(a.scans)
+            p.error(f"no scan for room {a.room!r} under {scans} ({rooms_hint(a.room, scans)}): {e}")
         p.error(str(e))
     res = check_layout(twin, layout)
     if a.json:
