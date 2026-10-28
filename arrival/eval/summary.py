@@ -51,9 +51,12 @@ def resolve_room(spec: str, scans_dir: Path) -> tuple[str, Path]:
 
 
 def _measurements(room: str, scans_dir: Path, scan_path: Path) -> Path | None:
-    for p in (scan_path.parent / "measurements.json", scans_dir / room / "measurements.json",
+    # only a scan.json / roomplan.json stands for its folder (as in resolve_room); loose scans in one folder
+    # would otherwise all take the measurements.json that sits beside them
+    beside = scan_path.parent / "measurements.json" if scan_path.stem.lower() in ("scan", "roomplan") else None
+    for p in (beside, scans_dir / room / "measurements.json",
               REPO / "tests" / "fixtures" / "measurements" / f"{room}.json"):
-        if p.is_file():
+        if p is not None and p.is_file():
             return p
     return None
 

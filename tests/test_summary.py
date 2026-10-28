@@ -191,6 +191,20 @@ def test_explicit_scan_uses_its_adjacent_measurements(tmp_path, monkeypatch, has
     assert row["tape"]["max_abs_error_m"] == 0.0
 
 
+def test_loose_scans_in_one_folder_do_not_share_its_measurements(tmp_path, monkeypatch):
+    import arrival.sim.tasks as tasks
+
+    loose = tmp_path / "loose"
+    loose.mkdir()
+    (loose / "hero.json").write_text((SCANS / "hero_kitchen/scan.json").read_text())
+    (loose / "other.json").write_text((REPO / "tests/fixtures/scans/rotated_kitchen/scan.json").read_text())
+    (loose / "measurements.json").write_text((REPO / "tests/fixtures/measurements/hero_kitchen.json").read_text())
+    monkeypatch.setattr(tasks, "make_tasks", lambda *a, **k: [])
+    row = summary.run_room(str(loose / "other.json"), tmp_path / "out", tmp_path / "no_scans")
+    assert statuses(row)["compile"] == "ok"
+    assert row["tape"] is None  # hero_kitchen's tape values are not other.json's
+
+
 def test_roomplan_rows_flag_invented_objects(tmp_path, monkeypatch):
     import arrival.sim.tasks as tasks
 
