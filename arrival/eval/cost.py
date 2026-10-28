@@ -103,10 +103,21 @@ METER_KEYS = ("wall_seconds", "episodes_attempted", "episodes_succeeded", "frame
 
 
 def job_usage(out_dir: str | Path) -> dict[str, dict]:
-    """Per-job metering by job id: the ledger first, then each status.json (which wins: it is the live record).
-    A value is None when it was not measured; a job without a usage block (an older worker) is not here."""
+    """Per-job metering by job id. The ledger has one line per finished attempt, told apart by ``job_attempts``, and
+    a finished status.json replaces the line of its own attempt (it is the live record). ``wall_seconds`` is the sum
+    over the job's attempts, since a retried job used the machine for each of them; every other value is the last
+    attempt's (the episodes, frames and bytes the job ended with). A value is None when it was not measured; a job
+    without a usage block (an older worker) is not here."""
     out = Path(out_dir)
-    jobs: dict[str, dict] = {}
+    runs: dict[str, dict] = {}  # job id -> {job_attempts: that attempt's metering}, oldest attempt first
+
+    def add(rec: dict, usage: dict) -> None:
+        attempt = rec.get("job_attempts") if type(rec.get("job_attempts")) is int else None
+        by_attempt = runs.setdefault(rec["id"], {})
+        by_attempt.pop(attempt, None)  # a later record of the same attempt replaces it
+        by_attempt[attempt] = {"room_id": rec.get("room_id"), "attempts": rec.get("attempts"),
+                               "successes": rec.get("successes"), **{k: usage.get(k) for k in METER_KEYS}}
+
     ledger = out / "usage" / "jobs.jsonl"
     try:
         body = ledger.read_text(encoding="utf-8") if ledger.is_file() else ""
@@ -121,14 +132,19 @@ def job_usage(out_dir: str | Path) -> dict[str, dict]:
                 continue  # a kill may leave an incomplete final append
             raise CostError(f"usage ledger {ledger}: invalid JSON on line {index + 1}") from e
         if isinstance(rec, dict) and isinstance(rec.get("id"), str):
-            jobs[rec["id"]] = {"room_id": rec.get("room_id"), "attempts": rec.get("attempts"),
-                               "successes": rec.get("successes"), **{k: rec.get(k) for k in METER_KEYS}}
+            add(rec, rec)
     for p in sorted((out / "jobs").glob("*/status.json")):
         s = _load(p, "job status")
         u = s.get("usage")
         if isinstance(u, dict) and isinstance(s.get("id"), str) and s.get("finished_at") is not None:
-            jobs[s["id"]] = {"room_id": s.get("room_id"), "attempts": s.get("attempts"),
-                             "successes": s.get("successes"), **{k: u.get(k) for k in METER_KEYS}}
+            add(s, u)
+    jobs: dict[str, dict] = {}
+    for job_id, by_attempt in runs.items():
+        *_, last = by_attempt.values()
+        walls = [r["wall_seconds"] for r in by_attempt.values() if r["wall_seconds"] is not None]
+        bad = [w for w in walls if not (_num(w) and w >= 0)]  # passed on as is, for metering_totals to refuse
+        total = round(sum(walls), 3) if walls and not bad else None
+        jobs[job_id] = {**last, "wall_seconds": bad[0] if bad else total}
     return jobs
 
 
