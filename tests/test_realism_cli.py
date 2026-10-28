@@ -261,3 +261,23 @@ def test_evaluate_frames_still_refuses_a_train_id(twin):
     """The library-level guard the command relies on."""
     with pytest.raises(ValueError, match="train_0"):
         realism.evaluate_frames(twin, [{"id": "train_0"}], ["held_0"])
+
+
+@pytest.mark.parametrize("level", [0, 1, 2, 255])
+def test_confidence_levels_are_validated_before_masking(tmp_path, level):
+    root = rgbd.write_synthetic_bundle(tmp_path)
+    path = root / rgbd.MANIFEST_NAME
+    manifest = json.loads(path.read_text())
+    Image.fromarray(np.full((48, 64), level, dtype=np.uint8)).save(root / "levels.png")
+    manifest["frames"][0]["confidence"] = "levels.png"
+    path.write_text(json.dumps(manifest))
+    loaded = rgbd.load_manifest(root)
+    frame = loaded.frames[0]
+    if level > 2:
+        with pytest.raises(realism_cli.RealismError, match="confidence.*0, 1 or 2"):
+            realism_cli.load_frame(loaded, frame, max_side=64)
+    else:
+        depth = rgbd.load_depth(loaded, frame)
+        expected = np.isfinite(depth) & (depth > 0) & (level >= 2)
+        result = realism_cli.load_frame(loaded, frame, max_side=64)
+        assert np.array_equal(result["valid_depth_mask"], expected)
