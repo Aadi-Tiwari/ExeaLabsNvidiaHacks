@@ -4,7 +4,8 @@
     python scripts/render_rooms.py scans/hero_kitchen tests/fixtures/roomplan/office.json
 
 Writes out/renders/<room>_top.png from scan.json and <room>_roomplan_top.png from roomplan.json
-(a bare .json argument is treated as a RoomPlan export). Walls are dark lines, doors brown, windows
+(a bare .json argument is treated as a RoomPlan export named after its stem; scans/<room>/roomplan.json given
+as a file is named after its folder, like the folder itself). Walls are dark lines, doors brown, windows
 blue, openings grey, the scanned floor polygon a pale fill, fixtures rectangles rotated by yaw and
 labelled with id and type, objects dots. 100 px per metre, +Y up.
 """
@@ -40,7 +41,11 @@ def _twins(paths: list[Path]) -> list[tuple[str, dict]]:
             if (p / "roomplan.json").is_file():
                 out.append((f"{p.name}_roomplan", compile_twin(roomplan.load(p / "roomplan.json", p.name))))
         elif p.suffix == ".json":
-            out.append((p.stem, compile_twin(roomplan.load(p, p.stem))))
+            # scans/<room>/roomplan.json, as intake_scan.py lands a scan, is named as its folder would be: by its
+            # stem every room was roomplan_top.png, and each render replaced the one before
+            own = p.name.lower() == "roomplan.json"
+            room = p.resolve().parent.name if own else p.stem
+            out.append((f"{room}_roomplan" if own else room, compile_twin(roomplan.load(p, room))))
     return out
 
 
