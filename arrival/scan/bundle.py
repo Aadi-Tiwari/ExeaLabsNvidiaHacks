@@ -19,13 +19,25 @@ class ScanBundleError(ValueError):
     """A scan that cannot become a twin. The message says what is wrong, in words a person scanning a room can act on."""
 
 
+def is_finite_number(value) -> bool:
+    """True for an int or float that converts to a finite float. False for a bool, any other type, nan, inf,
+    and an int too large for float: that raises OverflowError, which is not a ValueError."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
+
+
 def numbers(value, n: int | None = None) -> list[float] | None:
-    """`value` as a list of finite floats (exactly n of them when given); None when it is anything else."""
+    """`value` as a list of finite floats (exactly n of them when given); None when it is anything else.
+    An int too large for float is not a finite float."""
     if isinstance(value, (str, bytes, dict)) or not isinstance(value, (list, tuple)) or (n is not None and len(value) != n):
         return None
     try:
         out = [float(v) for v in value if not isinstance(v, bool)]
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
     if len(out) != len(value) or any(v != v or abs(v) == float("inf") for v in out):
         return None

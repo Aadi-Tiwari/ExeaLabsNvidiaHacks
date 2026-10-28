@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 
 from arrival.catalog.fixtures import default_size
-from arrival.scan.bundle import MAX_COORD_M, MAX_DIM_M, ScanBundleError, numbers, validate
+from arrival.scan.bundle import MAX_COORD_M, MAX_DIM_M, ScanBundleError, is_finite_number, numbers, validate
 
 SNAP_TOL = math.radians(5.0)
 CURVE_STEP = math.radians(15.0)
@@ -97,7 +97,7 @@ def _angle(value) -> float | None:
     """A finite number of radians, or a Measurement-style `{"value": ...}` object."""
     if isinstance(value, dict):
         value = value.get("value")
-    if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value):
+    if is_finite_number(value):
         return float(value)
     return None
 
@@ -109,9 +109,7 @@ def _walls(w: dict) -> list[dict]:
         return [_wall(w)]
     start, end = _angle(curve.get("startAngle")), _angle(curve.get("endAngle"))
     radius = curve.get("radius")
-    if (start is None or end is None or not (
-            isinstance(radius, (int, float)) and not isinstance(radius, bool)
-            and math.isfinite(radius) and radius > 0)):
+    if start is None or end is None or not (is_finite_number(radius) and radius > 0):
         return [_wall(w)]
     sweep = end - start
     if abs(sweep) < 1e-12:
@@ -121,7 +119,7 @@ def _walls(w: dict) -> list[dict]:
     center = curve.get("center")
     cx = cz = 0.0
     if isinstance(center, (list, tuple)) and len(center) >= 2:
-        if all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in center[:2]):
+        if all(is_finite_number(v) for v in center[:2]):
             cx, cz = float(center[0]), float(center[1])
     pts = [_apply(m, [cx + radius * math.cos(start + sweep * i / n), 0.0,
                       cz + radius * math.sin(start + sweep * i / n)])[:2] for i in range(n + 1)]
@@ -356,8 +354,7 @@ def _check_item(key: str, i: int, item: dict) -> None:
         _bad(kind, item, i, f"transform places it more than {MAX_COORD_M:g} m from the origin")
     dim = item.get("dimensions")
     if key == "objects":
-        if dim is not None and (not isinstance(dim, (list, tuple)) or not all(
-                isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in dim)):
+        if dim is not None and (not isinstance(dim, (list, tuple)) or not all(is_finite_number(v) for v in dim)):
             _bad(kind, item, i, f"dimensions must be finite numbers, got {dim!r}")
         if dim and max(abs(v) for v in dim) > MAX_DIM_M:
             _bad(kind, item, i, f"dimensions {list(dim)} exceed {MAX_DIM_M:g} m; a scan in the wrong unit?")
