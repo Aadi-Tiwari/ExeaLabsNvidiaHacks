@@ -348,8 +348,7 @@ def generate(twin, out_dir="out", *, source=None, sources=None, attempts=2, seed
 
 
 def main(argv=None):
-    from arrival.scan.bundle import load_room
-    from arrival.twin.compile import compile_twin
+    from arrival.twin.compile import room_twin
 
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--room", default="hero_kitchen")
@@ -370,10 +369,9 @@ def main(argv=None):
         if source is not None:
             validate_source(source)
         try:
-            bundle = load_room(args.room, scans)
+            twin = room_twin(args.room, scans)
         except FileNotFoundError:
             ap.error(f"no scan for room {args.room!r} under {scans} ({rooms_hint(args.room, scans)})")
-        twin = compile_twin(bundle)
         result = generate(twin, args.out, source=source, attempts=args.attempts, seed=args.seed, res=args.res)
     except (OSError, ValueError, KeyError, TypeError) as error:
         ap.error(str(error))

@@ -169,8 +169,8 @@ def retarget(twin: dict, out_dir: str | Path = "out", attempts: int = 6, seed: i
 
 
 def main(argv=None) -> int:
-    from arrival.scan.bundle import load_room, rooms_hint
-    from arrival.twin.compile import compile_twin
+    from arrival.scan.bundle import rooms_hint
+    from arrival.twin.compile import room_twin
 
     ap = argparse.ArgumentParser(prog="python -m arrival.generate.retarget", description=__doc__.split("\n\n")[0])
     ap.add_argument("--room", default="hero_kitchen")
@@ -189,10 +189,10 @@ def main(argv=None) -> int:
     if a.res <= 0 or a.res % 16:
         ap.error("--res must be a positive multiple of 16")
     try:
-        bundle = load_room(a.room, a.scans)
+        twin = room_twin(a.room, a.scans)
     except FileNotFoundError:
         ap.error(f"no scan for room {a.room!r} under {a.scans} ({rooms_hint(a.room, a.scans)})")
-    r = retarget(compile_twin(bundle), a.out, a.attempts, a.seed, a.res, a.family, baseline=a.baseline)
+    r = retarget(twin, a.out, a.attempts, a.seed, a.res, a.family, baseline=a.baseline)
     print(json.dumps({k: v for k, v in r["report_data"].items() if k != "rows"}, indent=2))
     return 0
 

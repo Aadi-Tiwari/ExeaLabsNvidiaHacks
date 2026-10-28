@@ -405,8 +405,8 @@ class TeleopWindow:
 def main(argv=None) -> int:
     import argparse
 
-    from arrival.scan.bundle import load_room, rooms_hint
-    from arrival.twin.compile import compile_twin
+    from arrival.scan.bundle import rooms_hint
+    from arrival.twin.compile import room_twin
 
     ap = argparse.ArgumentParser(description="Timed keyboard teleop in the twin -> out/teleop_baseline.json",
                                  epilog=HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -433,10 +433,9 @@ def main(argv=None) -> int:
     if a.no_viewer and not sys.stdin.isatty():
         ap.error("--no-viewer reads keys from the terminal, so it needs an interactive one")
     try:
-        bundle = load_room(a.room, a.scans)
+        twin = room_twin(a.room, a.scans)
     except FileNotFoundError:
         ap.error(f"no scan for room {a.room!r} under {a.scans} ({rooms_hint(a.room, a.scans)})")
-    twin = compile_twin(bundle)
     print(HELP, flush=True)
     kw = dict(people=a.people, seed=a.seed, res=a.res, record=a.record)
     args = (a.out, a.operator_usd_per_hour, a.setup_usd, a.assumption, a.successes)
