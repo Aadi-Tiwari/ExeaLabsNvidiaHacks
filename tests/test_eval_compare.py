@@ -120,4 +120,13 @@ def test_compare_requires_boolean_success_outcomes(tmp_path, outcome):
     a = write_run(tmp_path / "a", [outcome])
     b = write_run(tmp_path / "b", [False])
     with pytest.raises(CompareError, match="success.*bool"):
+@pytest.mark.parametrize("changed_run", ["a", "b"])
+def test_compare_refuses_paired_family_disagreement(tmp_path, changed_run):
+    a = write_run(tmp_path / "a", [True, False])
+    b = write_run(tmp_path / "b", [False, True])
+    path = (a if changed_run == "a" else b) / "episodes.jsonl"
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    rows[0]["family"] = "counter_to_counter"
+    path.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
+    with pytest.raises(CompareError, match="famil"):
         compare(a, b)

@@ -64,6 +64,9 @@ def compare(run_a: str | Path, run_b: str | Path) -> dict:
     if [r["trial_index"] for r in a] != [r["trial_index"] for r in b] or [r["task_id"] for r in a] != [r["task_id"] for r in b]:
         raise CompareError("the runs did not score the same trials (one is incomplete or reordered)")
 
+    if any(x["family"] != y["family"] for x, y in zip(a, b)):
+        raise CompareError("the runs disagree on task families for paired trials")
+
     def block(pairs):
         wins = sum(x["success"] and not y["success"] for x, y in pairs)
         losses = sum(y["success"] and not x["success"] for x, y in pairs)
