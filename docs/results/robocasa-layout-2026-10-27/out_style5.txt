@@ -1,0 +1,85 @@
+robocasa 1.0.1 (/workspaces/rc/robocasa/robocasa), robosuite 1.5.2, mujoco 3.3.1, style 5, seed 0
+== hero_kitchen: twin has 5 fixtures, 4 walls
+-- as_written: built
+   RoboCasa fixtures (walls and floor included): 10; MuJoCo bodies 29, geoms 194, contacts 7
+   floor: top z 0.0, 8.08 x 6.08 m
+   counter_a                                Counter              dxy 0.025 dz 0.000 size_err 0.050 yaw_err 3.142
+   sink_1                                   Sink                 dxy 0.000 dz 0.231 size_err 0.000 yaw_err 3.142
+   counter_b                                Counter              dxy 0.025 dz 0.000 size_err 0.050 yaw_err 3.142
+   fridge_1                                 FridgeBottomFreezer  dxy 0.017 dz 0.000 size_err 0.000 yaw_err 3.142
+   stove_1                                  Stove                dxy 0.038 dz 0.014 size_err 0.000 yaw_err 3.142
+   wall_north                               Wall                 dxy 2.400 dz 0.000 size_err 4.780
+   wall_east                                Wall                 dxy 2.400 dz 0.000 size_err 3.600
+   wall_south                               Wall                 dxy 2.400 dz 0.000 size_err 4.780
+   wall_west                                Wall                 dxy 2.400 dz 0.000 size_err 3.600
+   overlaps > 0.01 m in RoboCasa: {'sink_1 / wall_north': 0.0285, 'counter_a / sink_1': 0.0408}
+   overlaps > 0.01 m already in the twin: {'counter_a / sink_1': 0.195, 'counter_b / wall_east': 0.01, 'fridge_1 / wall_west': 0.01}
+   (as written) counter_a (Counter): faces 3.142 rad off the twin's front
+   (as written) sink_1 (Sink): centre off 0.000 m (xy) 0.231 m (z), tol 0.05
+   (as written) sink_1 (Sink): faces 3.142 rad off the twin's front
+   (as written) counter_b (Counter): faces 3.142 rad off the twin's front
+   (as written) fridge_1 (FridgeBottomFreezer): faces 3.142 rad off the twin's front
+   (as written) stove_1 (Stove): faces 3.142 rad off the twin's front
+   (as written) wall wall_north: centre off 2.400 m (xy) 0.000 m (z), size off 4.780 m
+   (as written) wall wall_east: centre off 2.400 m (xy) 0.000 m (z), size off 3.600 m
+   (as written) wall wall_south: centre off 2.400 m (xy) 0.000 m (z), size off 4.780 m
+   (as written) wall wall_west: centre off 2.400 m (xy) 0.000 m (z), size off 3.600 m
+   (as written) overlap RoboCasa added: sink_1 / wall_north (0.029 m deep)
+-- robocasa: built
+   RoboCasa fixtures (walls and floor included): 10; MuJoCo bodies 29, geoms 201, contacts 12
+   floor: top z 0.0, 4.08 x 3.08 m
+   counter_a                                Counter              dxy 0.025 dz 0.000 size_err 0.050 yaw_err 0.000
+   sink_1                                   Sink                 dxy 0.010 dz 0.055 size_err 0.000 yaw_err 0.000 (z set by RoboCasa)
+   counter_b                                Counter              dxy 0.025 dz 0.000 size_err 0.050 yaw_err 0.000
+   fridge_1                                 FridgeBottomFreezer  dxy 0.000 dz 0.000 size_err 0.000 yaw_err 0.000
+   stove_1                                  Stove                dxy 0.000 dz 0.000 size_err 0.000 yaw_err 0.000
+   wall_north                               Wall                 dxy 0.000 dz 0.000 size_err 0.000
+   wall_east                                Wall                 dxy 0.000 dz 0.000 size_err 0.000
+   wall_south                               Wall                 dxy 0.000 dz 0.000 size_err 0.000
+   wall_west                                Wall                 dxy 0.000 dz 0.000 size_err 0.000
+   overlaps > 0.01 m in RoboCasa: none
+   overlaps > 0.01 m already in the twin: {'counter_a / sink_1': 0.195, 'counter_b / wall_east': 0.01, 'fridge_1 / wall_west': 0.01}
+   => PASS (robocasa layout, tol 0.05 m)
+== kitchen_real_01: twin has 6 fixtures, 4 walls
+-- as_written: built
+   RoboCasa fixtures (walls and floor included): 11; MuJoCo bodies 56, geoms 348, contacts 52
+   floor: top z 0.0, 7.2349 x 5.167 m
+   11793D80-8BE3-45F9-AF2F-34068D45F7C2     HingeCabinet         dxy 0.000 dz 0.000 size_err 0.000 yaw_err 3.142
+   F8CDA831-6DB6-48C1-9482-A5DA79652AEC     Dishwasher           dxy 0.020 dz 0.000 size_err 0.000 yaw_err 3.142
+   807FD3A5-AF23-4620-A58F-D4FDD13850A3     Stove                dxy 0.040 dz 0.015 size_err 0.000 yaw_err 3.142
+   F068E3AE-575B-49A0-BD35-8E233153BE91     FridgeBottomFreezer  dxy 0.019 dz 0.000 size_err 0.000 yaw_err 3.142
+   CC64C90B-5AD3-4C42-8E56-3D8B4FE9C9B9     HingeCabinet         dxy 0.000 dz 0.000 size_err 0.000 yaw_err 3.142
+   F9337652-45E5-419A-B727-FE171FB57F90     HingeCabinet         dxy 0.000 dz 0.000 size_err 0.000 yaw_err 3.142
+   51FDC420-A3E2-42D6-A193-854B2D9DC07B     Wall                 dxy 2.415 dz 0.000 size_err 4.730
+   753D5F37-4FFE-4B74-863C-960250C2144F     Wall                 dxy 2.415 dz 0.000 size_err 2.672
+   3D13B2A1-A79B-4209-BEAE-E795822C7548     Wall                 dxy 2.415 dz 0.000 size_err 2.672
+   7E182D20-8311-437D-A111-61F63DB97599     Wall                 dxy 2.415 dz 0.000 size_err 4.730
+   overlaps > 0.01 m in RoboCasa: {'753D5F37-4FFE-4B74-863C-960250C2144F / F9337652-45E5-419A-B727-FE171FB57F90': 0.1419, '7E182D20-8311-437D-A111-61F63DB97599 / F068E3AE-575B-49A0-BD35-8E233153BE91': 0.1785}
+   overlaps > 0.01 m already in the twin: {'11793D80-8BE3-45F9-AF2F-34068D45F7C2 / 51FDC420-A3E2-42D6-A193-854B2D9DC07B': 0.05, '51FDC420-A3E2-42D6-A193-854B2D9DC07B / CC64C90B-5AD3-4C42-8E56-3D8B4FE9C9B9': 0.0263, '51FDC420-A3E2-42D6-A193-854B2D9DC07B / F8CDA831-6DB6-48C1-9482-A5DA79652AEC': 0.05, '51FDC420-A3E2-42D6-A193-854B2D9DC07B / F9337652-45E5-419A-B727-FE171FB57F90': 0.05, '753D5F37-4FFE-4B74-863C-960250C2144F / F068E3AE-575B-49A0-BD35-8E233153BE91': 0.05, '753D5F37-4FFE-4B74-863C-960250C2144F / F9337652-45E5-419A-B727-FE171FB57F90': 0.05, '7E182D20-8311-437D-A111-61F63DB97599 / 807FD3A5-AF23-4620-A58F-D4FDD13850A3': 0.05, '7E182D20-8311-437D-A111-61F63DB97599 / F068E3AE-575B-49A0-BD35-8E233153BE91': 0.05}
+   (as written) 11793D80-8BE3-45F9-AF2F-34068D45F7C2 (HingeCabinet): faces 3.142 rad off the twin's front
+   (as written) F8CDA831-6DB6-48C1-9482-A5DA79652AEC (Dishwasher): faces 3.142 rad off the twin's front
+   (as written) 807FD3A5-AF23-4620-A58F-D4FDD13850A3 (Stove): faces 3.142 rad off the twin's front
+   (as written) F068E3AE-575B-49A0-BD35-8E233153BE91 (FridgeBottomFreezer): faces 3.142 rad off the twin's front
+   (as written) CC64C90B-5AD3-4C42-8E56-3D8B4FE9C9B9 (HingeCabinet): faces 3.142 rad off the twin's front
+   (as written) F9337652-45E5-419A-B727-FE171FB57F90 (HingeCabinet): faces 3.142 rad off the twin's front
+   (as written) wall 51FDC420-A3E2-42D6-A193-854B2D9DC07B: centre off 2.415 m (xy) 0.000 m (z), size off 4.730 m
+   (as written) wall 753D5F37-4FFE-4B74-863C-960250C2144F: centre off 2.415 m (xy) 0.000 m (z), size off 2.672 m
+   (as written) wall 3D13B2A1-A79B-4209-BEAE-E795822C7548: centre off 2.415 m (xy) 0.000 m (z), size off 2.672 m
+   (as written) wall 7E182D20-8311-437D-A111-61F63DB97599: centre off 2.415 m (xy) 0.000 m (z), size off 4.730 m
+-- robocasa: built
+   RoboCasa fixtures (walls and floor included): 11; MuJoCo bodies 56, geoms 348, contacts 144
+   floor: top z 0.0, 3.6574 x 2.6235 m
+   11793D80-8BE3-45F9-AF2F-34068D45F7C2     HingeCabinet         dxy 0.000 dz 0.000 size_err 0.000 yaw_err 0.000
+   F8CDA831-6DB6-48C1-9482-A5DA79652AEC     Dishwasher           dxy 0.000 dz 0.000 size_err 0.000 yaw_err 0.000
+   807FD3A5-AF23-4620-A58F-D4FDD13850A3     Stove                dxy 0.000 dz 0.000 size_err 0.000 yaw_err 0.000
+   F068E3AE-575B-49A0-BD35-8E233153BE91     FridgeBottomFreezer  dxy 0.000 dz 0.000 size_err 0.000 yaw_err 0.000
+   CC64C90B-5AD3-4C42-8E56-3D8B4FE9C9B9     HingeCabinet         dxy 0.000 dz 0.000 size_err 0.000 yaw_err 0.000
+   F9337652-45E5-419A-B727-FE171FB57F90     HingeCabinet         dxy 0.000 dz 0.000 size_err 0.000 yaw_err 0.000
+   51FDC420-A3E2-42D6-A193-854B2D9DC07B     Wall                 dxy 0.000 dz 0.000 size_err 0.000
+   753D5F37-4FFE-4B74-863C-960250C2144F     Wall                 dxy 0.000 dz 0.000 size_err 0.000
+   3D13B2A1-A79B-4209-BEAE-E795822C7548     Wall                 dxy 0.000 dz 0.000 size_err 0.000
+   7E182D20-8311-437D-A111-61F63DB97599     Wall                 dxy 0.000 dz 0.000 size_err 0.000
+   overlaps > 0.01 m in RoboCasa: {'51FDC420-A3E2-42D6-A193-854B2D9DC07B / F8CDA831-6DB6-48C1-9482-A5DA79652AEC': 0.013, '51FDC420-A3E2-42D6-A193-854B2D9DC07B / F9337652-45E5-419A-B727-FE171FB57F90': 0.0242, '7E182D20-8311-437D-A111-61F63DB97599 / F068E3AE-575B-49A0-BD35-8E233153BE91': 0.0244}
+   overlaps > 0.01 m already in the twin: {'11793D80-8BE3-45F9-AF2F-34068D45F7C2 / 51FDC420-A3E2-42D6-A193-854B2D9DC07B': 0.05, '51FDC420-A3E2-42D6-A193-854B2D9DC07B / CC64C90B-5AD3-4C42-8E56-3D8B4FE9C9B9': 0.0263, '51FDC420-A3E2-42D6-A193-854B2D9DC07B / F8CDA831-6DB6-48C1-9482-A5DA79652AEC': 0.05, '51FDC420-A3E2-42D6-A193-854B2D9DC07B / F9337652-45E5-419A-B727-FE171FB57F90': 0.05, '753D5F37-4FFE-4B74-863C-960250C2144F / F068E3AE-575B-49A0-BD35-8E233153BE91': 0.05, '753D5F37-4FFE-4B74-863C-960250C2144F / F9337652-45E5-419A-B727-FE171FB57F90': 0.05, '7E182D20-8311-437D-A111-61F63DB97599 / 807FD3A5-AF23-4620-A58F-D4FDD13850A3': 0.05, '7E182D20-8311-437D-A111-61F63DB97599 / F068E3AE-575B-49A0-BD35-8E233153BE91': 0.05}
+   => PASS (robocasa layout, tol 0.05 m)
+RESULT: PASS
