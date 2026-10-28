@@ -423,6 +423,16 @@ def test_validator_reports_null_vector_rows(tmp_path, column, row):
     modality = {"state": {"arm": {"start": 0, "end": 2}},
                 "action": {"arm": {"start": 0, "end": 2, "absolute": True}},
                 "annotation": {"human.task_description": {}}}
+@pytest.mark.parametrize("group", ["state", "action"])
+@pytest.mark.parametrize(("field", "value"), [
+    ("start", None), ("start", "0"), ("start", 0.5), ("end", True), ("slice", None),
+])
+def test_validator_reports_invalid_modality_before_sorting(tmp_path, group, field, value):
+    import numpy as np
+
+    modality = {name: {"arm": {"start": 0, "end": 1}, "gripper": {"start": 1, "end": 2}}
+                for name in ("state", "action")}
+    modality["annotation"] = {"human.task_description": {}}
     writer = _writer(tmp_path, modality=modality)
     writer.add_episode(np.zeros((2, 2)), np.zeros((2, 2)), np.arange(2) / 20, "task", True)
     writer.finish(1)
@@ -436,3 +446,11 @@ def test_validator_reports_null_vector_rows(tmp_path, column, row):
                              pa.array(values, type=pa.list_(pa.float32())))
     pq.write_table(table, path)
     assert any(column in error for error in validate(root))
+    path = root / "meta/modality.json"
+    data = json.loads(path.read_text())
+    if field == "slice":
+        data[group]["arm"] = value
+    else:
+        data[group]["arm"][field] = value
+    path.write_text(json.dumps(data))
+    assert any(f"modality {group}.arm" in error for error in validate(root))
