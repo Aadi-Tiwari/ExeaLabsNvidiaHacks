@@ -7,12 +7,12 @@ Work on this repository's laptop pass was done by the repo owner with Claude Cod
 ## Commits by author
 
 ```
-   462	redmythic1
+   495	redmythic1
+   143	rishithc
    137	Aadi Tiwari
-   111	rishithc
    100	aarochu
-    28	Anand Biju
-    25	vrun-systems26
+    52	vrun-systems26
+    38	Anand Biju
     23	amanx98
     20	Akshaj Shandilya
     20	Avneh Singh Bhatia
@@ -20,8 +20,8 @@ Work on this repository's laptop pass was done by the repo owner with Claude Cod
     12	IshaanM05
      7	Raunak Mondal
      3	dependabot[bot]
+     3	man-coding-j
      2	Amelia Patel
-     2	man-coding-j
 ```
 
 ## From forks, with no pull request
@@ -289,7 +289,7 @@ Work on this repository's laptop pass was done by the repo owner with Claude Cod
 - #339 To-do: counts after merging #337 (merged)
 - #363 Prep for judging: README (license, setup, Nemotron, Token Factory, Nebius), live C4 detection, reader sign-up page (merged)
 
-### @vrun-systems26 (32)
+### @vrun-systems26 (33)
 
 - #298 SIM: open_fridge push follows the fixture's yaw (side-wall fridge 0/4 -> 4/4) (merged)
 - #338 SIM: real kitchen cabinet doors work in a blind corner and on a narrow cabinet (6/12 -> 12/12) (merged)
@@ -323,6 +323,7 @@ Work on this repository's laptop pass was done by the repo owner with Claude Cod
 - #437 Teams: lead for PPL (people & safety), which had none (open)
 - #438 To-do: S04, S07, S19 and G1 list the merged PRs that took them to the real kitchens (#298, #338, #342, #383, #393) (open)
 - #439 G7 / issue #62: 104 physics-checked counter_to_sink episodes from 14 human teleop seeds (retarget --teleop) (open)
+- #440 Contributors: regenerate for Oct 28, and render_contributors.py no longer crashes on Windows (UTF-8 titles) (open)
 
 ### @Anandb71 (32)
 

@@ -23,7 +23,7 @@ Pull requests opened against this repository, by author (merged, or consolidated
 | @Aadi-Tiwari | 114 | Open doors: tilted grasp, clearance path, via-point pull; Sample kitchen: fridge, counters and stove tile the wall wit; Scan regression suite and full RoomPlan coverage |
 | @aarochu | 96 | CAP-4: Add field scanning protocol; DEM-3: Refresh release status and setup guidance; TWN: Avoid duplicate counters over scanned base cabinets |
 | @AvnehSBhatia (repo owner, with Claude Code) | 40 | Add tonight's MVP handoff; Integrate 16 open PRs, 40+ bug fixes, new web page, refreshe; Before the deadline: blocked items, laptop sprint, known bug |
-| @vrun-systems26 | 32 | SIM: open_fridge push follows the fixture's yaw (side-wall f; SIM: real kitchen cabinet doors work in a blind corner and o; TWN: hinge a fridge on the side with less room in front (rot |
+| @vrun-systems26 | 33 | SIM: open_fridge push follows the fixture's yaw (side-wall f; SIM: real kitchen cabinet doors work in a blind corner and o; TWN: hinge a fridge on the side with less room in front (rot |
 | @Anandb71 | 32 | close_door, open_oven: keep every arm joint off its stops; Draw RoomPlan doors, windows and openings in the sim as visu; Upload worker: retry a failed job a bounded number of times |
 | @rishith-c | 27 | CAP-2: Preserve complete frame archives when ZIP creation fa; CAP-1: Reject unsupported capture server URL schemes; CAP-1: Match iOS capture UI to Arrival and protect saved sur |
 | @amanx98 | 14 | [POL-2] Wire Nemotron VLMPlanner into sim colle…; Implement Tavily AI Research Agent for appliance manuals and; Mobile Manipulator Base & 100% Physics-Checked Counter-to-Co |
