@@ -163,9 +163,9 @@ def validate(root: str | Path) -> list[str]:
         if t.num_rows != length:
             errors.append(f"{name}: {t.num_rows} rows, episodes.jsonl length {length}")
         cols = {c: t.column(c).to_pylist() for c in DTYPES if c in t.column_names}
-        if any(len(v) != s_dim for v in cols.get("observation.state", [])):
+        if any(v is None or len(v) != s_dim for v in cols.get("observation.state", [])):
             errors.append(f"{name}: observation.state length != {s_dim}")
-        if any(len(v) != a_dim for v in cols.get("action", [])):
+        if any(v is None or len(v) != a_dim for v in cols.get("action", [])):
             errors.append(f"{name}: action length != {a_dim}")
         if cols.get("index") != list(range(cursor, cursor + t.num_rows)):
             errors.append(f"{name}: index is not continuous from {cursor}")
@@ -182,7 +182,7 @@ def validate(root: str | Path) -> list[str]:
             errors.append(f"{name}: next.done must be true on the last row only")
         for c in ("observation.state", "action"):
             v = cols.get(c)
-            if v and all(len(r) == len(v[0]) for r in v) and not np.isfinite(np.asarray(v, dtype=np.float64)).all():
+            if v and all(r is not None and len(r) == len(v[0]) for r in v) and not np.isfinite(np.asarray(v, dtype=np.float64)).all():
                 errors.append(f"{name}: {c} has NaN or inf")
         ts = np.asarray(cols.get("timestamp", []), dtype=np.float64)
         if ts.size and not np.isfinite(ts).all():

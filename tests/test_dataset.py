@@ -412,3 +412,27 @@ def test_validator_resolves_training_annotation_tasks(tmp_path, annotation, mess
                              pa.array([annotation, annotation], type=pa.int64()))
     pq.write_table(table, path)
     assert any(column in error and message in error for error in validate(root))
+
+
+@pytest.mark.parametrize("column", ["observation.state", "action"])
+@pytest.mark.parametrize("row", [0, 1])
+def test_validator_reports_null_vector_rows(tmp_path, column, row):
+    import numpy as np
+    import pyarrow as pa
+
+    modality = {"state": {"arm": {"start": 0, "end": 2}},
+                "action": {"arm": {"start": 0, "end": 2, "absolute": True}},
+                "annotation": {"human.task_description": {}}}
+    writer = _writer(tmp_path, modality=modality)
+    writer.add_episode(np.zeros((2, 2)), np.zeros((2, 2)), np.arange(2) / 20, "task", True)
+    writer.finish(1)
+    root = tmp_path / "ds"
+    assert validate(root) == []
+    path = root / "data/chunk-000/episode_000000.parquet"
+    table = pq.read_table(path)
+    values = table.column(column).to_pylist()
+    values[row] = None
+    table = table.set_column(table.schema.get_field_index(column), column,
+                             pa.array(values, type=pa.list_(pa.float32())))
+    pq.write_table(table, path)
+    assert any(column in error for error in validate(root))
