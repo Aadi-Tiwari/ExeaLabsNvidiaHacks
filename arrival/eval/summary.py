@@ -50,8 +50,9 @@ def resolve_room(spec: str, scans_dir: Path) -> tuple[str, Path]:
     raise FileNotFoundError(f"room {spec!r} not found under {scans_dir} ({rooms_hint(spec, scans_dir)})")
 
 
-def _measurements(room: str, scans_dir: Path) -> Path | None:
-    for p in (scans_dir / room / "measurements.json", REPO / "tests" / "fixtures" / "measurements" / f"{room}.json"):
+def _measurements(room: str, scans_dir: Path, scan_path: Path) -> Path | None:
+    for p in (scan_path.parent / "measurements.json", scans_dir / room / "measurements.json",
+              REPO / "tests" / "fixtures" / "measurements" / f"{room}.json"):
         if p.is_file():
             return p
     return None
@@ -97,7 +98,7 @@ def run_room(spec: str, out_dir: Path, scans_dir: Path, episodes: int = 2, res: 
                                fixtures=kinds, objects=len(twin["objects"]), objects_default_synthetic=placed)
     except Exception as e:  # noqa: BLE001
         return fail("compile", _err(e))
-    mpath = _measurements(room, scans_dir)
+    mpath = _measurements(room, scans_dir, path)
     if mpath:
         try:
             from arrival.twin.accuracy import compare, load_measurements
