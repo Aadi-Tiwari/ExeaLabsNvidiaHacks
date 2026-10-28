@@ -22,6 +22,7 @@
  "tests/test_eval_compare.py": 0.2,
  "tests/test_eval_records.py": 0.5,
  "tests/test_export_demo_data.py": 0.4,
+ "tests/test_family_fixtures.py": 21.0,
  "tests/test_fanout.py": 36.5,
  "tests/test_fanout_describe_failure.py": 0.1,
  "tests/test_fanout_relative_paths.py": 0.1,

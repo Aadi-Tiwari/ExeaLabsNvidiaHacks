@@ -130,7 +130,7 @@ def check_ffmpeg(exe: str | None = None) -> Check:
 
 def _env_file_names(paths: list[Path]) -> dict[str, Path]:
     """Names the .env files give a non-empty value, with the file it comes from. As in `config.load_dotenv`, the first
-    line that names a key decides, even with an empty value. Values are dropped on the spot."""
+    line with a value decides; an empty line is filled by a later file. Values are dropped on the spot."""
     found: dict[str, Path] = {}
     seen: set[str] = set()
     for path in paths:
@@ -144,11 +144,10 @@ def _env_file_names(paths: list[Path]) -> dict[str, Path]:
                 continue
             key, _, value = line.partition("=")
             key = key.removeprefix("export ").strip().strip("'\"")
-            if not key or key in seen:
+            if not key or key in seen or not value.strip().strip("'\""):
                 continue
             seen.add(key)
-            if value.strip().strip("'\""):
-                found[key] = path
+            found[key] = path
     return found
 
 
@@ -156,12 +155,12 @@ def check_env(environ: dict[str, str] | None = None, env_files: list[Path] | Non
     environ = os.environ if environ is None else environ
     files = [Path.cwd() / ".env", REPO / ".env"] if env_files is None else [Path(p) for p in env_files]
     in_file = _env_file_names(files)
-    # config.get's rules: ARRIVAL_DOTENV=0 turns the .env files off, and a .env never fills a variable the
-    # environment already sets, even to an empty value (which config.get then treats as unset)
-    dotenv_off = environ.get("ARRIVAL_DOTENV", "1") == "0"
+    # config.get's rules: ARRIVAL_DOTENV=0 turns the default .env files off (files named outright are always read),
+    # and a .env fills a variable that is unset or empty but never one with a value
+    dotenv_off = env_files is None and environ.get("ARRIVAL_DOTENV", "1") == "0"
 
     def from_file(name: str) -> bool:
-        return name in in_file and not dotenv_off and name not in environ
+        return name in in_file and not dotenv_off and not environ.get(name)
 
     out = []
     for name, purpose in OPTIONAL_ENV:
@@ -169,9 +168,6 @@ def check_env(environ: dict[str, str] | None = None, env_files: list[Path] | Non
             out.append(Check(name, "ok", "set in the environment"))
         elif from_file(name):
             out.append(Check(name, "ok", f"set in {in_file[name].name} (read by the module that needs it)"))
-        elif name in in_file and not dotenv_off:
-            out.append(Check(name, "warn", f"not set: an empty value in the environment hides the one in "
-                                           f"{in_file[name].name}; unset the variable to use it"))
         elif name in in_file:
             out.append(Check(name, "info", f"not set: {in_file[name].name} has it, but ARRIVAL_DOTENV=0 turns "
                                            f".env files off (optional: {purpose})"))

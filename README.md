@@ -8,7 +8,7 @@
 
 **Open source under the [Apache License 2.0](LICENSE)** (OSI-approved) · Live site: https://arrival.exealabs.org · Fine-tuned model: [GR00T N1.7 on Hugging Face](https://huggingface.co/Ish1105/arrival-gr00t-n17-run4)
 
-**For judges:** [Setup in 5 minutes](#get-started-5-minutes) · [NVIDIA Nemotron and NVIDIA open models](#nvidia-and-nebius-in-arrival) · [Where Token Factory accelerated our workflow](#where-nebius-token-factory-accelerated-our-workflow) · [Other Nebius tools and services](#other-nebius-tools-and-services) · [Results and limits](#does-it-work-status-oct-25-2026)
+**For judges:** [Setup in 5 minutes](#get-started-5-minutes) · [NVIDIA Nemotron and NVIDIA open models](#nvidia-and-nebius-in-arrival) · [Where Token Factory accelerated our workflow](#where-nebius-token-factory-accelerated-our-workflow) · [Other Nebius tools and services](#other-nebius-tools-and-services) · [Results and limits](#does-it-work-status-oct-27-2026)
 
 ---
 

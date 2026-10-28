@@ -46,21 +46,20 @@ def test_dotenv_turned_off(dotenv, monkeypatch):
     assert config.get("TOKEN_FACTORY_API_KEY") is None
 
 
-def test_an_empty_variable_hides_the_dotenv_value(dotenv, monkeypatch):
+def test_an_empty_variable_does_not_hide_the_dotenv_value(dotenv, monkeypatch):
     monkeypatch.setenv(KEY, "")
     check = _doctor(KEY)
-    assert check.status == "warn"
-    assert "empty value in the environment" in check.detail
+    assert check.status == "ok" and "set in .env" in check.detail
     assert "tvly-from-dotenv" not in check.detail
-    assert config.get(KEY) is None
+    assert config.get(KEY) == "tvly-from-dotenv-0123456789"
 
 
-def test_an_empty_line_in_the_cwd_dotenv_hides_the_repo_one(dotenv, monkeypatch):
+def test_an_empty_line_in_the_cwd_dotenv_does_not_hide_the_repo_one(dotenv, monkeypatch):
     repo = dotenv / "repo"
     repo.mkdir()
     (repo / ".env").write_text(f"{KEY}=tvly-from-repo-0123456789\n", encoding="utf-8")
     (dotenv / ".env").write_text(f"{KEY}=\n", encoding="utf-8")
     monkeypatch.setattr(config, "REPO_ROOT", repo)
     monkeypatch.setattr(doctor, "REPO", repo)
-    assert _doctor(KEY).status == "info"
-    assert config.get(KEY) is None
+    assert _doctor(KEY).status == "ok"
+    assert config.get(KEY) == "tvly-from-repo-0123456789"
