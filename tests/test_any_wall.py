@@ -177,6 +177,22 @@ def test_u_shape_sink_cabinet_door_closes(ushape):
     assert ep["success"] and ep["detail"]["qpos"] < np.radians(5), ep["detail"]
 
 
+def test_no_fridge_visit_inside_the_door_the_robot_closes(rotated):
+    """rotated_kitchen's fridge stands beside counter_w's door. `sim --seed 1 --people 2` (sim_close_door_0004) sent a
+    person to the fridge whose stand point was 0.55 m from that door's hinge, inside the 1.12 m keep-out every other
+    walker respects; reaching round the open door the hand swept 0.19 m into them (on main: human contact, both base
+    modes). The visit is now dropped and the same episode closes the door with no contact."""
+    task = finish_task({"family": "close_door", "fixture": "counter_w", "lighting": "neutral", "people": 2,
+                        "seed": 1004})
+    env = SimEnv(rotated, task, res=32, cameras=())
+    (hinge, radius), = env._door_keepout(task)
+    v = env.walkers.visit
+    assert v is None or min(np.linalg.norm(v[k] - hinge) for k in ("s1", "s2")) >= radius, v
+    ep = run_episode(env, ScriptedExpert(), task)
+    assert ep["success"], ep["detail"]
+    assert not ep["safety"]["human_contact"] and ep["safety"]["min_human_distance_m"] > 0.0, ep["safety"]
+
+
 def test_rotated_kitchen_runs_end_to_end_on_every_wall(rotated, tmp_path):
     fams = ["open_drawer", "open_door", "put_in_drawer", "counter_to_sink", "wipe_counter"]
     res = collect(rotated, fams, 5, tmp_path, people=1, res=32, seed=3, log=QUIET)

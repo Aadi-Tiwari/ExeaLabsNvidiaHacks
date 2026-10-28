@@ -255,12 +255,13 @@ def _rot(yaw: float, v) -> np.ndarray:
     return np.array([c * v[0] - si * v[1], si * v[0] + c * v[1]])
 
 
-def plan_fridge_visit(fixtures, floor, spec: dict, rng, base_xy=None) -> dict | None:
+def plan_fridge_visit(fixtures, floor, spec: dict, rng, base_xy=None, keep=()) -> dict | None:
     """Where one person stands to open the fridge and how far the door goes. The person faces the fridge beside
     the handle, outside the door's swing (s1), reaches across to open it, takes a slow step into the doorway on the
     handle side (s2), and comes back to close it. None when the room has no fridge, a stand point is off the floor
-    or in a footprint, a stand point or the swing comes within CLEAR of the robot base, or no opening angle keeps
-    the panel clear of the person's body and toes (a wider swing moves the panel away from the doorway)."""
+    or in a footprint, a stand point or the swing comes within CLEAR of the robot base, the walk from s1 to s2 comes
+    inside a `keep` disc (Walkers), or no opening angle keeps the panel clear of the person's body and toes (a wider
+    swing moves the panel away from the doorway)."""
     from arrival.sim.scene import fridge_door_frame
 
     fr = next((f for f in fixtures or [] if f["type"].startswith("fridge")), None)
@@ -287,6 +288,12 @@ def plan_fridge_visit(fixtures, floor, spec: dict, rng, base_xy=None) -> dict | 
         if (np.linalg.norm(base - hinge) < L + CLEAR or np.linalg.norm(s1 - base) < CLEAR
                 or np.linalg.norm(s2 - base) < CLEAR):
             return None
+    leg = [s1 + (s2 - s1) * t for t in np.linspace(0.0, 1.0, 12)]
+    # The visitor holds still at s1 and s2, so they need the robot's door keep-out as much as a counter stop does: in
+    # rotated_kitchen the fridge stands beside counter_w's door, s1 came 0.55 m from its hinge (keep radius 1.12 m),
+    # and closing that door the hand swept 0.19 m into the person holding the fridge open.
+    if any(np.linalg.norm(p - c) < k for p in leg for c, k in keep):
+        return None
 
     def panel_dist(p, q):  # distance from a stand point to the door panel at angle q
         return _seg_dist(hinge, hinge + L * _rot(yaw + m * q, (float(m), 0.0)), p)
@@ -296,7 +303,6 @@ def plan_fridge_visit(fixtures, floor, spec: dict, rng, base_xy=None) -> dict | 
             or min(panel_dist(s1 + toe, q) for q in swing) < 0.8 * spec["limb_r"] + 0.02):
         return None
     q_open = float(rng.uniform(*OPEN_ANGLE))
-    leg = [s1 + (s2 - s1) * t for t in np.linspace(0.0, 1.0, 12)]
     while q_open <= MAX_ANGLE:
         if (min(panel_dist(p, q_open) for p in leg) >= stride + 0.02
                 and panel_dist(s2 + toe, q_open) >= 0.8 * spec["limb_r"] + 0.02):
@@ -408,7 +414,8 @@ class Walkers:
         rng = np.random.default_rng(seed)
         self.M, self.work_yaw = frame(yaw), yaw
         # `keep`: (world xy, radius) discs the robot works in, e.g. the swing of the door it opens. No counter stop,
-        # free point or leg of the loop of a person other than the fridge visitor comes inside one.
+        # free point or leg of the loop of a person other than the fridge visitor comes inside one, and there is no
+        # fridge visit whose stand points are inside one.
         keep = [(self.M @ np.asarray(c, dtype=float), float(k)) for c, k in keep or []]
         fixtures = [_in_frame(f, self.M, yaw) for f in fixtures or []]
         self.specs = [person_spec(seed, i) for i in range(n)]
@@ -417,7 +424,7 @@ class Walkers:
             vrng = np.random.default_rng([seed, 7919])
             who = int(vrng.integers(n))
             if fridge_visit or vrng.random() < P_VISIT:
-                plan = plan_fridge_visit(fixtures, floor, self.specs[who], vrng, base_xy)
+                plan = plan_fridge_visit(fixtures, floor, self.specs[who], vrng, base_xy, keep)
                 self.visit = {**plan, "person": who} if plan else None
         prints = Footprints(fixtures)
         avoid = Footprints(list(fixtures or []) + ([self.visit["sector"]] if self.visit else [])
