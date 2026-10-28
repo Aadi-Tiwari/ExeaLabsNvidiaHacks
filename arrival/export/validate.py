@@ -95,6 +95,8 @@ def validate(root: str | Path) -> list[str]:
     info = json.loads((root / "meta" / "info.json").read_text())
     modality = json.loads((root / "meta" / "modality.json").read_text())
     features = info.get("features", {})
+    if type(info.get("total_videos")) is not int or info["total_videos"] < 0:
+        errors.append("info.total_videos must be a nonnegative integer")
     if not isinstance(info.get("arrival_physically_valid"), bool):
         errors.append("info.arrival_physically_valid must be a bool")
     for c in DTYPES:
