@@ -152,14 +152,18 @@ def validate_scan_dir(path: str | Path) -> list[str]:
     if not notes.is_file():
         problems.append("notes.md is missing")
     else:
-        fields = _parse_notes(notes.read_text(encoding="utf-8"))
-        for key, label in FIELDS.items():
-            value = fields.get(key, "")
-            if not value or value.startswith("<") or value.upper() == "TODO":
-                problems.append(f"notes.md: '{label}' is missing or blank")
-            elif key.endswith("_m") and _number(value) is None:
-                problems.append(f"notes.md: '{label}' must be a number of metres above 0 and at most "
-                                f"{MAX_MEASURE_M:g}, got {value!r}")
+        try:
+            fields = _parse_notes(notes.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError) as exc:
+            problems.append(f"notes.md cannot be read ({exc})")
+        else:
+            for key, label in FIELDS.items():
+                value = fields.get(key, "")
+                if not value or value.startswith("<") or value.upper() == "TODO":
+                    problems.append(f"notes.md: '{label}' is missing or blank")
+                elif key.endswith("_m") and _number(value) is None:
+                    problems.append(f"notes.md: '{label}' must be a number of metres above 0 and at most "
+                                    f"{MAX_MEASURE_M:g}, got {value!r}")
     measurements = d / "measurements.json"
     if not measurements.is_file():
         problems.append("measurements.json is missing; three tape measurements are required")
