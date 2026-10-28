@@ -85,6 +85,8 @@ Objects:
 
 `room_id` is `hero_kitchen`. `geometry_source` is `authored_sample`.
 
+The folder names the room. `load_room(room, scans_dir)` (sim, eval, research, retarget, teleop) gives the bundle the folder's name as `room_id`, as `demo`, `summary` and the upload worker do. When the file says another `room_id` (a `scan.json` copied from another room), that one is kept as `source_room_id`.
+
 ## RoomPlan JSON → ScanBundle
 
 Input is a subset of Apple's CapturedRoom JSON. Extra keys are ignored.
