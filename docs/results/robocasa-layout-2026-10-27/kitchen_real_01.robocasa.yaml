@@ -1,0 +1,70 @@
+room:
+  walls:
+  - name: 51FDC420-A3E2-42D6-A193-854B2D9DC07B
+    type: wall
+    wall_side: back
+    size: [1.788719, 1.2075, 0.05]
+    pos: [1.788718, 2.493499, 1.2075]
+    default_wall_th: 0.0
+  - name: 753D5F37-4FFE-4B74-863C-960250C2144F
+    type: wall
+    wall_side: right
+    size: [1.27175, 1.2075, 0.05]
+    pos: [3.527437, 1.27175, 1.2075]
+    default_wall_th: 0.0
+  - name: 3D13B2A1-A79B-4209-BEAE-E795822C7548
+    type: wall
+    wall_side: left
+    size: [1.27175, 1.2075, 0.05]
+    pos: [0.05, 1.27175, 1.2075]
+    default_wall_th: 0.0
+  - name: 7E182D20-8311-437D-A111-61F63DB97599
+    type: wall
+    wall_side: front
+    size: [1.788719, 1.2075, 0.05]
+    pos: [1.788718, 0.05, 1.2075]
+    default_wall_th: 0.0
+  floor:
+  - name: floor
+    type: floor
+    size: [1.788719, 1.27175, 0.01]
+    pos: [1.788718, 1.27175, 0.0]
+main_group:
+  group_origin: [0, 0]
+  group_pos: [0.0, 0.0]
+  group_z_rot: 0.0
+  bottom_row:
+  - name: 11793D80-8BE3-45F9-AF2F-34068D45F7C2
+    type: hinge_cabinet
+    size: [1.276101, 0.642262, 0.91195]
+    pos: [2.291195, 2.222368, 0.455975]
+  - name: F8CDA831-6DB6-48C1-9482-A5DA79652AEC
+    type: dishwasher
+    size: [0.584472, 0.651072, 0.91195]
+    pos: [1.36095, 2.194294, 0.455975]
+  - name: CC64C90B-5AD3-4C42-8E56-3D8B4FE9C9B9
+    type: hinge_cabinet
+    size: [0.432268, 0.632202, 0.91195]
+    pos: [0.852603, 2.203715, 0.455975]
+group_1:
+  group_origin: [0, 0]
+  group_pos: [0.0, 0.0]
+  group_z_rot: -1.570797
+  bottom_row:
+  - name: F068E3AE-575B-49A0-BD35-8E233153BE91
+    type: fridge_bottom_freezer
+    size: [0.946536, 0.765914, 1.796413]
+    pos: [-0.473271, 3.17552, 0.898207]
+  - name: F9337652-45E5-419A-B727-FE171FB57F90
+    type: hinge_cabinet
+    size: [1.554913, 0.645059, 0.91195]
+    pos: [-1.766044, 3.254906, 0.455975]
+group_2:
+  group_origin: [0, 0]
+  group_pos: [0.0, 0.0]
+  group_z_rot: -3.141593
+  bottom_row:
+  - name: 807FD3A5-AF23-4620-A58F-D4FDD13850A3
+    type: stove
+    size: [0.763184, 0.696801, 0.92637]
+    pos: [-1.022644, -0.378735, 0.613134]

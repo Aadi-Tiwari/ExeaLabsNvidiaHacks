@@ -4,9 +4,9 @@
  "source": "README to-do, refreshed after #251, #252 and #302 put PRs #201-#301 on main. Submission fields re-checked against https://nebiusglobalaihackathon.devpost.com/ and the official rules on 2026-10-25.",
  "counts": {
   "done": 65,
-  "review": 0,
+  "review": 1,
   "todo": 1,
-  "blocked": 14,
+  "blocked": 13,
   "total": 80
  },
  "prs": {
@@ -965,12 +965,12 @@
     {
      "id": "G6",
      "title": "Prove layout.yaml loads in real RoboCasa",
-     "status": "blocked",
+     "status": "review",
      "owner_kind": "gpu",
      "size": "M",
      "priority": "must",
      "issue": 69,
-     "note": "Offline checker scripts/check_layout.py compares layout.yaml with the twin. Loading in real RoboCasa is not checked.",
+     "note": "Built in real RoboCasa 1.0.1 (Oct 27): layout.yaml as written loads but RoboCasa reads its walls, floor, fronts and sink differently; arrival.twin.robocasa_layout converts it, and the hero kitchen and RoomPlan kitchen_real_01 then build with every fixture centre within 2.5 cm horizontally and no added overlap (scripts/check_robocasa_layout.py, docs/results/robocasa-layout-2026-10-27). The sink height is RoboCasa's (flush with the counter top).",
      "authors": [
       "AvnehSBhatia",
       "Claude Code"

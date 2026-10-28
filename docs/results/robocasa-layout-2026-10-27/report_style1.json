@@ -1,0 +1,1163 @@
+[
+  {
+    "room": "hero_kitchen",
+    "twin_fixtures": 5,
+    "twin_walls": 4,
+    "as_written": {
+      "built": true,
+      "robocasa_fixtures": 10,
+      "nbody": 30,
+      "ngeom": 196,
+      "ncon": 3,
+      "fixtures": [
+        {
+          "name": "counter_a",
+          "kind": "counter",
+          "class": "Counter",
+          "twin_center": [
+            1.475,
+            0.4,
+            0.46
+          ],
+          "built_center": [
+            1.475,
+            0.425,
+            0.46
+          ],
+          "dxy": 0.025,
+          "dz": 0.0,
+          "yaw_err": 3.1416,
+          "size_err": 0.05,
+          "z_checked": true,
+          "collision_center": [
+            1.475,
+            0.4,
+            0.905
+          ],
+          "collision_size": [
+            1.45,
+            0.65,
+            0.03
+          ]
+        },
+        {
+          "name": "sink_1",
+          "kind": "sink",
+          "class": "Sink",
+          "twin_center": [
+            1.6,
+            0.4,
+            0.85
+          ],
+          "built_center": [
+            1.6,
+            0.4,
+            0.7045
+          ],
+          "dxy": 0.0,
+          "dz": 0.1455,
+          "yaw_err": 3.1416,
+          "size_err": 0.0,
+          "z_checked": true,
+          "collision_center": [
+            1.6,
+            0.4,
+            0.8514
+          ],
+          "collision_size": [
+            0.5986,
+            0.498,
+            0.542
+          ]
+        },
+        {
+          "name": "counter_b",
+          "kind": "counter",
+          "class": "Counter",
+          "twin_center": [
+            3.45,
+            0.4,
+            0.46
+          ],
+          "built_center": [
+            3.45,
+            0.425,
+            0.46
+          ],
+          "dxy": 0.025,
+          "dz": 0.0,
+          "yaw_err": 3.1416,
+          "size_err": 0.05,
+          "z_checked": true,
+          "collision_center": [
+            3.45,
+            0.4,
+            0.905
+          ],
+          "collision_size": [
+            1.1,
+            0.65,
+            0.03
+          ]
+        },
+        {
+          "name": "fridge_1",
+          "kind": "fridge_bottom_freezer",
+          "class": "FridgeBottomFreezer",
+          "twin_center": [
+            0.375,
+            0.4,
+            0.9
+          ],
+          "built_center": [
+            0.375,
+            0.4173,
+            0.9
+          ],
+          "dxy": 0.0173,
+          "dz": 0.0,
+          "yaw_err": 3.1416,
+          "size_err": 0.0,
+          "z_checked": true,
+          "collision_center": [
+            0.375,
+            0.3998,
+            0.9
+          ],
+          "collision_size": [
+            0.7482,
+            0.7334,
+            1.7981
+          ]
+        },
+        {
+          "name": "stove_1",
+          "kind": "stove",
+          "class": "Stove",
+          "twin_center": [
+            2.55,
+            0.4,
+            0.45
+          ],
+          "built_center": [
+            2.55,
+            0.4283,
+            0.3043
+          ],
+          "dxy": 0.0283,
+          "dz": 0.1457,
+          "yaw_err": 3.1416,
+          "size_err": 0.0,
+          "z_checked": true,
+          "collision_center": [
+            2.55,
+            0.3998,
+            0.4536
+          ],
+          "collision_size": [
+            0.6982,
+            0.7051,
+            1.1965
+          ]
+        },
+        {
+          "name": "wall_north",
+          "kind": "wall",
+          "class": "Wall",
+          "twin_center": [
+            2.0,
+            0.0,
+            1.2
+          ],
+          "built_center": [
+            2.0,
+            2.4,
+            1.2
+          ],
+          "dxy": 2.4,
+          "dz": 0.0,
+          "size_err": 4.78
+        },
+        {
+          "name": "wall_east",
+          "kind": "wall",
+          "class": "Wall",
+          "twin_center": [
+            4.0,
+            1.5,
+            1.2
+          ],
+          "built_center": [
+            4.0,
+            3.9,
+            1.2
+          ],
+          "dxy": 2.4,
+          "dz": 0.0,
+          "size_err": 3.6
+        },
+        {
+          "name": "wall_south",
+          "kind": "wall",
+          "class": "Wall",
+          "twin_center": [
+            2.0,
+            3.0,
+            1.2
+          ],
+          "built_center": [
+            2.0,
+            5.4,
+            1.2
+          ],
+          "dxy": 2.4,
+          "dz": 0.0,
+          "size_err": 4.78
+        },
+        {
+          "name": "wall_west",
+          "kind": "wall",
+          "class": "Wall",
+          "twin_center": [
+            0.0,
+            1.5,
+            1.2
+          ],
+          "built_center": [
+            0.0,
+            3.9,
+            1.2
+          ],
+          "dxy": 2.4,
+          "dz": 0.0,
+          "size_err": 3.6
+        }
+      ],
+      "errors": [
+        "counter_a (Counter): faces 3.142 rad off the twin's front",
+        "sink_1 (Sink): centre off 0.000 m (xy) 0.146 m (z), tol 0.05",
+        "sink_1 (Sink): faces 3.142 rad off the twin's front",
+        "counter_b (Counter): faces 3.142 rad off the twin's front",
+        "fridge_1 (FridgeBottomFreezer): faces 3.142 rad off the twin's front",
+        "stove_1 (Stove): centre off 0.028 m (xy) 0.146 m (z), tol 0.05",
+        "stove_1 (Stove): faces 3.142 rad off the twin's front",
+        "wall wall_north: centre off 2.400 m (xy) 0.000 m (z), size off 4.780 m",
+        "wall wall_east: centre off 2.400 m (xy) 0.000 m (z), size off 3.600 m",
+        "wall wall_south: centre off 2.400 m (xy) 0.000 m (z), size off 4.780 m",
+        "wall wall_west: centre off 2.400 m (xy) 0.000 m (z), size off 3.600 m"
+      ],
+      "floor": {
+        "top_z": 0.0,
+        "size_xy": [
+          8.08,
+          6.08
+        ]
+      },
+      "overlaps_robocasa": {
+        "counter_a / sink_1": 0.0265
+      },
+      "overlaps_twin": {
+        "counter_a / sink_1": 0.195,
+        "counter_b / wall_east": 0.01,
+        "fridge_1 / wall_west": 0.01
+      },
+      "overlaps_added": {}
+    },
+    "robocasa": {
+      "built": true,
+      "robocasa_fixtures": 10,
+      "nbody": 30,
+      "ngeom": 203,
+      "ncon": 12,
+      "notes": [],
+      "origin_offsets": {
+        "sink_1": [
+          -0.0,
+          0.0,
+          -0.1455
+        ],
+        "counter_a": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "counter_b": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "fridge_1": [
+          0.0,
+          0.0173,
+          -0.0
+        ],
+        "stove_1": [
+          -0.0,
+          0.0283,
+          -0.1457
+        ]
+      },
+      "overhang": 0.05,
+      "fixtures": [
+        {
+          "name": "counter_a",
+          "kind": "counter",
+          "class": "Counter",
+          "twin_center": [
+            1.475,
+            0.4,
+            0.46
+          ],
+          "built_center": [
+            1.475,
+            0.375,
+            0.46
+          ],
+          "dxy": 0.025,
+          "dz": 0.0,
+          "yaw_err": 0.0,
+          "size_err": 0.05,
+          "z_checked": true,
+          "collision_center": [
+            1.475,
+            0.4,
+            0.905
+          ],
+          "collision_size": [
+            1.45,
+            0.65,
+            0.03
+          ]
+        },
+        {
+          "name": "sink_1",
+          "kind": "sink",
+          "class": "Sink",
+          "twin_center": [
+            1.6,
+            0.4,
+            0.85
+          ],
+          "built_center": [
+            1.6,
+            0.39,
+            0.795
+          ],
+          "dxy": 0.01,
+          "dz": 0.055,
+          "yaw_err": 0.0,
+          "size_err": 0.0,
+          "z_checked": false,
+          "collision_center": [
+            1.6,
+            0.39,
+            0.9419
+          ],
+          "collision_size": [
+            0.5986,
+            0.498,
+            0.542
+          ]
+        },
+        {
+          "name": "counter_b",
+          "kind": "counter",
+          "class": "Counter",
+          "twin_center": [
+            3.45,
+            0.4,
+            0.46
+          ],
+          "built_center": [
+            3.45,
+            0.375,
+            0.46
+          ],
+          "dxy": 0.025,
+          "dz": 0.0,
+          "yaw_err": 0.0,
+          "size_err": 0.05,
+          "z_checked": true,
+          "collision_center": [
+            3.45,
+            0.4,
+            0.905
+          ],
+          "collision_size": [
+            1.1,
+            0.65,
+            0.03
+          ]
+        },
+        {
+          "name": "fridge_1",
+          "kind": "fridge_bottom_freezer",
+          "class": "FridgeBottomFreezer",
+          "twin_center": [
+            0.375,
+            0.4,
+            0.9
+          ],
+          "built_center": [
+            0.375,
+            0.4,
+            0.9
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "yaw_err": 0.0,
+          "size_err": 0.0,
+          "z_checked": true,
+          "collision_center": [
+            0.375,
+            0.4175,
+            0.9
+          ],
+          "collision_size": [
+            0.7482,
+            0.7334,
+            1.7981
+          ]
+        },
+        {
+          "name": "stove_1",
+          "kind": "stove",
+          "class": "Stove",
+          "twin_center": [
+            2.55,
+            0.4,
+            0.45
+          ],
+          "built_center": [
+            2.55,
+            0.4,
+            0.45
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "yaw_err": 0.0,
+          "size_err": 0.0,
+          "z_checked": true,
+          "collision_center": [
+            2.55,
+            0.4285,
+            0.5993
+          ],
+          "collision_size": [
+            0.6982,
+            0.7051,
+            1.1965
+          ]
+        },
+        {
+          "name": "wall_north",
+          "kind": "wall",
+          "class": "Wall",
+          "twin_center": [
+            2.0,
+            0.0,
+            1.2
+          ],
+          "built_center": [
+            2.0,
+            0.0,
+            1.2
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "size_err": 0.0
+        },
+        {
+          "name": "wall_east",
+          "kind": "wall",
+          "class": "Wall",
+          "twin_center": [
+            4.0,
+            1.5,
+            1.2
+          ],
+          "built_center": [
+            4.0,
+            1.5,
+            1.2
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "size_err": 0.0
+        },
+        {
+          "name": "wall_south",
+          "kind": "wall",
+          "class": "Wall",
+          "twin_center": [
+            2.0,
+            3.0,
+            1.2
+          ],
+          "built_center": [
+            2.0,
+            3.0,
+            1.2
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "size_err": 0.0
+        },
+        {
+          "name": "wall_west",
+          "kind": "wall",
+          "class": "Wall",
+          "twin_center": [
+            0.0,
+            1.5,
+            1.2
+          ],
+          "built_center": [
+            0.0,
+            1.5,
+            1.2
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "size_err": 0.0
+        }
+      ],
+      "errors": [],
+      "floor": {
+        "top_z": 0.0,
+        "size_xy": [
+          4.08,
+          3.08
+        ]
+      },
+      "overlaps_robocasa": {},
+      "overlaps_twin": {
+        "counter_a / sink_1": 0.195,
+        "counter_b / wall_east": 0.01,
+        "fridge_1 / wall_west": 0.01
+      },
+      "overlaps_added": {}
+    },
+    "ok": true
+  },
+  {
+    "room": "kitchen_real_01",
+    "twin_fixtures": 6,
+    "twin_walls": 4,
+    "as_written": {
+      "built": true,
+      "robocasa_fixtures": 11,
+      "nbody": 57,
+      "ngeom": 312,
+      "ncon": 70,
+      "fixtures": [
+        {
+          "name": "11793D80-8BE3-45F9-AF2F-34068D45F7C2",
+          "kind": "hinge_cabinet",
+          "class": "HingeCabinet",
+          "twin_center": [
+            2.2912,
+            2.2224,
+            0.456
+          ],
+          "built_center": [
+            2.2912,
+            2.2224,
+            0.456
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "yaw_err": 3.1416,
+          "size_err": 0.0,
+          "z_checked": true,
+          "collision_center": [
+            2.2912,
+            2.2445,
+            0.456
+          ],
+          "collision_size": [
+            1.2761,
+            0.6866,
+            0.912
+          ]
+        },
+        {
+          "name": "F8CDA831-6DB6-48C1-9482-A5DA79652AEC",
+          "kind": "dishwasher",
+          "class": "Dishwasher",
+          "twin_center": [
+            1.361,
+            2.218,
+            0.456
+          ],
+          "built_center": [
+            1.361,
+            2.1943,
+            0.456
+          ],
+          "dxy": 0.0237,
+          "dz": 0.0,
+          "yaw_err": 3.1416,
+          "size_err": 0.0,
+          "z_checked": true,
+          "collision_center": [
+            1.3609,
+            2.2181,
+            0.456
+          ],
+          "collision_size": [
+            0.5826,
+            0.6967,
+            0.91
+          ]
+        },
+        {
+          "name": "807FD3A5-AF23-4620-A58F-D4FDD13850A3",
+          "kind": "stove",
+          "class": "Stove",
+          "twin_center": [
+            1.0226,
+            0.3484,
+            0.4632
+          ],
+          "built_center": [
+            1.0226,
+            0.3787,
+            0.3132
+          ],
+          "dxy": 0.0303,
+          "dz": 0.1499,
+          "yaw_err": 3.1416,
+          "size_err": 0.0,
+          "z_checked": true,
+          "collision_center": [
+            1.0226,
+            0.3482,
+            0.4669
+          ],
+          "collision_size": [
+            0.7612,
+            0.7558,
+            1.2316
+          ]
+        },
+        {
+          "name": "F068E3AE-575B-49A0-BD35-8E233153BE91",
+          "kind": "fridge_bottom_freezer",
+          "class": "FridgeBottomFreezer",
+          "twin_center": [
+            3.1945,
+            0.4733,
+            0.8982
+          ],
+          "built_center": [
+            3.1755,
+            0.4733,
+            0.8982
+          ],
+          "dxy": 0.019,
+          "dz": 0.0,
+          "yaw_err": 3.1416,
+          "size_err": 0.0,
+          "z_checked": true,
+          "collision_center": [
+            3.1947,
+            0.4733,
+            0.8982
+          ],
+          "collision_size": [
+            0.9443,
+            0.8024,
+            1.7945
+          ]
+        },
+        {
+          "name": "CC64C90B-5AD3-4C42-8E56-3D8B4FE9C9B9",
+          "kind": "hinge_cabinet",
+          "class": "HingeCabinet",
+          "twin_center": [
+            0.8526,
+            2.2037,
+            0.456
+          ],
+          "built_center": [
+            0.8526,
+            2.2037,
+            0.456
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "yaw_err": 3.1416,
+          "size_err": 0.0,
+          "z_checked": true,
+          "collision_center": [
+            0.8526,
+            2.2259,
+            0.456
+          ],
+          "collision_size": [
+            0.4323,
+            0.6766,
+            0.912
+          ]
+        },
+        {
+          "name": "F9337652-45E5-419A-B727-FE171FB57F90",
+          "kind": "hinge_cabinet",
+          "class": "HingeCabinet",
+          "twin_center": [
+            3.2549,
+            1.766,
+            0.456
+          ],
+          "built_center": [
+            3.2549,
+            1.766,
+            0.456
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "yaw_err": 3.1416,
+          "size_err": 0.0,
+          "z_checked": true,
+          "collision_center": [
+            3.2771,
+            1.766,
+            0.456
+          ],
+          "collision_size": [
+            1.5549,
+            0.6894,
+            0.912
+          ]
+        },
+        {
+          "name": "51FDC420-A3E2-42D6-A193-854B2D9DC07B",
+          "kind": "wall",
+          "class": "Wall",
+          "twin_center": [
+            1.7887,
+            2.5435,
+            1.2075
+          ],
+          "built_center": [
+            1.7887,
+            4.9585,
+            1.2075
+          ],
+          "dxy": 2.415,
+          "dz": 0.0,
+          "size_err": 4.73
+        },
+        {
+          "name": "753D5F37-4FFE-4B74-863C-960250C2144F",
+          "kind": "wall",
+          "class": "Wall",
+          "twin_center": [
+            3.5774,
+            1.2717,
+            1.2075
+          ],
+          "built_center": [
+            3.5774,
+            3.6867,
+            1.2075
+          ],
+          "dxy": 2.415,
+          "dz": 0.0,
+          "size_err": 2.672
+        },
+        {
+          "name": "3D13B2A1-A79B-4209-BEAE-E795822C7548",
+          "kind": "wall",
+          "class": "Wall",
+          "twin_center": [
+            0.0,
+            1.2717,
+            1.2075
+          ],
+          "built_center": [
+            0.0,
+            3.6867,
+            1.2075
+          ],
+          "dxy": 2.415,
+          "dz": 0.0,
+          "size_err": 2.672
+        },
+        {
+          "name": "7E182D20-8311-437D-A111-61F63DB97599",
+          "kind": "wall",
+          "class": "Wall",
+          "twin_center": [
+            1.7887,
+            0.0,
+            1.2075
+          ],
+          "built_center": [
+            1.7887,
+            2.415,
+            1.2075
+          ],
+          "dxy": 2.415,
+          "dz": 0.0,
+          "size_err": 4.73
+        }
+      ],
+      "errors": [
+        "11793D80-8BE3-45F9-AF2F-34068D45F7C2 (HingeCabinet): faces 3.142 rad off the twin's front",
+        "F8CDA831-6DB6-48C1-9482-A5DA79652AEC (Dishwasher): faces 3.142 rad off the twin's front",
+        "807FD3A5-AF23-4620-A58F-D4FDD13850A3 (Stove): centre off 0.030 m (xy) 0.150 m (z), tol 0.05",
+        "807FD3A5-AF23-4620-A58F-D4FDD13850A3 (Stove): faces 3.142 rad off the twin's front",
+        "F068E3AE-575B-49A0-BD35-8E233153BE91 (FridgeBottomFreezer): faces 3.142 rad off the twin's front",
+        "CC64C90B-5AD3-4C42-8E56-3D8B4FE9C9B9 (HingeCabinet): faces 3.142 rad off the twin's front",
+        "F9337652-45E5-419A-B727-FE171FB57F90 (HingeCabinet): faces 3.142 rad off the twin's front",
+        "wall 51FDC420-A3E2-42D6-A193-854B2D9DC07B: centre off 2.415 m (xy) 0.000 m (z), size off 4.730 m",
+        "wall 753D5F37-4FFE-4B74-863C-960250C2144F: centre off 2.415 m (xy) 0.000 m (z), size off 2.672 m",
+        "wall 3D13B2A1-A79B-4209-BEAE-E795822C7548: centre off 2.415 m (xy) 0.000 m (z), size off 2.672 m",
+        "wall 7E182D20-8311-437D-A111-61F63DB97599: centre off 2.415 m (xy) 0.000 m (z), size off 4.730 m"
+      ],
+      "floor": {
+        "top_z": 0.0,
+        "size_xy": [
+          7.2349,
+          5.167
+        ]
+      },
+      "overlaps_robocasa": {
+        "753D5F37-4FFE-4B74-863C-960250C2144F / F9337652-45E5-419A-B727-FE171FB57F90": 0.0709,
+        "7E182D20-8311-437D-A111-61F63DB97599 / F068E3AE-575B-49A0-BD35-8E233153BE91": 0.1785
+      },
+      "overlaps_twin": {
+        "11793D80-8BE3-45F9-AF2F-34068D45F7C2 / 51FDC420-A3E2-42D6-A193-854B2D9DC07B": 0.05,
+        "51FDC420-A3E2-42D6-A193-854B2D9DC07B / CC64C90B-5AD3-4C42-8E56-3D8B4FE9C9B9": 0.0263,
+        "51FDC420-A3E2-42D6-A193-854B2D9DC07B / F8CDA831-6DB6-48C1-9482-A5DA79652AEC": 0.05,
+        "51FDC420-A3E2-42D6-A193-854B2D9DC07B / F9337652-45E5-419A-B727-FE171FB57F90": 0.05,
+        "753D5F37-4FFE-4B74-863C-960250C2144F / F068E3AE-575B-49A0-BD35-8E233153BE91": 0.05,
+        "753D5F37-4FFE-4B74-863C-960250C2144F / F9337652-45E5-419A-B727-FE171FB57F90": 0.05,
+        "7E182D20-8311-437D-A111-61F63DB97599 / 807FD3A5-AF23-4620-A58F-D4FDD13850A3": 0.05,
+        "7E182D20-8311-437D-A111-61F63DB97599 / F068E3AE-575B-49A0-BD35-8E233153BE91": 0.05
+      },
+      "overlaps_added": {}
+    },
+    "robocasa": {
+      "built": true,
+      "robocasa_fixtures": 11,
+      "nbody": 57,
+      "ngeom": 312,
+      "ncon": 24,
+      "notes": [],
+      "origin_offsets": {
+        "11793D80-8BE3-45F9-AF2F-34068D45F7C2": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "F8CDA831-6DB6-48C1-9482-A5DA79652AEC": [
+          -0.0,
+          0.0237,
+          0.0
+        ],
+        "CC64C90B-5AD3-4C42-8E56-3D8B4FE9C9B9": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "F068E3AE-575B-49A0-BD35-8E233153BE91": [
+          0.0,
+          0.019,
+          -0.0
+        ],
+        "F9337652-45E5-419A-B727-FE171FB57F90": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "807FD3A5-AF23-4620-A58F-D4FDD13850A3": [
+          -0.0,
+          0.0303,
+          -0.1499
+        ]
+      },
+      "overhang": 0.05,
+      "fixtures": [
+        {
+          "name": "11793D80-8BE3-45F9-AF2F-34068D45F7C2",
+          "kind": "hinge_cabinet",
+          "class": "HingeCabinet",
+          "twin_center": [
+            2.2912,
+            2.2224,
+            0.456
+          ],
+          "built_center": [
+            2.2912,
+            2.2224,
+            0.456
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "yaw_err": 0.0,
+          "size_err": 0.0,
+          "z_checked": true,
+          "collision_center": [
+            2.2912,
+            2.2002,
+            0.456
+          ],
+          "collision_size": [
+            1.2761,
+            0.6866,
+            0.912
+          ]
+        },
+        {
+          "name": "F8CDA831-6DB6-48C1-9482-A5DA79652AEC",
+          "kind": "dishwasher",
+          "class": "Dishwasher",
+          "twin_center": [
+            1.361,
+            2.218,
+            0.456
+          ],
+          "built_center": [
+            1.3609,
+            2.218,
+            0.456
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "yaw_err": 0.0,
+          "size_err": 0.0,
+          "z_checked": true,
+          "collision_center": [
+            1.361,
+            2.1941,
+            0.456
+          ],
+          "collision_size": [
+            0.5826,
+            0.6967,
+            0.91
+          ]
+        },
+        {
+          "name": "807FD3A5-AF23-4620-A58F-D4FDD13850A3",
+          "kind": "stove",
+          "class": "Stove",
+          "twin_center": [
+            1.0226,
+            0.3484,
+            0.4632
+          ],
+          "built_center": [
+            1.0226,
+            0.3484,
+            0.4632
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "yaw_err": 0.0,
+          "size_err": 0.0,
+          "z_checked": true,
+          "collision_center": [
+            1.0226,
+            0.379,
+            0.6169
+          ],
+          "collision_size": [
+            0.7612,
+            0.7558,
+            1.2316
+          ]
+        },
+        {
+          "name": "F068E3AE-575B-49A0-BD35-8E233153BE91",
+          "kind": "fridge_bottom_freezer",
+          "class": "FridgeBottomFreezer",
+          "twin_center": [
+            3.1945,
+            0.4733,
+            0.8982
+          ],
+          "built_center": [
+            3.1945,
+            0.4733,
+            0.8982
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "yaw_err": 0.0,
+          "size_err": 0.0,
+          "z_checked": true,
+          "collision_center": [
+            3.1753,
+            0.4733,
+            0.8982
+          ],
+          "collision_size": [
+            0.8024,
+            0.9443,
+            1.7945
+          ]
+        },
+        {
+          "name": "CC64C90B-5AD3-4C42-8E56-3D8B4FE9C9B9",
+          "kind": "hinge_cabinet",
+          "class": "HingeCabinet",
+          "twin_center": [
+            0.8526,
+            2.2037,
+            0.456
+          ],
+          "built_center": [
+            0.8526,
+            2.2037,
+            0.456
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "yaw_err": 0.0,
+          "size_err": 0.0,
+          "z_checked": true,
+          "collision_center": [
+            0.8526,
+            2.1815,
+            0.456
+          ],
+          "collision_size": [
+            0.4323,
+            0.6766,
+            0.912
+          ]
+        },
+        {
+          "name": "F9337652-45E5-419A-B727-FE171FB57F90",
+          "kind": "hinge_cabinet",
+          "class": "HingeCabinet",
+          "twin_center": [
+            3.2549,
+            1.766,
+            0.456
+          ],
+          "built_center": [
+            3.2549,
+            1.766,
+            0.456
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "yaw_err": 0.0,
+          "size_err": 0.0,
+          "z_checked": true,
+          "collision_center": [
+            3.2327,
+            1.766,
+            0.456
+          ],
+          "collision_size": [
+            0.6894,
+            1.5549,
+            0.912
+          ]
+        },
+        {
+          "name": "51FDC420-A3E2-42D6-A193-854B2D9DC07B",
+          "kind": "wall",
+          "class": "Wall",
+          "twin_center": [
+            1.7887,
+            2.5435,
+            1.2075
+          ],
+          "built_center": [
+            1.7887,
+            2.5435,
+            1.2075
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "size_err": 0.0
+        },
+        {
+          "name": "753D5F37-4FFE-4B74-863C-960250C2144F",
+          "kind": "wall",
+          "class": "Wall",
+          "twin_center": [
+            3.5774,
+            1.2717,
+            1.2075
+          ],
+          "built_center": [
+            3.5774,
+            1.2717,
+            1.2075
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "size_err": 0.0
+        },
+        {
+          "name": "3D13B2A1-A79B-4209-BEAE-E795822C7548",
+          "kind": "wall",
+          "class": "Wall",
+          "twin_center": [
+            0.0,
+            1.2717,
+            1.2075
+          ],
+          "built_center": [
+            0.0,
+            1.2717,
+            1.2075
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "size_err": 0.0
+        },
+        {
+          "name": "7E182D20-8311-437D-A111-61F63DB97599",
+          "kind": "wall",
+          "class": "Wall",
+          "twin_center": [
+            1.7887,
+            0.0,
+            1.2075
+          ],
+          "built_center": [
+            1.7887,
+            0.0,
+            1.2075
+          ],
+          "dxy": 0.0,
+          "dz": 0.0,
+          "size_err": 0.0
+        }
+      ],
+      "errors": [],
+      "floor": {
+        "top_z": 0.0,
+        "size_xy": [
+          3.6574,
+          2.6235
+        ]
+      },
+      "overlaps_robocasa": {
+        "51FDC420-A3E2-42D6-A193-854B2D9DC07B / F9337652-45E5-419A-B727-FE171FB57F90": 0.0242,
+        "7E182D20-8311-437D-A111-61F63DB97599 / F068E3AE-575B-49A0-BD35-8E233153BE91": 0.0244
+      },
+      "overlaps_twin": {
+        "11793D80-8BE3-45F9-AF2F-34068D45F7C2 / 51FDC420-A3E2-42D6-A193-854B2D9DC07B": 0.05,
+        "51FDC420-A3E2-42D6-A193-854B2D9DC07B / CC64C90B-5AD3-4C42-8E56-3D8B4FE9C9B9": 0.0263,
+        "51FDC420-A3E2-42D6-A193-854B2D9DC07B / F8CDA831-6DB6-48C1-9482-A5DA79652AEC": 0.05,
+        "51FDC420-A3E2-42D6-A193-854B2D9DC07B / F9337652-45E5-419A-B727-FE171FB57F90": 0.05,
+        "753D5F37-4FFE-4B74-863C-960250C2144F / F068E3AE-575B-49A0-BD35-8E233153BE91": 0.05,
+        "753D5F37-4FFE-4B74-863C-960250C2144F / F9337652-45E5-419A-B727-FE171FB57F90": 0.05,
+        "7E182D20-8311-437D-A111-61F63DB97599 / 807FD3A5-AF23-4620-A58F-D4FDD13850A3": 0.05,
+        "7E182D20-8311-437D-A111-61F63DB97599 / F068E3AE-575B-49A0-BD35-8E233153BE91": 0.05
+      },
+      "overlaps_added": {}
+    },
+    "ok": true
+  }
+]
