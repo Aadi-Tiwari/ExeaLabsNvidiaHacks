@@ -662,7 +662,9 @@ def _write_preview(d: Path, room: str, frames: list, ep: dict) -> None:
     from arrival.export.lerobot import write_video
 
     d.mkdir(parents=True, exist_ok=True)
-    write_video(d / f"{room}_sim_overview.mp4", frames, FPS)
+    # The overview renders 480x360 and 360 is not a multiple of 16: the dataset default resized it to 480x368 (a 2%
+    # stretch) and printed an imageio WARNING on the README's first sim command. No info.features describes this mp4.
+    write_video(d / f"{room}_sim_overview.mp4", frames, FPS, macro_block_size=2)
     picks = [frames[int(k)] for k in np.linspace(0, len(frames) - 1, 6)]
     ego = ep["videos"]["ego_view"]
     egos = [np.array(Image.fromarray(ego[int(k)]).resize((480, 360))) for k in np.linspace(0, len(ego) - 1, 6)]
