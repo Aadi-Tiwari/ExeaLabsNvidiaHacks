@@ -260,6 +260,8 @@ class LeRobotWriter:
                 raise ValueError(f"episode {ep}: video {name} must contain uint8 RGB pixels, got {frames.dtype}")
 
             _check_camera_name(name)
+            if name not in self.video_keys:
+                raise ValueError(f"episode {ep}: undeclared camera {name!r}; expected {self.video_keys}")
             if frames.ndim != 4 or frames.shape[0] != n or frames.shape[3] != 3:
                 raise ValueError(f"episode {ep}: video {name} shape {frames.shape} != ({n},H,W,3)")
             if self.video_policy == "all" or self.wants_video(ep):

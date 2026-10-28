@@ -461,3 +461,25 @@ def test_validator_reports_invalid_modality_before_sorting(tmp_path, group, fiel
         data[group]["arm"][field] = value
     path.write_text(json.dumps(data))
     assert any(f"modality {group}.arm" in error for error in validate(root))
+
+
+@pytest.mark.parametrize("policy", ["all", "sparse", "none"])
+def test_writer_rejects_undeclared_camera_without_mutation(tmp_path, policy):
+    import numpy as np
+
+    w = _writer(tmp_path, policy=policy, video_keys=["ego_view"])
+    z = np.zeros((2, 2))
+    clip = np.zeros((2, 32, 32, 3), np.uint8)
+    try:
+        with pytest.raises(ValueError, match="undeclared camera"):
+            w.add_episode(z, z, [0, .05], "task", True,
+                          videos={"ego_view": clip, "surprise": clip})
+        assert w.next_episode == 0
+        assert w.task_index == {} and w.total_frames == 0
+        assert w.videos == w.previews == 0
+        assert not list(w.root.rglob("*.parquet"))
+        assert not list(tmp_path.rglob("*.mp4"))
+        w.add_episode(z, z, [0, .05], "task", True, videos={"ego_view": clip})
+        assert w.next_episode == 1
+    finally:
+        w.close()
