@@ -325,6 +325,13 @@ python -m arrival eval --policy vla --checkpoint-id base-gr00t  # needs GR00T_PO
 
 `eval` runs `--episodes` episodes per family through the same `SimEnv` and `run_episode` as `sim`, writes no dataset, prints a table, and writes `out/eval/<run_id>/report.json` (shape in [04-contracts.md](04-contracts.md)). Per family: episodes, successes, success rate with a Wilson 95% interval, mean sim seconds (frames / 20), mean wall seconds, human contacts, the smallest robot-human distance seen, the largest IK residual, and arm-fixture contacts (`arm_contact_episodes`, `arm_contact_max_depth_m`). A human contact counts as a failure; an arm-fixture contact is counted, not scored. Every family ends through the same `finish_task` as `sim`, so the close and put families are covered, and an episode that raises is recorded as a failure instead of stopping the run. The eval is sim-in-the-twin only; nothing here scores a real robot.
 
+`python -m arrival retarget` provides the top-level CLI command for demonstration retargeting, supporting native SE(3) physical retargeting (`--method se3`, default) and translation seed replay (`--method seed_replay`).
+
+```bash
+python -m arrival retarget --room hero_kitchen --attempts 2 --res 32
+python -m arrival retarget --room hero_kitchen --method seed_replay --attempts 6
+```
+
 `python -m arrival.generate.retarget` records one scripted-expert seed and replays it for new object start poses (`--attempts`, `--family counter_to_sink|counter_to_counter`, `--res`, `--seed`, `--baseline` to time the scripted expert on the same count). Successes (physics oracle) are written to `out/datasets/<room>_seed_replay/` with `arrival_generator = "seed_replay_retarget"` and a seed reference; unreachable or failed replays are dropped. Details in [ref/DAT-4a.md](ref/DAT-4a.md).
 
 `python -m arrival.generate.se3_retarget` adds an independent, native object-centric SE(3) generator for `counter_to_sink`; S20 seed replay is unchanged. It records one successful scripted-expert rollout's actual 20 Hz end-effector poses, joint states and gripper commands. Approach/grasp/lift samples are relative to the initial object frame; transport/place/retreat samples are relative to the sink fixture frame. Retargeting applies `T_new_anchor @ T_source_anchor_inverse @ T_recorded_eef` to both position and orientation. One-second minimum-jerk translation and quaternion SLERP bridges connect the initial pose and segment boundary. Every transformed sample goes through IK (maximum 2 cm position and 0.15 rad orientation residual), followed by real MuJoCo physics. The existing basin success oracle and zero-human-contact condition decide export; an unreachable pose, lost grasp or failed placement is dropped.
