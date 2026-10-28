@@ -329,3 +329,24 @@ def test_cli_json_alone_runs_the_episode_checks_and_writes_the_report(tmp_path, 
     assert cli.main(["validate", str(tmp_path / "ds"), "--json", str(report)]) == cli.EXIT_INVALID
     assert json.loads(report.read_text())["flagged_episodes"] == [6]
     assert "zero_motion" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("color", [(255, 0, 0), (0, 255, 0), (0, 0, 255)])
+def test_blank_video_detects_uniform_colored_frames(tmp_path, color):
+    from arrival.export.lerobot import write_video
+
+    path = tmp_path / "solid.mp4"
+    frames = np.empty((5, 16, 16, 3), dtype=np.uint8)
+    frames[:] = color
+    write_video(path, frames, 20)
+    assert "near-uniform" in (quality._blank_video(path) or "")
+
+
+def test_blank_video_accepts_spatial_texture(tmp_path):
+    from arrival.export.lerobot import write_video
+
+    path = tmp_path / "texture.mp4"
+    grid = (np.indices((16, 16)).sum(axis=0) % 2 * 255).astype(np.uint8)
+    frames = np.repeat(np.repeat(grid[None, :, :, None], 3, axis=3), 5, axis=0)
+    write_video(path, frames, 20)
+    assert quality._blank_video(path) is None

@@ -127,7 +127,7 @@ def _blank_video(path: Path) -> str | None:
         with imageio.get_reader(str(path)) as r:
             for f in r:
                 total += 1
-                blank += float(np.asarray(f, dtype=np.float32).std()) < BLANK_STD
+                blank += float(np.asarray(f, dtype=np.float32).std(axis=(0, 1)).max()) < BLANK_STD
     except Exception as e:  # noqa: BLE001 - an undecodable video is a bad episode, not a crash
         return f"{path.name}: cannot decode ({e})"
     if total == 0:
