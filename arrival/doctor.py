@@ -1,6 +1,6 @@
 """L22: ``python -m arrival doctor`` checks this machine before a run, offline.
 
-Checks the Python version, the core dependencies, MuJoCo, an ffmpeg binary, which optional credentials and URLs
+Checks the Python version, the core dependencies, MuJoCo and off-screen rendering, an ffmpeg binary, which optional credentials and URLs
 are configured, and free disk for the output folder. A key is reported only as set or not set, with where it was
 found; its value is never read into the output, never printed and never sent anywhere.
 """
@@ -99,6 +99,41 @@ def check_mujoco() -> Check:
     except Exception as e:  # noqa: BLE001 - a broken native library raises more than ImportError
         return Check("mujoco", "fail", f"installed but does not import: {type(e).__name__}")
     return Check("mujoco", "ok", getattr(mujoco, "__version__", _version("mujoco")))
+
+
+def check_rendering() -> Check:
+    """Check whether MuJoCo can initialize an off-screen renderer and produce pixels.
+
+    Camera-based sim, demo, realism, and eval record video frames; on headless runners or
+    virtual machines without a display server, missing OpenGL/EGL libraries or misconfigured
+    MUJOCO_GL cause MuJoCo renderers to crash.
+    """
+    try:
+        import mujoco
+    except ImportError:
+        return Check("rendering", "info", "skipped (mujoco not installed)")
+    except Exception as e:  # noqa: BLE001 - broken native library
+        return Check("rendering", "warn", f"skipped (mujoco import failed: {type(e).__name__})")
+
+    r = None
+    try:
+        m = mujoco.MjModel.from_xml_string("<mujoco><worldbody/></mujoco>")
+        d = mujoco.MjData(m)
+        r = mujoco.Renderer(m, 16, 16)
+        r.update_scene(d)
+        px = r.render()
+        backend = os.environ.get("MUJOCO_GL", "default")
+        return Check("rendering", "ok", f"functional off-screen ({px.shape[0]}x{px.shape[1]}, backend: {backend})")
+    except Exception as e:  # noqa: BLE001 - offscreen GL failure
+        gl = os.environ.get("MUJOCO_GL")
+        hint = "set MUJOCO_GL=egl or osmesa" if not gl else f"MUJOCO_GL={gl} failed; try egl or osmesa"
+        return Check("rendering", "warn", f"off-screen context failed ({type(e).__name__}: {e}); {hint}")
+    finally:
+        if r is not None:
+            try:
+                r.close()
+            except Exception:  # noqa: BLE001
+                pass
 
 
 def check_ffmpeg(exe: str | None = None) -> Check:
@@ -212,7 +247,7 @@ def check_disk(out_dir: str | Path = "out") -> Check:
 
 
 def run_checks(out_dir: str | Path = "out", environ: dict[str, str] | None = None, env_files: list[Path] | None = None) -> list[Check]:
-    return ([check_python()] + check_core() + [check_mujoco(), check_ffmpeg()]
+    return ([check_python()] + check_core() + [check_mujoco(), check_rendering(), check_ffmpeg()]
             + check_env(environ, env_files) + [check_disk(Path(out_dir))])
 
 

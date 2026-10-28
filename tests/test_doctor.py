@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from arrival import cli, doctor
-from arrival.doctor import Check, check_core, check_disk, check_env, check_ffmpeg, check_mujoco, check_python, exit_code, render, render_json, run_checks
+from arrival.doctor import Check, check_core, check_disk, check_env, check_ffmpeg, check_mujoco, check_python, check_rendering, exit_code, render, render_json, run_checks
 
 
 def test_check_python():
@@ -57,6 +57,43 @@ def test_check_mujoco():
         res = check_mujoco()
         assert res.status == "fail"
         assert "RuntimeError" in res.detail
+
+
+def test_check_rendering(monkeypatch):
+    chk = check_rendering()
+    assert chk.name == "rendering"
+    assert chk.status in ("ok", "warn", "info")
+    if chk.status == "ok":
+        assert "functional off-screen" in chk.detail
+
+    # When mujoco is missing
+    with patch.dict("sys.modules", {"mujoco": None}):
+        with patch("builtins.__import__", side_effect=ImportError("No module named 'mujoco'")):
+            res = check_rendering()
+            assert res.status == "info"
+            assert "skipped (mujoco not installed)" in res.detail
+
+    # When mujoco native library import fails
+    with patch("builtins.__import__", side_effect=RuntimeError("DLL failed to load")):
+        res = check_rendering()
+        assert res.status == "warn"
+        assert "skipped (mujoco import failed: RuntimeError)" in res.detail
+
+    # When off-screen renderer raises an error
+    import mujoco
+    with patch.object(mujoco, "Renderer", side_effect=RuntimeError("gladLoadGL error")):
+        monkeypatch.delenv("MUJOCO_GL", raising=False)
+        res = check_rendering()
+        assert res.status == "warn"
+        assert "off-screen context failed" in res.detail
+        assert "set MUJOCO_GL=egl or osmesa" in res.detail
+
+    # When MUJOCO_GL is configured but fails
+    with patch.object(mujoco, "Renderer", side_effect=RuntimeError("EGL display failed")):
+        monkeypatch.setenv("MUJOCO_GL", "egl")
+        res = check_rendering()
+        assert res.status == "warn"
+        assert "MUJOCO_GL=egl failed; try egl or osmesa" in res.detail
 
 
 def test_check_ffmpeg():
@@ -202,6 +239,7 @@ def test_run_checks_integration(tmp_path):
     checks = run_checks(out_dir=tmp_path)
     assert isinstance(checks, list)
     assert any(c.name == "python" for c in checks)
+    assert any(c.name == "rendering" for c in checks)
     assert any(c.name == "disk" for c in checks)
     assert any(c.name == "ffmpeg" for c in checks)
 
