@@ -47,6 +47,13 @@ def test_summary_refuses_colliding_room_ids_before_running(tmp_path, monkeypatch
     assert not out.exists()
 
 
+def test_summary_refuses_aliases_of_the_same_output_path(tmp_path, monkeypatch):
+    monkeypatch.setattr(summary, "run_room", lambda *a, **k: pytest.fail("started an aliased room"))
+    with pytest.raises(ValueError, match="share output id"):
+        summary.summarize(rooms=["hero_kitchen", "./hero_kitchen"], out_dir=tmp_path / "out", scans_dir=SCANS)
+    assert not (tmp_path / "out").exists()
+
+
 def test_cli_summary_reports_colliding_room_ids(tmp_path, capsys):
     paths = [tmp_path / name for name in ("a-b.json", "a_b.json")]
     for path in paths:
