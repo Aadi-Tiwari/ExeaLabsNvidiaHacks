@@ -156,6 +156,9 @@ def run_room(spec: str, out_dir: Path, scans_dir: Path, episodes: int = 2, res: 
                                 else f"{len(errors)} error(s): " + "; ".join(errors[:3]))
     except Exception as e:  # noqa: BLE001
         st["validate"] = _stage("failed", _err(e))
+    row["dataset"] = str(ds)
+    if st["validate"]["status"] == "failed":
+        return fail("validate", st["validate"]["detail"])
     try:
         from arrival.export.quality import check_episodes
 
@@ -166,7 +169,6 @@ def run_room(spec: str, out_dir: Path, scans_dir: Path, episodes: int = 2, res: 
                                 episodes=q["episodes"], flagged=q["flagged"])
     except Exception as e:  # noqa: BLE001
         st["episodes"] = _stage("failed", _err(e))
-    row["dataset"] = str(ds)
     return row
 
 
