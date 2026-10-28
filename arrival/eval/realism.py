@@ -35,6 +35,8 @@ def look_at(eye, target, up=(0.0, 0.0, 1.0)) -> np.ndarray:
     z /= np.linalg.norm(z)
     if abs(float(z @ up)) > 1 - 1e-6:  # looking straight along up: any horizontal axis will do
         up = np.array([0.0, 1.0, 0.0])
+        if abs(float(z @ up)) > 1 - 1e-6:
+            up = np.array([1.0, 0.0, 0.0])
     x = np.cross(z, up)
     x /= np.linalg.norm(x)
     y = np.cross(z, x)
