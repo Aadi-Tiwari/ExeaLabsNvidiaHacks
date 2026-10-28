@@ -395,7 +395,7 @@ Everything below is open work. **To claim a task:** open a GitHub issue titled w
 | **TWN**: Twin & scan testing | 4 | Any real scan → a clean, correct digital twin | _TBD_ |
 | **SIM**: Scene & realism | 4 | A kitchen that looks real, with every moving part working | _TBD_ |
 | **MAN**: Robot & manipulation | 5 | Every task succeeding with a natural-looking arm | _TBD_ |
-| **PPL**: People & safety | 2 | Believable moving people the robot has to work around | _TBD_ |
+| **PPL**: People & safety | 2 | Believable moving people the robot has to work around | @vrun-systems26 |
 | **POL**: Policy (VLA/VLM) | 4 | Nemotron planner + GR00T policy closing the loop | _TBD_ |
 | **DAT**: Data & training | 3 | GR00T fine-tune on our data, and evaluation | _TBD_ |
 | **OPS**: Nebius scale & backend | 2 | Uploads processed in the cloud at scale, costs tracked | _TBD_ |
