@@ -481,7 +481,7 @@ def collect(twin: dict, families: list[str], episodes: int, out_dir: str | Path 
     With save_preview=True it also writes a labeled ego/exo pair from those same dataset frames.
     Every run journals each finished task; resume=True continues from that journal (a different run's journal is
     refused with a ShardError) and the result is the dataset an uninterrupted run would have written."""
-    from arrival.jobs.shards import Journal, shard_dir, shard_range
+    from arrival.jobs.shards import Journal, shard_dir, shard_range, twin_sha256
     from arrival.sim.export import SimDatasetWriter
     from arrival.sim.policy import ScriptedExpert, VLAClient, VLANotConfigured, VLMPlanner
     from arrival.sim.tasks import finish_task, make_tasks
@@ -489,6 +489,7 @@ def collect(twin: dict, families: list[str], episodes: int, out_dir: str | Path 
     cameras = ("ego_view", "wrist", "overview") if exocentric else ("ego_view", "wrist")
     out_dir = Path(out_dir)
     room = twin["room_id"]
+    twin_hash = twin_sha256(twin)  # the room as given, before anything below reads it
     pre: dict = {}
     tasks = make_tasks(twin, families, episodes, seed=seed, people=people,
                        split=split, use_generated_instructions=use_generated_instructions, mobile=base == "mobile", log=log,
@@ -510,7 +511,8 @@ def collect(twin: dict, families: list[str], episodes: int, out_dir: str | Path 
     fingerprint = {"room": room, "families": list(families), "episodes": episodes, "seed": seed, "people": people,
                    "policy": policy_name, "planner": planner_name, "split": split,
                    "instructions": use_generated_instructions, "base": base, "arm": arm, "res": res,
-                   "shard": list(shard) if shard else None, "exec_noise": exec_noise, "cameras": list(cameras)}
+                   "shard": list(shard) if shard else None, "exec_noise": exec_noise, "cameras": list(cameras),
+                   "twin": twin_hash}
     journal = Journal(out_dir / "progress" / f"{room}_sim.jsonl")
     done = journal.start(fingerprint, resume, tasks[lo:hi])
     writer = SimDatasetWriter(out_dir / "datasets" / f"{room}_sim", room, FPS, res, cameras, provenance=prov,
