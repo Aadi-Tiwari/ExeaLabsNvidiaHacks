@@ -81,3 +81,19 @@ def test_cli_reports_a_folder_with_no_dataset_instead_of_a_traceback(tmp_path, c
     (tmp_path / "empty").mkdir()
     assert main(["subset", str(tmp_path / "empty"), "--out", str(tmp_path / "out")]) == 2
     assert "subset: " in capsys.readouterr().err
+
+
+def test_the_help_threshold_keeps_every_clean_drawer_pull(tmp_path):
+    import re
+
+    from arrival.cli import build_parser
+
+    sub = next(a for a in build_parser()._actions if a.dest == "cmd").choices["subset"]
+    text = next(a.help for a in sub._actions if a.dest == "min_drawer_opening")
+    end, keep = (float(x) for x in re.search(r"ends at ([\d.]+), so ([\d.]+) keeps", text).groups())
+    twin = compile_twin(load_room("hero_kitchen", "scans"))
+    collect(twin, ["open_drawer"], 3, tmp_path / "src", people=0, res=32, seed=0, log=lambda *_: None)
+    src = tmp_path / "src" / "datasets" / "hero_kitchen_sim"
+    eps = [json.loads(line) for line in (src / "meta" / "episodes.jsonl").read_text().splitlines()]
+    assert [round(e["arrival_success_detail"]["qpos"], 4) for e in eps] == [end] * 3
+    assert subset_dataset(src, tmp_path / "out", min_drawer_opening=keep, log=lambda *_: None)["kept"] == 3
