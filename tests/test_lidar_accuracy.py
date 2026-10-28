@@ -188,6 +188,23 @@ def test_real_roomplan_base_cabinets_are_counters():
     assert sorted(m[:4] for m in counter_runs(twin)[0]["members"]) == ["1179", "CC64", "F8CD"]
 
 
+def test_an_integer_too_large_for_float_is_an_error_line_and_the_next_room_is_measured(tmp_path, capsys):
+    """math.isfinite on a JSON integer past the float range raises OverflowError. scan_accuracy catches
+    MeasurementError so one bad file does not stop the rooms after it; this integer missed that handler."""
+    good = json.loads(HERO_FIXTURE.read_text(encoding="utf-8"))
+    huge = {**good, "counter_length_m": 10 ** 400}
+    path = tmp_path / "m.json"
+    path.write_text(json.dumps(huge), encoding="utf-8")
+    with pytest.raises(MeasurementError, match="counter_length_m"):
+        load_measurements(path)
+    bad = _room(tmp_path, "huge_room", huge)
+    ok = _room(tmp_path, "ok_room", good)
+    assert scan_accuracy.main([str(bad), str(ok)]) == 1
+    out = capsys.readouterr().out
+    assert "huge_room: ERROR" in out and "positive number of metres" in out
+    assert "ok_room" in out and "2 room(s) measured, 1 failing" in out
+
+
 def test_storage_island_and_tall_storage_are_not_counters():
     walls = [{"id": "w", "start": [0, 0], "end": [6, 0], "height": 2.4, "thickness": 0.1}]
     base = {"id": "base", "category": "storage", "size": [1.2, 0.6, 0.9], "position": [1.0, 0.35, 0.45], "yaw": 0}

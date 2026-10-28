@@ -50,6 +50,17 @@ class MeasurementError(ValueError):
     """measurements.json is malformed, or the twin has no fixture to measure."""
 
 
+def _positive_metres(value) -> bool:
+    """True for a positive finite number of metres. An int too large for float is not one: math.isfinite raises
+    OverflowError, which is not a MeasurementError."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value) and value > 0
+    except OverflowError:
+        return False
+
+
 def load_measurements(path: str | Path) -> dict:
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(data, dict):
@@ -61,8 +72,7 @@ def load_measurements(path: str | Path) -> dict:
     if unknown:
         raise MeasurementError(f"{path}: unknown key {', '.join(unknown)} (extras: {', '.join(EXTRAS)})")
     for k in (*REQUIRED, *(k for k in EXTRAS if k in data), "tolerance_m"):
-        if k in data and (isinstance(data[k], bool) or not isinstance(data[k], (int, float))
-                          or not math.isfinite(data[k]) or data[k] <= 0):
+        if k in data and not _positive_metres(data[k]):
             raise MeasurementError(f"{path}: {k} must be a positive number of metres")
     return data
 
