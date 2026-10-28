@@ -222,6 +222,29 @@ def test_validator_catches_corruption(tmp_path):
     assert any("episode_000002.mp4" in e for e in validate(ds))
 
 
+@pytest.mark.parametrize("column", ["observation.state", "action", "timestamp", "task_index"])
+def test_validator_reports_wrong_column_type_before_value_checks(tmp_path, column):
+    import numpy as np
+    import pyarrow as pa
+
+    modality = {"state": {"arm": {"start": 0, "end": 2}},
+                "action": {"arm": {"start": 0, "end": 2, "absolute": True}},
+                "annotation": {"human.task_description": {}}}
+    writer = _writer(tmp_path, modality=modality)
+    writer.add_episode(np.zeros((2, 2)), np.zeros((2, 2)), np.arange(2) / 20, "task", True)
+    writer.finish(1)
+    root = tmp_path / "ds"
+    assert validate(root) == []
+    path = root / "data/chunk-000/episode_000000.parquet"
+    table = pq.read_table(path)
+    values = (pa.array([0.0, 0.0], type=pa.float32()) if column in ("observation.state", "action")
+              else pa.array([[0.0], [0.0]], type=pa.list_(pa.float32())))
+    table = table.set_column(table.schema.get_field_index(column), column, values)
+    pq.write_table(table, path)
+    errors = validate(root)
+    assert any(f"column {column} dtype" in error for error in errors)
+
+
 def test_validator_catches_nan_and_bad_timestamps(tmp_path):
     import json
 
