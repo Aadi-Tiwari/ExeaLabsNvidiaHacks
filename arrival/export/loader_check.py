@@ -78,7 +78,7 @@ def _decode(path: Path):
 
 
 def _close(a, b) -> bool:
-    return bool(np.allclose(a, b, rtol=STAT_RTOL, atol=STAT_ATOL))
+    return np.shape(a) == np.shape(b) and bool(np.allclose(a, b, rtol=STAT_RTOL, atol=STAT_ATOL))
 
 
 def check_loader(root: str | Path) -> dict:
