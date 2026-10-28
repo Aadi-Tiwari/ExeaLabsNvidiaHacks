@@ -191,3 +191,23 @@ def test_menagerie_dataset_says_which_arm_made_it(twin, tmp_path):
     assert "Menagerie" in emb["note"] and f"0..{menagerie.FINGER_OPEN}" in emb["note"]
     state = np.array(pq.read_table(next(res["dataset"].rglob("episode_000000.parquet"))).column("observation.state").to_pylist())
     assert state.shape[1] == 11 and state[:, 7].max() <= menagerie.FINGER_OPEN + 5e-4
+
+
+@needs_asset
+@pytest.mark.parametrize("seed", [0, 3])
+def test_menagerie_arm_opens_the_oven(twin, seed):
+    """At the steepest flap tilt IK reaches the oven bar, but the real hand's body meets the stove front 3.4 cm short
+    of it and the door never moved (0 of 6 on main). The real hand leaves that tilt out for the oven."""
+    from arrival.sim.tasks import finish_task, make_tasks
+
+    task = finish_task(dict(next(t for t in make_tasks(twin, ["open_oven"], 2, seed=seed, log=lambda *a: None,
+                                                       arm="menagerie") if t["family"] == "open_oven")))
+    ep = run_episode(SimEnv(twin, task, res=32, arm="menagerie", cameras=()), ScriptedExpert(), task)
+    assert ep["success"] and ep["detail"]["qpos"] > 1.4, ep["detail"]
+
+
+def test_only_the_real_hand_narrows_the_flap_tilts():
+    from arrival.sim.policy import FLAP_TILTS
+
+    assert "flap_tilts" not in robot.HAND  # the procedural arm keeps every tilt, so its plans are unchanged
+    assert set(menagerie.HAND["flap_tilts"]) == {"open_oven"} and max(FLAP_TILTS) not in menagerie.HAND["flap_tilts"]["open_oven"]

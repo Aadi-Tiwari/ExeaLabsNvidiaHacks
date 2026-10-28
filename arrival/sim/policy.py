@@ -372,8 +372,10 @@ class ScriptedExpert(Policy):
                 return out
 
             # which tilt reaches depends on the bar's height and distance (oven bars sit higher than dishwasher
-            # bars), so take the candidate whose whole chain has the smallest IK residual
-            return min((chain(t) for t in FLAP_TILTS), key=lambda wps: self._chain_error(env, wps))
+            # bars), so take the candidate whose whole chain has the smallest IK residual; an arm may rule out a tilt
+            # whose hand body meets the fixture, which IK does not see (menagerie.HAND)
+            tilts = hand.get("flap_tilts", {}).get(fam, FLAP_TILTS)
+            return min((chain(t) for t in tilts), key=lambda wps: self._chain_error(env, wps))
         if fam == "turn_on_faucet":
             # push the lever tip up from below with the closed fingers: hand horizontal, pointing at the wall
             tip = env.site_pos(task["handle"])
