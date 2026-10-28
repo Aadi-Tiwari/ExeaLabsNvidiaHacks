@@ -115,6 +115,17 @@ def test_frame_symlink_cannot_escape_bundle(tmp_path):
         rgbd.load_manifest(root)
     assert e.value.code == "bad_path"
 
+
+@pytest.mark.parametrize("key", ["rgb", "depth"])
+def test_nul_in_a_frame_path_is_a_bad_path(tmp_path, key):
+    """A NUL in a manifest path ("rgb/f000\\u0000.png" in the JSON) made resolve() raise a bare ValueError, which the
+    upload server answered with HTTP 500 instead of the loader's code."""
+    root = rgbd.write_synthetic_bundle(tmp_path / "bundle")
+    _edit(root, lambda m: m["frames"][0].update({key: m["frames"][0][key] + "\x00.png"}))
+    with pytest.raises(rgbd.ManifestError) as e:
+        rgbd.load_manifest(root)
+    assert e.value.code == "bad_path"
+
 @pytest.mark.parametrize("splits", [
     {"train": [], "heldout": ["f001"]},
     {"train": ["f000", "unknown"], "heldout": ["f001"]},

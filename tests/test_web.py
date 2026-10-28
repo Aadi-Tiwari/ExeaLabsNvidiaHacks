@@ -758,6 +758,10 @@ def _list_depth_unit(m, root):
     m["depth_unit"] = ["m"]
 
 
+def _nul_in_path(m, root):
+    m["frames"][0]["rgb"] = "rgb/f000\x00.png"  # was an unhandled ValueError, HTTP 500
+
+
 @pytest.mark.parametrize("mutate,code", [
     (_same_times, "non_monotonic_timestamps"), (_drop_file, "missing_file"), (_wrong_rgb_size, "bad_size"),
     (_corrupt_rgb, "bad_image"), (_wrong_depth_shape, "depth_shape"),
@@ -770,7 +774,7 @@ def _list_depth_unit(m, root):
 
     (_corrupt_rgb, "bad_image"), (_wrong_depth_shape, "depth_shape"), (_pickled_depth, "bad_depth"),
     (_invalid_confidence_level, "bad_confidence"), (_invalid_confidence_mode, "bad_confidence"),
-    (_bad_axes, "axis_convention"), (_list_depth_unit, "depth_unit"),
+    (_bad_axes, "axis_convention"), (_list_depth_unit, "depth_unit"), (_nul_in_path, "bad_path"),
 ])
 def test_bad_frames_bundle_is_rejected_and_nothing_is_queued(make, tmp_path, mutate, code):
     srv, out = make(rate_limit=0)

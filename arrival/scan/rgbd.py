@@ -163,7 +163,8 @@ def load_manifest(directory) -> Manifest:
             if rel is None and key == "confidence":
                 paths[key] = None
                 continue
-            if not isinstance(rel, str) or not rel or Path(rel).is_absolute() or ".." in Path(rel).parts:
+            if (not isinstance(rel, str) or not rel or "\x00" in rel  # a NUL makes resolve() raise a bare ValueError
+                    or Path(rel).is_absolute() or ".." in Path(rel).parts):
                 _fail("bad_path", f"frame {fid} {key} must be a relative path inside the bundle")
             if not (root / rel).resolve().is_relative_to(resolved_root):
                 _fail("bad_path", f"frame {fid} {key} resolves outside the bundle")
