@@ -224,7 +224,14 @@ class NebiusBackend:
         if status != 200:
             raise ShardError(settings.redact(f"Nebius API {method} {path}: HTTP {status} "
                                              f"{data[:300].decode(errors='replace')}"))
-        return json.loads(data or b"{}")
+        try:  # a proxy's HTML page with HTTP 200 is a failed call, like any other: callers catch ShardError
+            reply = json.loads(data or b"{}")
+        except ValueError:
+            reply = None
+        if not isinstance(reply, dict):
+            raise ShardError(settings.redact(f"Nebius API {method} {path}: the HTTP 200 reply is not a JSON object: "
+                                             f"{data[:300].decode(errors='replace')}"))
+        return reply
 
     def job_spec(self, cfg: FanoutConfig, i: int, name: str, staging: str) -> dict:
         """The CreateJobRequest body. The access key pair reaches the job only as MysteryBox references."""

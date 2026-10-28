@@ -260,3 +260,20 @@ def test_curved_wall_is_approximated_by_chords(sweep, n_seg):
     assert all(math.hypot(p[0] - cx, p[1] - cy) == pytest.approx(radius, abs=1e-6) for p in pts)
     assert math.dist(pts[0], pts[-1]) == pytest.approx(2 * radius * math.sin(sweep / 2), abs=1e-6)
     assert compile_twin(b)["walls"]
+
+
+def test_portal_on_a_curved_wall_names_the_chord_it_sits_on():
+    """A window 80% of the way round a quarter-circle wall: its parentIdentifier is the wall, which is now six
+    chords; wall_id must be the chord under it, not the first one (3.8 m away, so the sim drew no window)."""
+    rp = _room()
+    radius, a = 4.0, math.radians(72)
+    rp["walls"][0]["curve"] = {"startAngle": 0.0, "endAngle": math.pi / 2, "radius": radius}
+    rp["windows"] = [_surface("window", "w1", "north", radius * math.cos(a), FLOOR_Y + 1.5,
+                              -D / 2 + radius * math.sin(a), 0.8, 1.0, yaw=-(a + math.pi / 2))]
+    b = roomplan.to_bundle(rp, "r")
+    w = b["windows"][0]
+    chords = [s for s in b["walls"] if s["id"] == "north" or s["id"].startswith("north_")]
+    assert len(chords) == 6
+    assert w["wall_id"] == "north_5"
+    assert _seg_dist(w["position"][:2], next(s for s in chords if s["id"] == "north_5")) < 0.05
+    assert all(_seg_dist(w["position"][:2], s) > 0.15 for s in chords if s["id"] != "north_5")

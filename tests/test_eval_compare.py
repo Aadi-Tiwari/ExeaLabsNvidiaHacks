@@ -103,6 +103,18 @@ def test_compare_requires_integer_trial_identity(tmp_path, index):
         compare(a, b)
 
 
+@pytest.mark.parametrize("mixed_in", ["a", "b"])
+def test_compare_refuses_mixed_checkpoints_in_one_run(tmp_path, mixed_in):
+    a = write_run(tmp_path / "a", [False, True], checkpoint="checkpoint_a")
+    b = write_run(tmp_path / "b", [False, False], checkpoint="checkpoint_b")
+    path = (a if mixed_in == "a" else b) / "episodes.jsonl"
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    rows[1]["checkpoint_id"] = "different_checkpoint"
+    path.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
+    with pytest.raises(CompareError, match="mixes checkpoints"):
+        compare(a, b)
+
+
 @pytest.mark.parametrize("changed_run", ["a", "b"])
 def test_compare_refuses_paired_family_disagreement(tmp_path, changed_run):
     a = write_run(tmp_path / "a", [True, False])

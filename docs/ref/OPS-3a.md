@@ -6,7 +6,7 @@ Reads `out/reports/*.json`, `out/eval/*.json` and `out/jobs/*/status.json` (fini
 
 ## Rows
 
-One row per source and room, and per family where the file has families. Columns: attempts, successes, drop rate, seconds, demos per hour, seconds per successful demo, attempts per successful demo. Local CPU wall seconds is the same seconds figure, kept as its own key with no price on it. A value the file does not hold is null and prints `-`: sim reports written before per-family `seconds` existed, and merged shard reports that include one, print `-` for per-family throughput. The three sources describe overlapping runs (a job wraps a sim report); never add across them.
+One row per source and room, and per family where the file has families. Columns: attempts, successes, drop rate, seconds, demos per hour, seconds per successful demo, attempts per successful demo. Local CPU wall seconds is the same seconds figure, kept as its own key with no price on it. A value the file does not hold is null and prints `-`: sim reports written before per-family `seconds` existed, and merged shard reports that include one, print `-` for per-family throughput. The three sources describe overlapping runs (a job wraps a sim report); never add across them. A report that says `physically_valid: false`, the scripted placeholder `arrival demo` writes, is listed as `report (placeholder)` (`"placeholder": true` in the JSON) and never used in the comparison below.
 
 ## Dollars
 
@@ -40,6 +40,6 @@ the report divides their priced total by the matching generated success count.
  "setup_assumptions": ["one operator", "VR rig owned"], "cost_basis_usd": 50}
 ```
 
-`n_success` is an integer >= 1, `operator_seconds_total` > 0, `cost_basis_usd` >= 0 is the total operator and setup cost, `setup_assumptions` a non-empty string or list. Anything else raises `CostError` naming the field. With no baseline the output says `comparison not measured` and carries no ratio. With one, the comparison uses the baseline room's report rows (the baseline task's family when the sim report has one, else the room total) and prints both sample sizes. Generated seconds are local wall time of the generate call, teleop seconds are operator time. Generated USD per demo is null without a matching usage scope, and marked estimate unless every priced product is measured.
+`n_success` is an integer >= 1, `operator_seconds_total` > 0, `cost_basis_usd` >= 0 is the total operator and setup cost, `setup_assumptions` a non-empty string or list. Anything else raises `CostError` naming the field. With no baseline the output says `comparison not measured` and carries no ratio. With one, the comparison uses the baseline room's report rows, placeholder reports left out (the baseline task's family when the sim report has one, else the room total), and prints both sample sizes. Generated seconds are local wall time of the generate call, teleop seconds are operator time. Generated USD per demo is null without a matching usage scope, and marked estimate unless every priced product is measured.
 
 The report fields `teleop_baseline` and `dollars` follow the existing schema; `arrival/eval/report.py` is unchanged.

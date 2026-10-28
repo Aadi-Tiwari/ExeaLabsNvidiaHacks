@@ -70,7 +70,8 @@ def dotenv_paths() -> list[Path]:
 
 def load_dotenv(paths: list[Path] | None = None) -> None:
     """Tiny stdlib .env reader: KEY=VALUE lines, '#' comments, optional `export` and quotes; variables already
-    set win. With no `paths` it reads `dotenv_paths()`, unless ARRIVAL_DOTENV=0."""
+    set to a value win, and an empty one (`export KEY=`, an undefined CI secret) is filled like an unset one, as
+    `get` treats it. With no `paths` it reads `dotenv_paths()`, unless ARRIVAL_DOTENV=0."""
     if paths is None:
         if os.environ.get("ARRIVAL_DOTENV", "1") == "0":
             return
@@ -86,7 +87,7 @@ def load_dotenv(paths: list[Path] | None = None) -> None:
             key, value = key.strip(), value.strip()
             if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
                 value = value[1:-1]
-            if key and key not in os.environ:
+            if key and not os.environ.get(key):
                 os.environ[key] = value
 
 

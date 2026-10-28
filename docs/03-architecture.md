@@ -14,7 +14,7 @@ scan bundle
   -> local page + queued upload
 ```
 
-Later boxes, present only as modules that raise a named error or return a skipped probe: Token Factory calls, splat composite, MimicGen, Cosmos, GR00T fine-tune, Serverless fan-out.
+On the MVP night the later boxes were only modules that raised a named error or returned a skipped probe: Token Factory calls, splat composite, MimicGen, Cosmos, GR00T fine-tune, Serverless fan-out. Since then the Token Factory calls run live, the splat compositor, the Cosmos client and the Serverless fan-out are built, and GR00T was fine-tuned off Nebius; MimicGen is still only a probe. The Nebius mapping below says how far each was run.
 
 ## Modules
 
@@ -77,21 +77,21 @@ Single process. No authentication. Bind `127.0.0.1` only. Uploaded bytes are sto
 
 ## Nebius mapping
 
-The spec assigns products. Tonight none of them are called. The README cost table still lists them so the later wiring has a place to put numbers.
+The spec assigns products. On the MVP night none of them were called; the last column says where each step stands now. Token Factory is the one Nebius product called live.
 
-| Step | Product | Tonight |
-|---|---|---|
-| Read the scan | Token Factory, Nemotron 3 Nano Omni | Deterministic catalog |
-| Assemble the twin, fill gaps | Token Factory, Nemotron 3 Ultra | Compiler only, no gap fill |
-| Propose tasks | Token Factory, Nemotron 3 Super | Templates |
-| Wordings | Nemotron 3.5 Lightning | Four templates |
-| People and episode labels | Nemotron 3.5 Lightning | Not built |
-| Build the twin and appearance | Serverless AI Job, 1 GPU | Local compiler + sim_texture |
-| Generate demos | Serverless AI Jobs, many | Local scripted retarget |
-| Restyle frames | Serverless Endpoint, Cosmos 3 | Not built |
-| Fine-tune | Serverless AI Job, H100, GR00T N1.7 | Not built |
-| Store artifacts | Object Storage | Local `out/` |
-| Host the app | Serverless Endpoint, CPU | Local `serve` |
+| Step | Product | MVP night | Now (Oct 27) |
+|---|---|---|---|
+| Read the scan | Token Factory, Nemotron 3 Nano Omni | Deterministic catalog | Walls and fixtures: the catalog. Small objects in scan frames: `arrival/twin/detect.py` with the omni model (`NEMOTRON_OMNI_MODEL`), live |
+| Assemble the twin, fill gaps | Token Factory, Nemotron 3 Ultra | Compiler only, no gap fill | Unchanged: the ultra role is configured but never called |
+| Propose tasks | Token Factory, Nemotron 3 Super | Templates | Templates propose; the super model plans each task from a request and the room inventory (`sim --planner vlm`, `VLMPlanner`), live |
+| Wordings | Nemotron 3.5 Lightning | Four templates | Train and held-out wordings from the lightning model (`--instructions nemotron`, `arrival/tasks/instructions.py`), live; templates offline |
+| People and episode labels | Nemotron 3.5 Lightning | Not built | People are scripted walkers (`arrival/sim/people.py`), no model; labels come from the physics check |
+| Build the twin and appearance | Serverless AI Job, 1 GPU | Local compiler + sim_texture | Local |
+| Generate demos | Serverless AI Jobs, many | Local scripted retarget | Local or local shards; `fanout --backend nebius` is built and tested against in-process fakes, not run on Nebius |
+| Restyle frames | Serverless Endpoint, Cosmos 3 | Not built | Client built (`arrival/render/variation.py`, SIM-7a), run only against a local mock server |
+| Fine-tune | Serverless AI Job, H100, GR00T N1.7 | Not built | GR00T N1.7-3B fine-tunes ran on one 96 GB GPU on Cosmos, not Nebius (`docs/07-eval.md`) |
+| Store artifacts | Object Storage | Local `out/` | Local `out/`; the Nebius fan-out's bucket code is tested against a fake |
+| Host the app | Serverless Endpoint, CPU | Local `serve` | Static demo site hosted at https://arrival.exealabs.org; the upload-to-dataset app runs locally |
 
 ## Coordinates
 

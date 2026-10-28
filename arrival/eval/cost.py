@@ -139,6 +139,7 @@ def collect_rows(out_dir: str | Path) -> list[dict]:
     for p in sorted((out / "reports").glob("*.json")):
         r = _load(p, "report")
         room = r.get("room_id", p.stem)
+        start = len(rows)
         rows.append(_row("report", room, None, r.get("attempts"), r.get("successes"), r.get("seconds"),
                          r.get("human_contacts")))
         fams = r.get("families")
@@ -147,6 +148,9 @@ def collect_rows(out_dir: str | Path) -> list[dict]:
                 if not isinstance(f, dict):
                     raise CostError(f"report {p}: family {fam!r} must be an object")
                 rows.append(_row("report", room, fam, f.get("attempts"), f.get("successes"), f.get("seconds"), f.get("human_contacts")))
+        if r.get("physically_valid") is False:  # `arrival demo`'s scripted placeholder: listed, never compared
+            for row in rows[start:]:
+                row["placeholder"] = True
     for p in sorted(list((out / "eval").glob("*.json")) + list((out / "eval").glob("*/report.json"))):
         r = _load(p, "report")
         if not isinstance(r.get("totals"), dict) or not isinstance(r.get("families"), dict):
@@ -237,10 +241,11 @@ def teleop_block(baseline: dict | None) -> dict | None:
 
 
 def compare(rows: list[dict], dol: dict, tele: dict | None, usage_scope: dict | None = None) -> dict:
-    """Generated-vs-teleop. Only with a baseline, only for runs in the baseline's room, and always with both n."""
+    """Generated-vs-teleop. Only with a baseline, only for runs in the baseline's room, never from a placeholder
+    report, and always with both n."""
     if tele is None:
         return {"measured": False, "reason": "no teleop baseline"}
-    reps = [r for r in rows if r["source"] == "report" and r["room"] == tele["room"]]
+    reps = [r for r in rows if r["source"] == "report" and r["room"] == tele["room"] and not r.get("placeholder")]
     fam = [r for r in reps if r["family"] == tele["task"]]
     if not fam and tele["task"] != "all_tasks":
         return {"measured": False, "reason": f"no generated reports for task {tele['task']!r} in room {tele['room']!r}"}
@@ -295,7 +300,7 @@ def markdown(rep: dict) -> str:
     L = ["| source | room | family | attempts | successes | drop rate | seconds | demos/hour | s/demo | attempts/demo |",
          "|---|---|---|---|---|---|---|---|---|---|"]
     for r in rep["rows"]:
-        L.append(f"| {r['source']}{':' + r['run_id'] if r.get('run_id') else ''} | {r['room']} | {r['family'] or 'all'} | {_f(r['attempts'])} | {_f(r['successes'])} | "
+        L.append(f"| {r['source']}{':' + r['run_id'] if r.get('run_id') else ''}{' (placeholder)' if r.get('placeholder') else ''} | {r['room']} | {r['family'] or 'all'} | {_f(r['attempts'])} | {_f(r['successes'])} | "
                  f"{_f(r['drop_rate'])} | {_f(r['seconds'], '{:.1f}')} | {_f(r['demos_per_hour'])} | "
                  f"{_f(r['seconds_per_demo'])} | {_f(r['attempts_per_demo'])} |")
     if not rep["rows"]:

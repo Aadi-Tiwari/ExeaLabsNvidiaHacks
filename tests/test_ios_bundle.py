@@ -185,3 +185,43 @@ def test_ios_zip_replaces_existing_archive(bundle_check, tmp_path):
         assert archive.testzip() is None
         assert archive.read("frame.txt") == b"complete frame"
     assert {p.name for p in tmp_path.iterdir()} == {"frames", "frames.zip"}
+@pytest.mark.parametrize(("server", "expected"), [
+    ("192.168.1.20:8000", "http://192.168.1.20:8000"),
+    ("  http://localhost:8000/\n", "http://localhost:8000"),
+    ("https://arrival.example///", "https://arrival.example"),
+    ("https://arrival.example/capture/", "https://arrival.example/capture"),
+    ("http://[::1]:8000", "http://[::1]:8000"),
+])
+def test_ios_server_url_normalization(bundle_check, server, expected):
+    result = subprocess.run([str(bundle_check), "base-url", server],
+                            capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == expected
+
+
+@pytest.mark.parametrize("server", [
+    "ftp://arrival.example", "file://localhost/tmp/arrival", "ws://localhost:8000",
+    "", "   ", "http://", "https:///",
+])
+def test_ios_rejects_invalid_server_addresses(bundle_check, server):
+    result = subprocess.run([str(bundle_check), "base-url", server],
+                            capture_output=True, text=True, timeout=10)
+    assert result.returncode == 1
+    assert "Not a server URL" in result.stderr
+@pytest.mark.parametrize(("focal", "value"), [("fx", 0), ("fx", -1), ("fy", 0), ("fy", -1)])
+def test_nonpositive_focal_frame_is_skipped(bundle_check, recorded, tmp_path, focal, value):
+    recorded_path, _, _ = recorded
+    spec = json.loads((recorded_path / "spec.json").read_text())
+    invalid = dict(spec["frames"][0], timestamp=0,
+                   intrinsics=dict(spec["frames"][0]["intrinsics"], **{focal: value}))
+    spec["frames"].insert(0, invalid)
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(spec))
+    bundle = tmp_path / "bundle"
+    result = subprocess.run([str(bundle_check), str(spec_path), str(bundle), str(tmp_path / "frames.zip")],
+                            capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "6"
+    manifest = rgbd.load_manifest(bundle)
+    assert len(manifest.frames) == 6
+    assert all(frame.timestamp > 0 for frame in manifest.frames)
