@@ -155,3 +155,20 @@ def test_mobile_counter_to_counter_on_a_south_wall_run(tmp_path):
     assert ep["success"] and not ep["safety"]["human_contact"], (ep["detail"], ep["safety"])
     assert np.allclose(ep["states"][-1, 8:10], env.drive_to[:2], atol=0.02)
     assert np.hypot(*(env.drive_to[:2] - env.base0[:2])) > 0.8  # it drove along the run (0.92 m here)
+
+
+def test_parked_mobile_base_does_not_turn_under_the_wipe_strokes():
+    """u_kitchen_42, mobile wipe_counter: the strokes turn the parked base. With a yaw servo as soft as joint 1's
+    it turned up to 0.053 rad against each stroke and the sponge travelled under the 0.4 m the check needs (0.62 m
+    on the fixed base)."""
+    from arrival.scan.bundle import load_room
+    from arrival.sim.collect import WIPE_MIN
+    from arrival.twin.compile import compile_twin
+
+    twin = compile_twin(load_room("u_kitchen_42", "tests/fixtures/scans"))
+    task = _task(twin, "wipe_counter", seed=1, mobile=True)
+    env = SimEnv(twin, task, res=32, base="mobile", cameras=())
+    ep = run_episode(env, ScriptedExpert(), task)
+    assert ep["success"], ep["detail"]
+    assert ep["detail"]["wiped_m"] > WIPE_MIN + 0.05
+    assert np.abs(ep["states"][:, 10] - env.base0[2]).max() < 0.01

@@ -145,7 +145,14 @@ def actuators_xml(mobile: bool = False, finger_open: float = FINGER_OPEN, finger
                    f'forcerange="-{finger_force} {finger_force}"/>' for s in ("l", "r"))
     base = ""
     if mobile:  # ctrl is the joint value, i.e. the displacement from the parked pose
+        # The yaw servo has to be much stiffer than joint 1, which turns the arm against it. At kp 3000 it was exactly
+        # as stiff, so each wipe stroke turned the base up to 0.053 rad the other way (28 mm at the sponge), and on
+        # u_kitchen_42's 0.90 m counter the sponge travelled 0.27 m pressed, under the 0.4 m check (0.62 m fixed).
+        # Ten times kp, kv by sqrt(10) for the same damping ratio (1.6 at 1.3 kg m2): 5.4 mrad, 0.49 to 0.58 m
+        # wiped. x, y stay as they are (17 mm of slide in that wipe): ten times those as well wipes 0.60 to 0.72 m
+        # but changes how the base tracks a counter_to_counter drive, and with people walking that moved the hero
+        # kitchen's seed-1 episode 0023 into a stand-off with a walker it did not meet before (1 of 3, was 2 of 3)
         base = (f'<position name="b_x" joint="base_x" kp="20000" kv="1500" ctrlrange="-10 10"/>'
                 f'<position name="b_y" joint="base_y" kp="20000" kv="1500" ctrlrange="-10 10"/>'
-                f'<position name="b_yaw" joint="base_yaw" kp="3000" kv="200" ctrlrange="-6.3 6.3"/>')
+                f'<position name="b_yaw" joint="base_yaw" kp="30000" kv="630" ctrlrange="-6.3 6.3"/>')
     return arm + fing + base
