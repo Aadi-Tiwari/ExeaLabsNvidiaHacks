@@ -475,6 +475,36 @@ def test_walkers_keep_out_of_the_door_the_robot_opens(twin):
     assert without > 0
 
 
+@pytest.mark.parametrize("base_to", [None, (3.3, 1.0)])
+def test_floor_walk_without_a_counter_stop_keeps_clear_of_the_base(twin, base_to):
+    """front_y None (no free strip in front of the run): people walk free loops over the whole floor, and those
+    keep CLEAR of the base and of a mobile base's drive as the counter-stop loops do, and so do the fridge visitor's
+    legs into and out of that loop (24 of these 30 seeds have a visit). Routed round the fixtures alone,
+    kitchen_real_01's open_oven at seed 7 started a person 0.20 m from the base centre: contact at step 0."""
+    from arrival.sim.people import CLEAR, _seg_dist
+
+    base = np.array([2.6, 1.0])
+    end = base if base_to is None else np.array(base_to)
+    drive = [base + k / 8 * (end - base) for k in range(9)]
+    for seed in range(30):
+        w = Walkers(2, (0.4, 0.4, 3.6, 2.6), seed=seed, base_xy=base, front_y=None, fixtures=twin["fixtures"],
+                    base_to=base_to)
+        for path in w.paths:
+            near = min(_seg_dist(path[k - 1], path[k], q) for k in range(len(path)) for q in drive)
+            assert near >= CLEAR, (seed, round(near, 3))
+
+
+def test_free_path_never_stands_a_person_in_a_footprint():
+    """When every random goal lands in a footprint the loop is a single standing point; it is a free one, not the
+    floor centre unchecked (in kitchen_real_01 the base and a door's keep-out leave 0.1% of the floor free)."""
+    from arrival.sim.people import Footprints, free_path
+
+    prints = Footprints([{"position": [0.9, 0.5, 0.0], "size": [1.8, 1.2, 0.0], "yaw": 0.0}])  # all but x > 1.85
+    for seed in range(20):
+        pts = free_path(np.random.default_rng(seed), (0.0, 0.0, 2.0, 1.0), prints, 0.05, tries=1)
+        assert not any(prints.blocked(p, 0.05) for p in pts), (seed, pts)
+
+
 def test_people_never_phase_through_each_other(twin):
     """Multiple walkers maintain interpersonal separation (min dist >= 0.40 m) across all frames."""
     floor = (0.4, 1.65, 3.6, 2.7)
