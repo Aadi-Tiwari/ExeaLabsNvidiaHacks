@@ -37,11 +37,17 @@ def _ident(item: dict, default: str) -> str:
 
 def _unique(items: list[dict]) -> None:
     """Rename repeated ids in place (`a`, `a_2`, `a_3`) so every MJCF body and layout entry has its own name."""
-    seen: dict[str, int] = {}
+    reserved = {it["id"] for it in items}
+    seen: set[str] = set()
     for it in items:
-        n = seen[it["id"]] = seen.get(it["id"], 0) + 1
-        if n > 1:
-            it["id"] = f"{it['id']}_{n}"
+        ident = it["id"]
+        if ident in seen:
+            n = 2
+            while f"{ident}_{n}" in reserved:
+                n += 1
+            it["id"] = f"{ident}_{n}"
+            reserved.add(it["id"])
+        seen.add(ident)
 
 
 def _center(m: list[float]) -> list[float]:
