@@ -144,7 +144,13 @@ def load(path: str | Path) -> dict:
 
 
 def load_room(room_id: str, scans_dir: str | Path = "scans") -> dict:
-    return load(Path(scans_dir) / room_id / "scan.json")
+    """scans/<room_id>/scan.json, named after its folder as `demo`, `summary` and an upload name it. A scan.json copied
+    from another room still says that room's room_id, and sim wrote over that room's dataset and reports; the file's
+    own room_id is kept as source_room_id when it differs."""
+    bundle = load(Path(scans_dir) / room_id / "scan.json")
+    if bundle["room_id"] != room_id:
+        bundle["source_room_id"], bundle["room_id"] = bundle["room_id"], room_id
+    return bundle
 
 
 FIXTURE_SCANS = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "scans"
