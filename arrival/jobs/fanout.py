@@ -171,8 +171,8 @@ class LocalBackend:
         return self._path(key).is_file()
 
     def list_objects(self, prefix: str) -> list[str]:
-        base = self._path(prefix)
-        return sorted(p.relative_to(self.store).as_posix() for p in base.rglob("*")
+        base, root = self._path(prefix), self.store.resolve()  # _path resolves symlinks (an --out that is a link)
+        return sorted(p.relative_to(root).as_posix() for p in base.rglob("*")
                       if p.is_file() and not p.name.endswith(".part"))
 
     def describe(self, job_id: str) -> dict:
