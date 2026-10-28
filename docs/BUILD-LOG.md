@@ -8,6 +8,8 @@ Deviations from the contract, one paragraph each.
 
 **Validator exit code.** The contract's validator section says "Exits 0 when a required file is missing or a slice is wrong", which contradicts the exit codes in 05-repo-map.md. The validator exits 1 in those cases.
 
+**Validation requires a usable video count.** Missing total_videos used to pass structural checks and then crash the CLI while printing its success line. Validation now requires a nonnegative integer, rejecting missing, negative, boolean, fractional, and string counts with INVALID output. Regression tests first accept a valid zero-video dataset, then exercise each malformed count through the CLI.
+
 **`--from-roomplan` objects (superseded, see below).** RoomPlan does not capture small objects, so the RoomPlan bundle has none and no tasks can be proposed from it alone. The first version borrowed the object placements from `scans/<room>/scan.json` when that file existed. The twin is smaller, with only the sink plus a synthesized counter. If the counter inset rejects the scanned pose, the seed falls back to the lowest surviving start pose.
 
 **Timing.** On an Apple Silicon laptop, `demo --episodes 1000 --videos sparse` takes about 1 s for generation and export (1,111 attempts, 111 dropped, 8 mp4s). `--videos all` for 1,000 episodes was not needed and was not timed.
