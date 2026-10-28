@@ -297,3 +297,17 @@ def test_cli_eval_vla_unset_exits_2(monkeypatch):
     monkeypatch.delenv("GR00T_POLICY_URL", raising=False)
     assert main(["eval", "--policy", "vla", "--checkpoint-id", "test-mock", "--episodes", "1", "--families", "open_drawer", "--people", "0",
                  "--res", "64"]) == 2
+
+
+@pytest.mark.parametrize("encoder", ["request", "response"])
+@pytest.mark.parametrize("value", [True, 10 ** 400, "not-a-number"], ids=["boolean", "overflow", "text"])
+def test_encoders_use_protocol_numeric_validation(encoder, value):
+    state = STATE.tolist()
+    state[0] = value
+    with pytest.raises(ProtocolError):
+        if encoder == "request":
+            obs = _obs()
+            obs["state"] = state
+            encode_request(obs, "open the drawer")
+        else:
+            encode_response([state])
