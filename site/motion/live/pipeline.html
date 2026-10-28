@@ -779,11 +779,11 @@ svg text{white-space:pre}
   tl.from([axis, axisX], { opacity: 0, duration: 0.3 }, S4 + 1.35);
 
   // film-strip frame content simple fade (in case of mid-card reveals)
-  // next step: honest status box (dashed, not built yet)
+  // status box: the GR00T fine-tune on this room ran (README status table); small samples, so the numbers stay modest
   var nx = CX, ny = 750, nb = D.g(Ldata);
-  var nrect = D.rect(nb, nx, ny, 560, 130, "ink", { "stroke-width": 2.5, "stroke-dasharray": "10 8" });
-  var nt1 = D.text(nb, nx + 22, ny + 42, "NEXT, NOT BUILT YET", "lbl");
-  var nt2 = D.text(nb, nx + 22, ny + 92, "GR00T FINE-TUNE ON THIS ROOM", "lbl", { "font-size": 22 });
+  var nrect = D.rect(nb, nx, ny, 560, 130, "ink", { "stroke-width": 2.5 });
+  var nt1 = D.text(nb, nx + 22, ny + 42, "DONE, SMALL SAMPLES", "lbl");
+  var nt2 = D.text(nb, nx + 22, ny + 92, "GR00T FINE-TUNE: 39 OF 48 TRIALS", "lbl", { "font-size": 22 });
   var nmark = D.rect(nb, nx + 560 - 40, ny + 22, 18, 18, "sigfill");
   tl.from(nb, { opacity: 0, y: 14, duration: 0.6, ease: "power3.out" }, S4 + 1.7);
 

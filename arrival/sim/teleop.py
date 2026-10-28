@@ -63,7 +63,8 @@ class TeleopController:
         self.fwd[2] = self.left[2] = 0.0
         self.gripper = FINGER_OPEN
         self.q = env.data.qpos[env.qadr].copy()
-        self.ik_error = 0.0
+        self.ik_error = 0.0  # the latest solve's position error
+        self.max_ik_error = 0.0  # the largest over the attempt: a target taken out of reach and back still shows
         self._dirty = True
 
     def apply(self, key: str) -> str | None:
@@ -93,6 +94,7 @@ class TeleopController:
             env = self.env
             self.q, self.ik_error = ik.solve(env.model, env.data, self.pos, ik.down(self.yaw), self.q,
                                              env.qadr, env.dofadr)
+            self.max_ik_error = max(self.max_ik_error, self.ik_error)
             self._dirty = False
         return np.concatenate([self.q, [self.gripper]])
 
@@ -223,7 +225,7 @@ def run(twin: dict, frames: Iterable[list[str]], out_dir: str | Path = "out", op
         row = {"attempt": len(attempts), "task_id": task["task_id"], "instruction": task["instruction"],
                "success": ok, "operator_seconds": round(seconds, 3), "control_steps": steps,
                "ended_by": outcome, "detail": detail, "human_contact": safety["human_contact"],
-               "max_ik_error_m": round(float(ctl.ik_error), 4)}
+               "max_ik_error_m": round(float(ctl.max_ik_error), 4)}
         attempts.append(row)
         with open(log_path, "a") as f:
             f.write(json.dumps(row) + "\n")

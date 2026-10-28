@@ -41,6 +41,8 @@ def load_rows(run: str | Path) -> list[dict]:
         seen_trials.add(index)
     if len({r.get("manifest_id") for r in rows}) != 1:
         raise CompareError(f"{path} mixes manifests")
+    if any(row["checkpoint_id"] != rows[0]["checkpoint_id"] for row in rows):
+        raise CompareError(f"{path} mixes checkpoints")
     return sorted(rows, key=lambda r: r["trial_index"])
 
 

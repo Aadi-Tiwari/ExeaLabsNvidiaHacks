@@ -11,11 +11,12 @@ Five sets (report version 2; the v1 keys keep their v1 meaning):
   indirect           requests written by us that name the goal, not the action (labelled as ours in the report),
                      on the hero kitchen
   blind              requests from --blind, written by people who had not seen the planner prompt; scored over all
-                     rows and again over the rows asking for one of the 9 families the prompt lists
+                     rows and again over the rows asking for one of the 9 families the prompt listed before it
+                     offered all 15 (rows[].offered_families says what each row's prompt offered)
   out_of_scope       requests written by us that match no family: there is no right answer, the report gives the
                      distribution of what each planner picks
-  unlisted_families  requests written by us for the 6 sim families the planner prompt does not list; expected to fail
-                     by construction (the keyword parser cannot return them at all)
+  unlisted_families  requests written by us for the 6 sim families the 9-family planner prompt did not list; under
+                     that prompt they fail by construction (the keyword parser cannot return them at all)
 Inventories: the hero kitchen's ids (hard-coded, as in v1) and tests/fixtures/roomplan/kitchen_real_01.json and
 office.json built the way `arrival demo --from-roomplan` builds a twin (place_default_objects with seed 0 on a first
 compile, then compile again), with the ids read the way arrival.sim.collect reads them.
@@ -108,7 +109,7 @@ OUT_OF_SCOPE = [  # written by us; no sim family does any of these, so no plan i
 UNLISTED_ROOM = {"open_oven": "kitchen_real_01", "open_dishwasher": "kitchen_real_01",
                  "load_dishwasher": "kitchen_real_01", "unload_dishwasher": "kitchen_real_01",
                  "turn_on_faucet": "hero_kitchen", "move_on_table": "office"}
-UNLISTED = [  # written by us, for the sim families the planner prompt leaves out: (request, family, object). Objects
+UNLISTED = [  # written by us, for the sim families the 9-family prompt left out: (request, family, object). Objects
     # are ones arrival.sim.tasks.make_tasks uses for that family in that room (checked in the test)
     ("Open the oven so I can check on the bread.", "open_oven", None),
     ("Pull the oven door down.", "open_oven", None),
@@ -131,13 +132,14 @@ UNLISTED = [  # written by us, for the sim families the planner prompt leaves ou
     ("Slide the book down the table a bit, it's in my way.", "move_on_table", "book_1"),
     ("Shift the book to another spot on the table.", "move_on_table", "book_1"),
 ]
-LISTED = tuple(FAMILIES)  # the 9 families the planner's system prompt names; SIM_FAMILIES has 15
+LISTED = tuple(FAMILIES)  # the 9 families the planner's system prompt named until it offered all 15 SIM_FAMILIES
 MOVES_OBJECT = {"counter_to_sink", "counter_to_counter", "put_in_drawer", "move_on_table", "load_dishwasher",
                 "unload_dishwasher"}
 RETRY_WAITS = (2, 4, 8)  # seconds before each retry of a 429 or 5xx: the first try and up to 3 retries
 SIM_SAMPLES = 200  # tasks make_tasks draws per family to list the objects it uses; it picks from the reachable pool
 # at random, so a draw this size leaves out none of the few objects a pool holds
 REJECT_KINDS = (("not in the scene", "object_or_target_not_in_inventory"), ("no known family", "unknown_family"),
+                ("not offered in this room", "family_not_offered"),
                 ("substring not found", "no_json_object"), ("Expecting", "bad_json"), ("JSONDecodeError", "bad_json"))
 
 
@@ -218,12 +220,12 @@ def load_blind(path: Path, inv: dict) -> list[dict]:
     return reqs
 
 
-def reject_reason(raw: str, objects: list[str], fixtures: list[str]) -> str | None:
-    """Why VLMPlanner._parse_plan refuses this reply, or None when it accepts it."""
+def reject_reason(raw: str, objects: list[str], fixtures: list[str], families=None) -> str | None:
+    """Why VLMPlanner._parse_plan refuses this reply, given the families the prompt offered, or None when it accepts it."""
     from arrival.sim.policy import VLMPlanner
 
     try:
-        VLMPlanner._parse_plan(raw, objects, fixtures)
+        VLMPlanner._parse_plan(raw, objects, fixtures, families)
     except Exception as e:
         return f"{type(e).__name__}: {e}"
     return None
@@ -282,6 +284,8 @@ def score(rows: list[dict]) -> dict:
         "confusion": confusion,
         "median_seconds": round(statistics.median(secs), 3) if secs else None,
         "sim_not_executable": sum(r["sim_executable"] is False for r in rows),
+        # scored rows asking for a family the prompt did not offer in that room: kept, and wrong by construction
+        "not_offerable": sum(r["offerable"] is False for r in rows),
     }
     if scored:
         for key, rs, field in (("family", scored, "family_ok"), ("object", with_obj, "object_ok"),
@@ -353,7 +357,7 @@ def main(argv: list[str] | None = None) -> int:
         for s in sets:
             extra = sum(r["family"] not in LISTED for r in blind) if s == "blind" else 0
             print(f"{s:18} {'at most ' + str(n_gen) if s == 'generated' else per_set[s]} planner calls"
-                  + (f" ({extra} ask for a family the prompt does not list)" if extra else "")
+                  + (f" ({extra} ask for a family outside the 9 the old prompt listed)" if extra else "")
                   + (f" ({blind_not_sim} the sim could not run: sim_executable false)"
                      if s == "blind" and blind_not_sim else ""))
         lightning = len(FAMILIES) if "generated" in sets else 0
@@ -430,11 +434,12 @@ def main(argv: list[str] | None = None) -> int:
                 start = len(calls)
                 case = f"{kind} {text!r}"
                 t = time.perf_counter()
-                plan = planner.plan(text, objects, fixtures)
+                plan = planner.plan(text, objects, fixtures, twin=twins[room])  # the room's families, fixed base
                 secs = time.perf_counter() - t
                 mine = [c for c in calls[start:] if c["role"] == "super"]
                 raw = mine[0].get("reply") if mine else None
-                reason = reject_reason(raw, objects, fixtures) if raw is not None else None
+                offered = mine[0]["messages"][0]["content"].split("one of ")[1].split(",")[0].split("|") if mine else None
+                reason = reject_reason(raw, objects, fixtures, tuple(offered)) if raw is not None else None
                 accepted = raw is not None and reason is None
                 if accepted != (planner.source == "token_factory"):
                     print(f"accounting mismatch on {text!r}: source={planner.source}, reason={reason}",
@@ -449,7 +454,9 @@ def main(argv: list[str] | None = None) -> int:
                     "rule_ok": right(rule, fam, obj) if scored else None,
                     # v2: the inventory, the raw reply and what _parse_plan made of it; nemotron_* here count only
                     # plans from an accepted reply
-                    "inventory": room, "live_call": raw is not None, "calls": len(mine),
+                    "inventory": room, "offered_families": offered,
+                    "offerable": (fam in offered) if scored and offered is not None else None,
+                    "live_call": raw is not None, "calls": len(mine),
                     "raw_reply": None if raw is None else settings.redact(raw), "reply_accepted": accepted,
                     "reject_reason": None if reason is None else settings.redact(reason),
                     "call_error": mine[0].get("error") if mine else "no call reached Token Factory",
@@ -492,19 +499,22 @@ def main(argv: list[str] | None = None) -> int:
                                  "base_url": settings.redact(config()["base_url"])} if planner_calls else None,
               "live_calls": {"planner": sum("reply" in c for c in planner_calls), "wordings": wording_calls},
               "sets": {
-                  "generated": "wordings Nemotron Lightning wrote for the 9 families the planner prompt lists; "
+                  "generated": "wordings Nemotron Lightning wrote for the 9 families the planner prompt listed first; "
                                "hero kitchen",
                   "indirect": "written by us, naming the goal rather than the action; hero kitchen",
                   "blind": f"from {a.blind.name}, written by people who had not seen the planner prompt but were "
                            "given all 15 sim families in plain words; scored over all rows, and under "
-                           "listed_families over the rows asking for one of the 9 families the prompt lists. "
+                           "listed_families over the rows asking for one of the 9 families the prompt listed before it offered "
+                           "all 15 (rows[].offered_families is what each row's prompt offered). "
                            "A language test: rows the sim could not run are kept and counted in "
-                           "sim_not_executable (rows[].sim_executable)",
+                           "sim_not_executable (rows[].sim_executable); rows asking for a family the room's "
+                           "prompt did not offer are kept too, counted in not_offerable (rows[].offerable)",
                   "out_of_scope": "written by us; no family fits, so there is no right answer: the confusion counts "
                                   "under out_of_scope are what each planner picked",
                   "unlisted_families": "written by us for open_oven, open_dishwasher, load_dishwasher, "
-                                       "unload_dishwasher, turn_on_faucet and move_on_table, which the planner prompt "
-                                       "does not list: expected to fail by construction, and the keyword parser "
+                                       "unload_dishwasher, turn_on_faucet and move_on_table, which the 9-family planner "
+                                       "prompt did not list (they failed by construction under it; rows[].offered_families "
+                                       "is what each row's prompt offered), and the keyword parser "
                                        "cannot return these families at all. Each runs in the room whose twin has "
                                        "the fixture its sim task needs (rows[].inventory): oven and dishwasher in "
                                        "kitchen_real_01, faucet in hero_kitchen, table in office",

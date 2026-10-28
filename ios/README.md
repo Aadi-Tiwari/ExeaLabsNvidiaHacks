@@ -76,3 +76,31 @@ reference photos without EXIF, writes the notes and tape measurements and runs t
 Frame archives are built in a temporary file next to `frames.zip` and published only after the ZIP is
 complete and closed. If a frame cannot be read or writing fails, the unfinished temporary file is
 removed and any previous archive remains intact. Reopening the survey retries a missing archive.
+
+Server addresses must use HTTP or HTTPS. A bare LAN address such as `192.168.1.20:8000` defaults to
+HTTP; surrounding whitespace and trailing slashes are removed. HTTPS and server path prefixes are
+preserved. Other schemes, such as `ftp://`, are rejected before a connection is attempted.
+
+## Visual style and UI checks
+
+The capture app shares the website's paper-and-ink palette, subtle drafting grid, serif headings,
+monospaced section labels and orange accents. Named color assets supply light and dark appearances;
+native fonts follow Dynamic Type, and button motion respects Reduce Motion. The home screen puts
+capture first, saved surveys second and the server connection last. Scan details and RoomPlan's
+surrounding controls use the same theme; RoomPlan still supplies the live camera and coaching.
+
+For a simulator-only UI build (no signing team needed):
+
+```bash
+xcodebuild -project ios/ArrivalCapture/ArrivalCapture.xcodeproj -scheme ArrivalCapture \
+  -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+```
+
+Check both appearances and an accessibility text size in Simulator. RoomPlan capture is disabled
+there: verify live coaching, Done, Save, Cancel and RGB-D recording on a supported LiDAR device before
+field use. The simulator build and screenshots do not establish capture quality or hardware behavior.
+
+Saved-survey safeguards: swipe a saved row and choose **Delete**, then confirm the named survey.
+**Cancel** keeps its files. Deletion removes the local capture only; copies already shared or uploaded
+remain at their destinations. When a survey has RGB-D frames, **Share / AirDrop** stays disabled until
+its archive is ready, so sharing does not silently omit those frames.

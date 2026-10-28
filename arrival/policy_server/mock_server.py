@@ -28,6 +28,9 @@ class MockPolicyServer(ThreadingHTTPServer):
                  fail_after: int = 0, host: str = "127.0.0.1"):
         if mode not in MODES:
             raise ValueError(f"mode must be one of {MODES}")
+        if isinstance(chunk, bool) or not isinstance(chunk, (int, np.integer)) or chunk < 1:
+            # 0 made every /act a 500 and a negative count dropped the connection with no reply
+            raise ValueError(f"chunk must be a whole number of steps, at least 1, got {chunk!r}")
         super().__init__((host, port), _Handler)
         self.mode, self.chunk, self.noise_std, self.fail_after = mode, chunk, noise_std, fail_after
         self.rng = np.random.default_rng(seed)
@@ -107,6 +110,8 @@ def main(argv=None) -> int:
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--fail-after", type=int, default=0, help="requests answered before fail_after_n starts failing")
     a = p.parse_args(argv)
+    if a.chunk < 1:
+        p.error("--chunk must be at least 1 step")
     srv = MockPolicyServer(a.port, a.mode, a.chunk, a.seed, fail_after=a.fail_after)
     print(f"mock policy server ({a.mode}) at {srv.url}", flush=True)
     try:
