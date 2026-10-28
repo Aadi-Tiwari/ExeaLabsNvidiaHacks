@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from arrival.models.tavily import TavilyNotConfigured, search as tavily_search
+from arrival.models.tavily import TavilyNotConfigured, search as tavily_search, validate_reply
 
 DEFAULT_CACHE = Path("out") / "cache" / "tavily_cache.json"  # under the run's out/, never in the package (see instructions.py)
 
@@ -103,8 +103,18 @@ class TavilyResearchAgent:
                 value = json.loads(self.cache_path.read_text(encoding="utf-8"))
                 if not isinstance(value, dict):
                     return {}
-                return {key: item for key, item in value.items()
-                        if isinstance(key, str) and isinstance(item, dict)}
+                cache = {}
+                for key, item in value.items():
+                    if (not isinstance(key, str) or not isinstance(item, dict)
+                            or item.get("source") != "tavily_api" or not isinstance(item.get("answer"), str)):
+                        continue
+                    try:
+                        clean = validate_reply(item)
+                    except ValueError:
+                        continue
+                    if clean == item:  # malformed stored entries are misses, not silently labelled cache findings
+                        cache[key] = clean
+                return cache
             except Exception as e:
                 self.log(f"[tavily] cache read error ({e}); using empty cache")
                 return {}
@@ -115,7 +125,7 @@ class TavilyResearchAgent:
             return
         try:
             self.cache_path.parent.mkdir(parents=True, exist_ok=True)
-            self.cache_path.write_text(json.dumps(self._cache, indent=2) + "\n", encoding="utf-8")
+            self.cache_path.write_text(json.dumps(self._cache, indent=2, allow_nan=False) + "\n", encoding="utf-8")
         except Exception as e:
             self.log(f"[tavily] cache write warning: {e}")
 
@@ -130,7 +140,7 @@ class TavilyResearchAgent:
             return dict(self._cache[q_norm])
 
         try:
-            data = tavily_search(query, search_depth=search_depth, include_answer=True)
+            data = validate_reply(tavily_search(query, search_depth=search_depth, include_answer=True))
             res = {
                 "source": "tavily_api",
                 "answer": data.get("answer", ""),
