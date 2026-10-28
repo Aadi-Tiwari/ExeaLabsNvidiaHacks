@@ -367,3 +367,28 @@ def test_validator_reports_invalid_chunk_size_without_crashing(tmp_path, size):
     info_path.write_text(json.dumps(info))
     errors = validate(root)
     assert any("chunks_size" in error and "positive integer" in error for error in errors)
+
+
+@pytest.mark.parametrize("group", ["state", "action"])
+@pytest.mark.parametrize(("field", "value"), [
+    ("start", None), ("start", "0"), ("start", 0.5), ("end", True), ("slice", None),
+])
+def test_validator_reports_invalid_modality_before_sorting(tmp_path, group, field, value):
+    import numpy as np
+
+    modality = {name: {"arm": {"start": 0, "end": 1}, "gripper": {"start": 1, "end": 2}}
+                for name in ("state", "action")}
+    modality["annotation"] = {"human.task_description": {}}
+    writer = _writer(tmp_path, modality=modality)
+    writer.add_episode(np.zeros((2, 2)), np.zeros((2, 2)), np.arange(2) / 20, "task", True)
+    writer.finish(1)
+    root = tmp_path / "ds"
+    assert validate(root) == []
+    path = root / "meta/modality.json"
+    data = json.loads(path.read_text())
+    if field == "slice":
+        data[group]["arm"] = value
+    else:
+        data[group]["arm"][field] = value
+    path.write_text(json.dumps(data))
+    assert any(f"modality {group}.arm" in error for error in validate(root))
