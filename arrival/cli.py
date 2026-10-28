@@ -367,16 +367,33 @@ def cmd_retarget(a) -> int:
             except (OSError, ValueError, KeyError, TypeError) as e:
                 print(f"invalid --source {src_path}: {e}", file=sys.stderr)
                 return EXIT_USAGE
+        sources = None
+        if getattr(a, "teleop", None):
+            if source is not None:
+                print("give --source or --teleop, not both", file=sys.stderr)
+                return EXIT_USAGE
+            from arrival.generate import teleop_seeds
+            try:
+                sources, rows = teleop_seeds.teleop_sources(twin, a.teleop)
+            except (OSError, ValueError, KeyError) as e:
+                print(f"invalid --teleop {a.teleop}: {e}", file=sys.stderr)
+                return EXIT_USAGE
+            if not sources:
+                print(f"no demo under {a.teleop} replays successfully in {twin['room_id']}: "
+                      f"{[r['outcome'] for r in rows]}", file=sys.stderr)
+                return EXIT_INVALID
         try:
+            more = {"sources": sources} if sources is not None else {}
             res = se3_retarget.generate(twin, out_dir, source=source, attempts=a.attempts,
-                                        seed=a.seed, res=a.res)
+                                        seed=a.seed, res=a.res, **more)
         except Exception as e:
             print(f"retarget failed: {e}", file=sys.stderr)
             return EXIT_INVALID
     elif method == "seed_replay":
-        if getattr(a, "source", None):
-            print("--source is only supported with --method se3", file=sys.stderr)
-            return EXIT_USAGE
+        for flag in ("source", "teleop"):
+            if getattr(a, flag, None):
+                print(f"--{flag} is only supported with --method se3", file=sys.stderr)
+                return EXIT_USAGE
         from arrival.generate import retarget as seed_retarget
 
         fam = getattr(a, "family", "counter_to_sink")
@@ -852,6 +869,9 @@ def build_parser() -> argparse.ArgumentParser:
                     help="task family for seed_replay (counter_to_sink, counter_to_counter)")
     rt.add_argument("--source", type=Path, default=None,
                     help="reuse a previously recorded meta/se3_source.json (se3 method only)")
+    rt.add_argument("--teleop", type=Path, default=None, metavar="DIR",
+                    help="seed se3 retargeting with the successful demos of a recorded teleop run (arrival.sim.teleop "
+                         "--record output, e.g. the extracted P3 archive); each must replay in the room first")
     rt.add_argument("--baseline", action="store_true",
                     help="also benchmark the scripted expert (seed_replay method only)")
     rt.set_defaults(fn=cmd_retarget)

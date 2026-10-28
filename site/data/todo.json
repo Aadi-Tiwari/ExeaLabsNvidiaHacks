@@ -994,11 +994,15 @@
      "size": "L",
      "priority": "should",
      "pr": [
-      356
+      356,
+      439
      ],
-     "note": "Native object-centric SE(3) retargeting of counter_to_sink landed in #356 (arrival/generate/se3_retarget.py, physics-checked, small runs). Upstream MimicGen is not integrated (arrival/generate/mimicgen.py only probes for RoboCasa), and issue #62's seed-set and 100-episode benchmark has not run.",
+     "note": "Native object-centric SE(3) retargeting of counter_to_sink landed in #356 (arrival/generate/se3_retarget.py, physics-checked). Issue #62's benchmark ran on Oct 27: 14 of the 20 P3 teleop demos became seeds (retarget --teleop), and 140 attempts gave 104 physics-checked episodes that validate with 0 flagged, at 15.2 s each against 61.5 operator seconds per teleop demo (docs/results/g7-teleop-seeds-2026-10-27). Upstream MimicGen is still not integrated (arrival/generate/mimicgen.py only probes for RoboCasa).",
      "issue": 62,
-     "authors": []
+     "authors": [
+      "man-coding-j",
+      "vrun-systems26"
+     ]
     },
     {
      "id": "G8",
@@ -1086,9 +1090,10 @@
      "priority": "should",
      "issue": 67,
      "authors": [
-      "amanx98"
+      "amanx98",
+      "vrun-systems26"
      ],
-     "note": "Added arrival cost CLI subcommand with automated P3 teleop baseline comparison. Cloud dollar cost per demo and full C3 comparison remains to be measured with real usage."
+     "note": "Added arrival cost CLI subcommand with automated P3 teleop baseline comparison. Time is measured: retargeted counter_to_sink demos from P3's own seeds take 15.2 s of one CPU core each against 61.5 operator seconds, a 4.04 ratio from arrival cost (docs/results/g7-teleop-seeds-2026-10-27). Cloud dollar cost per demo remains to be measured with real usage."
     },
     {
      "id": "C4",

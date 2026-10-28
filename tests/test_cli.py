@@ -282,12 +282,20 @@ def test_retarget_numerical_bounds(tmp_path, capsys, args, expected_msg):
     (["--method", "se3", "--family", "open_drawer"], "--method se3 currently supports 'counter_to_sink' only"),
     (["--method", "se3", "--baseline"], "--baseline is only supported with --method seed_replay"),
     (["--method", "seed_replay", "--source", "dummy.json"], "--source is only supported with --method se3"),
+    (["--method", "seed_replay", "--teleop", "p3"], "--teleop is only supported with --method se3"),
     (["--method", "seed_replay", "--family", "bogus"], "unknown family 'bogus'"),
 ])
 def test_retarget_method_mismatches(tmp_path, capsys, args, expected_msg):
     pytest.importorskip("mujoco")
     assert cli.main(["retarget", *args, "--out", str(tmp_path)]) == cli.EXIT_USAGE
     assert expected_msg in capsys.readouterr().err
+
+
+def test_retarget_teleop_folder_without_a_recorded_run_is_usage_error(tmp_path, capsys):
+    pytest.importorskip("mujoco")
+    assert cli.main(["retarget", "--teleop", str(tmp_path), "--out", str(tmp_path / "out")]) == cli.EXIT_USAGE
+    assert "invalid --teleop" in capsys.readouterr().err
+    assert not (tmp_path / "out" / "datasets").exists()
 
 
 def test_retarget_invalid_source_is_usage_error(tmp_path, capsys):
