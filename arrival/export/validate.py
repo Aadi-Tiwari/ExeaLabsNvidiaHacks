@@ -168,7 +168,9 @@ def validate(root: str | Path) -> list[str]:
             return errors
         if t.num_rows != length:
             errors.append(f"{name}: {t.num_rows} rows, episodes.jsonl length {length}")
-        cols = {c: t.column(c).to_pylist() for c in DTYPES if c in t.column_names}
+        # Value checks assume the schema above; malformed columns already have a dtype error.
+        cols = {c: t.column(c).to_pylist() for c, dt in DTYPES.items()
+                if c in t.column_names and t.schema.field(c).type == dt}
         if any(v is None or len(v) != s_dim for v in cols.get("observation.state", [])):
             errors.append(f"{name}: observation.state length != {s_dim}")
         if any(v is None or len(v) != a_dim for v in cols.get("action", [])):
