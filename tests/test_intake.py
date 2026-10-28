@@ -234,3 +234,21 @@ def test_cli_no_go_points_at_check(tmp_path, photos, clean_plan, capsys):
     with pytest.raises(SystemExit) as e:
         cli.main(["kitchen_01", *scans])
     assert e.value.code == 2 and "--roomplan is required" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("failure", ["encoding", "io"])
+def test_scan_validation_collects_unreadable_notes_problem(tmp_path, monkeypatch, failure):
+    notes = tmp_path / "notes.md"
+    notes.write_bytes(b"\xff" if failure == "encoding" else b"synthetic notes")
+    if failure == "io":
+        original = Path.read_text
+
+        def unreadable(path, *args, **kwargs):
+            if path == notes:
+                raise PermissionError("synthetic read failure")
+            return original(path, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "read_text", unreadable)
+    problems = it.validate_scan_dir(tmp_path)
+    assert any("notes.md" in problem and "cannot be read" in problem for problem in problems)
+    assert any("measurements.json is missing" in problem for problem in problems)
