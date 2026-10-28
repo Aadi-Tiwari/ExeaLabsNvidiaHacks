@@ -92,3 +92,30 @@ def test_expert_succeeds_with_people_on_a_rotated_run(twin, family, fixture, obj
     ep = run_episode(env, ScriptedExpert(), t)
     assert ep["success"] and not ep["safety"]["human_contact"], (t["task_id"], ep["detail"])
     assert ep["ik_error"] < 0.02
+
+
+def test_closed_pads_squeeze_a_bowl_wall_and_a_plate_rim(twin):
+    """The pads close to a fixed gap, so a rim thinner than it sits loose between them and the grasp holds only
+    where an octagon panel crosses the pads at an angle (the bowl on counter_w missed 3 of 4 with a 6 mm wall)."""
+    from arrival.sim.scene import BOWL_WALL, PLATE_RIM
+
+    env = SimEnv(twin, _tasks(twin, ["counter_to_sink"], 1)[0], res=32)
+    m, d = env.model, env.data
+    for j in ("finger_l", "finger_r"):
+        d.joint(j).qpos[0] = 0.0
+    mujoco.mj_forward(m, d)
+    pads = [i for i in range(m.ngeom) if m.body(m.geom_bodyid[i]).name in ("finger_l", "finger_r") and m.geom_contype[i]]
+    a, b = d.geom_xpos[pads[0]], d.geom_xpos[pads[1]]
+    axis = (b - a) / np.linalg.norm(b - a)
+    half = [float(np.abs(d.geom_xmat[i].reshape(3, 3).T @ axis) @ m.geom_size[i]) for i in pads]
+    gap = float(np.linalg.norm(b - a)) - sum(half)
+    assert 0.0 < gap < BOWL_WALL and gap < PLATE_RIM, (gap, BOWL_WALL, PLATE_RIM)
+
+
+@pytest.mark.parametrize("k", [0, 2])  # the bowl at its spot and at a start offset
+def test_expert_carries_the_bowl_on_the_west_run(twin, k):
+    tasks = [finish_task(t) for t in make_tasks(twin, ["counter_to_sink"], 3, seed=0, log=lambda *_: None)]
+    t = tasks[k]
+    assert t["object_id"] == "bowl_1" and t["source"] == "counter_w"
+    ep = run_episode(SimEnv(twin, t, res=32), ScriptedExpert(), t)
+    assert ep["success"], (t["task_id"], ep["detail"])

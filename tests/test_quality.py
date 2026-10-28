@@ -319,3 +319,13 @@ def test_cli_json_report_goes_into_a_folder_that_does_not_exist_yet(tmp_path):
     report = tmp_path / "reports" / "q.json"
     assert cli.main(["validate", str(tmp_path / "ds"), "--episodes", "--json", str(report)]) == cli.EXIT_OK
     assert json.loads(report.read_text())["kept"] == 6
+
+
+def test_cli_json_alone_runs_the_episode_checks_and_writes_the_report(tmp_path, capsys):
+    # --json used to need --episodes as well: alone it printed OK, exited 0 and wrote no file
+    s, a = trace()
+    build(tmp_path / "ds", {"zero_motion": episode(np.repeat(s[:1], 64, 0), a)})
+    report = tmp_path / "q.json"
+    assert cli.main(["validate", str(tmp_path / "ds"), "--json", str(report)]) == cli.EXIT_INVALID
+    assert json.loads(report.read_text())["flagged_episodes"] == [6]
+    assert "zero_motion" in capsys.readouterr().out

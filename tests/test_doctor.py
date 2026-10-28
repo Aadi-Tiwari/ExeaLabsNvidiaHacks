@@ -157,6 +157,15 @@ def test_check_disk(tmp_path):
         assert "not writable" in unwritable_chk.detail
 
 
+def test_check_disk_fails_when_a_parent_on_the_path_is_a_file(tmp_path):
+    # --out data.json/out: the nearest existing ancestor is a file, so the folder can never be made
+    blocker = tmp_path / "data.json"
+    blocker.write_text("{}", encoding="utf-8")
+    chk = check_disk(blocker / "out")
+    assert chk.status == "fail"
+    assert "is a file, not a directory" in chk.detail
+
+
 def test_exit_code_and_render():
     ok_checks = [
         Check("python", "ok", "3.13.0"),

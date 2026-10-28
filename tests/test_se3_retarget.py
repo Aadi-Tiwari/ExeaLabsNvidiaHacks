@@ -149,6 +149,23 @@ def test_source_tampering_is_rejected_before_replay(source):
         RetargetPolicy(bad)
 
 
+def test_source_from_another_room_is_refused_before_any_output(twin, source, tmp_path):
+    from arrival.scan.bundle import load_room
+    from arrival.twin.compile import compile_twin
+
+    # u_kitchen_42 has a bowl_1 too, but no counter_a or sink_1: it was a bare KeyError('counter_a') after the
+    # dataset directory had been created
+    other = compile_twin(load_room("u_kitchen_42", "tests/fixtures/scans"))
+    with pytest.raises(ValueError, match="counter_a, sink_1, which u_kitchen_42 does not have"):
+        generate(other, tmp_path / "other", source=source, res=32, offsets=[(0, 0, 0)], log=lambda *_: None)
+    assert not (tmp_path / "other").exists()
+    resized = copy.deepcopy(twin)
+    next(o for o in resized["objects"] if o["id"] == source["task"]["object_id"])["size"][0] += .02
+    with pytest.raises(ValueError, match="not the source's object"):
+        generate(resized, tmp_path / "resized", source=source, res=32, offsets=[(0, 0, 0)], log=lambda *_: None)
+    assert not (tmp_path / "resized").exists()
+
+
 def test_human_contact_result_is_never_exported(twin, source, tmp_path, monkeypatch):
     from arrival.generate import se3_retarget
 
@@ -184,3 +201,12 @@ def test_cli_rejects_bad_arguments_without_outputs(args, tmp_path):
         main([*args, "--out", str(out)])
     assert error.value.code == 2
     assert not out.exists()
+
+
+def test_cli_missing_room_lists_existing_rooms(tmp_path, capsys):
+    out = tmp_path / "out"
+    with pytest.raises(SystemExit) as error:
+        main(["--room", "hero_kitchn", "--out", str(out)])
+    assert error.value.code == 2
+    err = capsys.readouterr().err
+    assert "no scan for room 'hero_kitchn'" in err and "hero_kitchen" in err

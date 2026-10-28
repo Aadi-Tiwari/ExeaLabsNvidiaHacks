@@ -93,3 +93,29 @@ def test_cli_missing_input_is_a_usage_error_not_a_layout_fail(argv, tmp_path, ca
         cl.main([x.format(tmp=tmp_path) for x in argv])
     assert e.value.code == 2
     assert "No such file" in capsys.readouterr().err
+
+
+def test_cli_room_with_scans_folder(capsys):
+    assert cl.main(["--room", "rotated_kitchen", "--scans", "tests/fixtures/scans"]) == 0
+    assert "not loaded in RoboCasa" in capsys.readouterr().out
+
+
+def test_cli_roomplan_fixture(capsys):
+    fixture = str(ROOT / "tests" / "fixtures" / "roomplan" / "kitchen_real_01.json")
+    assert cl.main(["--roomplan", fixture]) == 0
+    assert "not loaded in RoboCasa" in capsys.readouterr().out
+
+
+def test_cli_multiple_inputs_rejected(capsys):
+    with pytest.raises(SystemExit) as e:
+        cl.main(["--room", "hero_kitchen", "--roomplan", "tests/fixtures/roomplan/office.json"])
+    assert e.value.code == 2
+    assert "give exactly one of" in capsys.readouterr().err
+
+
+def test_cli_room_hint_on_missing_room(capsys):
+    with pytest.raises(SystemExit) as e:
+        cl.main(["--room", "missing_room"])
+    assert e.value.code == 2
+    err = capsys.readouterr().err
+    assert "rooms under scans: hero_kitchen" in err

@@ -147,16 +147,27 @@ def _object(o: dict, i: int) -> dict:
     }
 
 
-def _portal(s: dict, i: int, kind: str, wall_ids: set[str]) -> dict:
-    """A door, window or opening: a Surface whose parentIdentifier is the wall it sits in."""
+def _seg_dist(p: list[float], w: dict) -> float:
+    (x0, y0), (x1, y1) = w["start"], w["end"]
+    dx, dy = x1 - x0, y1 - y0
+    n = dx * dx + dy * dy
+    t = 0.0 if n < 1e-12 else min(max(((p[0] - x0) * dx + (p[1] - y0) * dy) / n, 0.0), 1.0)
+    return math.hypot(p[0] - x0 - t * dx, p[1] - y0 - t * dy)
+
+
+def _portal(s: dict, i: int, kind: str, segments: dict[str, list[dict]]) -> dict:
+    """A door, window or opening: a Surface whose parentIdentifier is the wall it sits in. A curved parent is
+    several chords (`segments` maps the wall's identifier to them); the portal goes on the one nearest it."""
     m, cat = s["transform"], s.get("category")
     parent = s.get("parentIdentifier")
     parent = _ident({"identifier": parent}, "") if isinstance(parent, str) else None
+    position = _center(m)
+    chords = segments.get(parent) if parent else None
     entry = {
         "id": _ident(s, f"{kind}_{i}"),
-        "wall_id": parent if parent in wall_ids else None,
+        "wall_id": min(chords, key=lambda w: _seg_dist(position, w))["id"] if chords else None,
         "size": _size(s["dimensions"]),
-        "position": _center(m),
+        "position": position,
         "yaw": _yaw(m),
     }
     if kind == "door":
@@ -320,11 +331,13 @@ def to_bundle(roomplan: dict, room_id: str, story: int | None = None) -> dict:
     roomplan, story, story_count = _select_story(_flatten(_clean(roomplan)), story)
     z0 = _floor_height(roomplan)
     walls = [seg for w in roomplan.get("walls", []) for seg in _walls(w)]
+    segments: dict[str, list[dict]] = {}
+    for w in walls:  # before _unique renames a curved wall's chords `a_2`, `a_3`, ...
+        segments.setdefault(w["id"], []).append(w)
     _unique(walls)
-    wall_ids = {w["id"] for w in walls}
     fixtures = [_object(o, i) for i, o in enumerate(roomplan.get("objects", [])) if _kept(o)]
     _unique(fixtures)
-    portals = {key: [_portal(s, i, kind, wall_ids) for i, s in enumerate(roomplan.get(key, []))]
+    portals = {key: [_portal(s, i, kind, segments) for i, s in enumerate(roomplan.get(key, []))]
                for key, kind in PORTALS}
     for ps in portals.values():
         _unique(ps)
