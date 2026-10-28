@@ -1,7 +1,7 @@
 """Keep a rule-selected part of a sim dataset: `python -m arrival subset SRC --out OUT [--families ...] [--min-drawer-opening M]`.
 
 Why: DART runs (sim --dart) drive the arm off the plan, and a drawer pull is fragile under that: on the hero kitchen the
-clean expert ends every drawer pull at 0.300 m, but with even 0.01 rad of noise about 30% of the kept demos end under
+clean expert ends every drawer pull at 0.2997 m, but with even 0.01 rad of noise about 30% of the kept demos end under
 0.28 m (the success bar is 0.15 m), and a policy trained on them under-pulled (83% -> 38% open_drawer). This drops such
 marginal demos, or whole families, and writes the rest as a new dataset through the same writer merge-shards uses, so
 episodes are re-indexed and the result validates. Nothing is regenerated and nothing is changed in the episodes kept.

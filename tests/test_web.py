@@ -1020,3 +1020,72 @@ def test_npz_depth_disguised_as_npy_is_rejected(make, tmp_path):
     status, data, _ = _post(srv, [("scan", "hero.json", HERO_SCAN), ("frames", "frames.zip", blob)])
     assert status == 422 and data["code"] == "bad_depth" and data["field"] == "frames", data
     assert not list((out / "jobs").glob("*/status.json"))
+@pytest.mark.parametrize("disposition", [
+    'form-data; filename="scan.json"; name="scan"',
+    'form-data; filename="scan.json";NAME="scan"',
+])
+def test_upload_accepts_filename_before_field_name(server, disposition):
+    srv, out = server
+    boundary = "arrival-parameter-order"
+    payload = b'{"room_id":"uploaded"}'
+    body = (f"--{boundary}\r\nContent-Disposition: {disposition}\r\n"
+            "Content-Type: application/json\r\n\r\n").encode() + payload + f"\r\n--{boundary}--\r\n".encode()
+    conn = http.client.HTTPConnection("127.0.0.1", srv.server_address[1], timeout=10)
+    try:
+        conn.request("POST", "/jobs", body=body,
+                     headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+        response = conn.getresponse()
+        data = json.loads(response.read())
+        assert response.status == 202, data
+        assert (out / "jobs" / data["id"] / "upload.bin").read_bytes() == payload
+    finally:
+        conn.close()
+@pytest.mark.parametrize("template", ["bytes={}-", "bytes=0-{}", "bytes=-{}"])
+def test_preview_ignores_unparseable_range_numbers(make, template):
+    srv, out = make()
+    preview = out / "previews" / "test.png"
+    preview.parent.mkdir(parents=True, exist_ok=True)
+    preview.write_bytes(b"0123456789")
+    status, body, response = _fetch(srv, "/previews/test.png",
+                                    headers={"Range": template.format("9" * 4301)})
+    assert status == 200 and body == b"0123456789"
+    assert response.getheader("Content-Range") is None
+
+
+@pytest.mark.parametrize(("value", "code", "expected", "content_range"), [
+    ("bytes=2-4", 206, b"234", "bytes 2-4/10"),
+    ("bytes=-3", 206, b"789", "bytes 7-9/10"),
+    ("bytes=50-", 416, b"", "bytes */10"),
+])
+def test_preview_normal_ranges_keep_existing_behavior(make, value, code, expected, content_range):
+    srv, out = make()
+    preview = out / "previews" / "test.png"
+    preview.parent.mkdir(parents=True, exist_ok=True)
+    preview.write_bytes(b"0123456789")
+    status, body, response = _fetch(srv, "/previews/test.png", headers={"Range": value})
+    assert status == code and body == expected
+    assert response.getheader("Content-Range") == content_range
+def test_invalid_manifest_encoding_is_a_validation_response(make):
+    srv, out = make()
+    blob = _zip_of({"frames_manifest.json": b"\xff"})
+    status, data, _ = _post(srv, [("scan", "hero.json", HERO_SCAN), ("frames", "frames.zip", blob)])
+    assert status == 422 and data["code"] == "bad_json" and data["field"] == "frames", data
+    assert not _job_dirs(out)
+
+
+@pytest.mark.parametrize("location", ["central", "local", "both"])
+def test_invalid_utf8_zip_entry_name_returns_archive_error(make, location):
+    import struct
+
+    blob = bytearray(_zip_of({"frames_manifest.json": b"{}"}))
+    central = blob.index(b"PK\x01\x02")
+    if location in ("local", "both"):
+        struct.pack_into("<H", blob, 6, 0x800)
+        blob[30] = 0xff
+    if location in ("central", "both"):
+        struct.pack_into("<H", blob, central + 8, 0x800)
+        blob[central + 46] = 0xff
+    srv, out = make()
+    status, data, _ = _post(srv, [("scan", "hero.json", HERO_SCAN), ("frames", "frames.zip", bytes(blob))])
+    assert status == 400 and data["code"] == "bad_zip" and data["field"] == "frames", data
+    assert not _job_dirs(out)
