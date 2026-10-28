@@ -36,6 +36,7 @@ from arrival.web import hardening as hd
 from arrival.web.hardening import JOB_ID_RE
 
 ID_RE = re.compile(r"^[a-z0-9_]+$")
+SCAN_FILES = ("scan.json", "roomplan.json")  # what makes scans/<room> a room, in the order `sim` reads them
 BOUNDARY_RE = re.compile(r'boundary="?([^";]+)"?', re.I)
 NAME_RE = re.compile(rb'(?:^|;\s*)name="([^"]*)"', re.I)
 FILENAME_RE = re.compile(rb'filename="([^"]*)"', re.I)
@@ -231,6 +232,27 @@ def _read_json(path: Path):
         return json.loads(path.read_text())
     except (OSError, ValueError):
         return None
+
+
+def room_scan(scans_dir: Path, room: str) -> tuple[dict, str] | None:
+    """The room's scan and the file it came from: scans/<room>/scan.json, else its roomplan.json normalized to a
+    bundle (fixtures, geometry_source). A phone capture lands with only roomplan.json and `sim` builds it (#417);
+    listing only scan.json rooms left such a room off the page with its sim dataset and 404'd /rooms/<room>.
+    None when the room has neither file."""
+    for name in SCAN_FILES:
+        path = Path(scans_dir) / room / name
+        if not path.is_file():
+            continue
+        data = _read_json(path)
+        if name == "roomplan.json":
+            from arrival.scan import roomplan  # standard library plus the scan module; no pipeline import
+
+            try:
+                data = roomplan.to_bundle(data, room)
+            except Exception:  # noqa: BLE001 - an unreadable export still gets its card, never a 500
+                data = {"geometry_source": "roomplan"}
+        return (data if isinstance(data, dict) else {}), name
+    return None
 
 
 def _page(title: str, body: str) -> bytes:
@@ -434,8 +456,11 @@ class Handler(BaseHTTPRequestHandler):
             return []
         return sorted(
             p.name for p in self.scans_dir.iterdir()
-            if p.is_dir() and (p / "scan.json").is_file() and ID_RE.match(p.name)
+            if p.is_dir() and any((p / f).is_file() for f in SCAN_FILES) and ID_RE.match(p.name)
         )
+
+    def _scan(self, room: str) -> tuple[dict, str] | None:
+        return room_scan(self.scans_dir, room)
 
     # ---- routing -------------------------------------------------------
     def do_GET(self):
@@ -525,7 +550,7 @@ class Handler(BaseHTTPRequestHandler):
         return f"/previews/{f}" if (self.out_dir / "previews" / f).is_file() else None
 
     def _room_card(self, room: str) -> str:
-        scan = _read_json(self.scans_dir / room / "scan.json") or {}
+        scan = (self._scan(room) or ({}, ""))[0]
         sim, base = self._ds_stats(f"{room}_sim"), self._ds_stats(room)
         st = sim or base
         png = self._preview(f"{room}_sim", "contact.png")
@@ -561,7 +586,7 @@ class Handler(BaseHTTPRequestHandler):
     def _index(self):
         rooms = self._rooms()
         cards = ("<div class='grid'>" + "".join(self._room_card(r) for r in rooms) + "</div>") if rooms else (
-            "<div class='card empty'><b>No rooms yet</b>Put a scan under <code>scans/&lt;room&gt;/scan.json</code> "
+            "<div class='card empty'><b>No rooms yet</b>Put a scan under <code>scans/&lt;room&gt;/scan.json</code> (or <code>roomplan.json</code>) "
             "or upload one below.</div>")
         mb = self.server.max_upload_bytes / (1024 * 1024)
         upload = (
@@ -666,10 +691,10 @@ class Handler(BaseHTTPRequestHandler):
         )
 
     def _room(self, room: str):
-        scan_path = self.scans_dir / room / "scan.json"
-        if not scan_path.is_file():
+        found = self._scan(room)
+        if found is None:
             return self._not_found(f"No room {room}")
-        scan = _read_json(scan_path) or {}
+        scan, scan_file = found
         twin = _read_json(self.out_dir / "twins" / room / "twin.json")
         src = twin if twin else scan
         fixtures = src.get("fixtures", []) or []
@@ -684,7 +709,7 @@ class Handler(BaseHTTPRequestHandler):
             for f in fixtures if isinstance(f, dict)
         )
         fx_table = (
-            f"<p class='muted'>Source: {'compiled twin.json' if twin else 'scan.json (twin not compiled)'}</p>"
+            f"<p class='muted'>Source: {'compiled twin.json' if twin else esc(scan_file) + ' (twin not compiled)'}</p>"
             "<div class='scroll'><table><tr><th>id</th><th>type</th><th>size (m)</th>"
             "<th>position (m)</th><th>yaw</th></tr>"
             + (fx_rows or "<tr><td colspan='5' class='muted'>No fixtures</td></tr>")
