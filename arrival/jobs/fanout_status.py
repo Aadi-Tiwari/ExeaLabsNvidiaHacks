@@ -7,7 +7,10 @@ a job id (or has failed to get one), at each state change and when it ends, so a
 history, `submitted_at` and `finished_at` (unix seconds), `wall_seconds` (the orchestrator's clock from submit until
 the marker is written or the failure is seen, so it includes provisioning and the copy to the shard prefix), the
 resources the backend asked for (`None` where there are none, as for a local subprocess), the outcome, and for a
-failed attempt `failed_stage` (submit, run, fetch or marker) with the reason. A rerun loads the record and appends;
+failed attempt `failed_stage` (submit, run, fetch or marker) with the reason. `fetch` is also a succeeded job whose
+copied files have no `meta/info.json` or `meta/episodes.jsonl`: that check happens before the attempt is noted as
+ready for its done marker, so the reason is the missing path. `marker` is the done-marker write, or the fan-out
+stopping after those files are present. A rerun loads the record and appends;
 an attempt an earlier process left open becomes `abandoned`. Reasons pass through `config.redact`. Nothing is priced.
 """
 
@@ -17,7 +20,7 @@ import json
 import time
 
 from arrival import config as settings
-from arrival.jobs.fanout import FAILED, RUNNING, SUCCEEDED, FanoutConfig, marker_key
+from arrival.jobs.fanout import FAILED, RUNNING, SUCCEEDED, FanoutConfig, marker_key, require_shard_artifacts
 from arrival.jobs.shards import ShardError
 
 
@@ -121,6 +124,11 @@ class StatusRecorder:
     def fetch_result(self, job_id: str, prefix: str) -> None:
         try:
             self.backend.fetch_result(job_id, prefix)
+            # The copy can succeed and still not be a shard dataset. Check before noting the done marker, or
+            # cancel_open records the missing meta file as a marker failure and drops the path from the reason.
+            if job_id in self._open:
+                cfg, i, _, _ = self._open[job_id]
+                require_shard_artifacts(self.backend, cfg, i)
         except Exception as e:
             if job_id in self._open:
                 self._end(job_id, "failed", "fetch", str(e))
