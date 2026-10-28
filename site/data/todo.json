@@ -1108,7 +1108,7 @@
      "pr": [
       93
      ],
-     "note": "The restyle stage and its Cosmos client landed in #93 (arrival/render/variation.py, SIM-7a): about 10% of frames, edge and mask checks, honest labels. It has run only against a local mock server, never a real Cosmos endpoint.",
+     "note": "The restyle stage and its Cosmos client landed in #93 (arrival/render/variation.py, SIM-7a): about 10% of frames, edge and mask checks, honest labels. On Oct 27 NVIDIA Cosmos Transfer2.5-2B (edge control) ran for real on one RTX PRO 6000 and restyled three 93-frame sim episodes (open_fridge, counter_to_sink, open_drawer) into photoreal kitchens; all 279 frames passed the stage's edge check (correlation 0.74 to 0.83, threshold 0.6) and NVIDIA's guardrail (docs/results/cosmos-transfer-2026-10-27/). Still open: the dataset run, which calls the model through the HTTP client on a tenth of each dataset's frames.",
      "issue": 70,
      "authors": []
     }
