@@ -154,6 +154,12 @@ class Footprints:
                  math.cos(f.get("yaw", 0.0)), math.sin(f.get("yaw", 0.0))) for f in fixtures or []]
         self.a = np.array(rows, dtype=float).reshape(-1, 6)
 
+    def plus(self, fixtures) -> Footprints:
+        """These footprints and those of `fixtures`."""
+        out = Footprints(fixtures)
+        out.a = np.vstack([self.a, out.a])
+        return out
+
     def blocked(self, pts, r: float) -> bool:
         if not len(self.a):
             return False
@@ -212,9 +218,10 @@ def route(a, b, prints: Footprints, r: float, floor) -> list[np.ndarray] | None:
     return path[::-1]
 
 
-def free_path(rng, floor, prints: Footprints, r: float, n: int = 4, tries: int = 40) -> list[np.ndarray]:
+def free_path(rng, floor, prints: Footprints, r: float, n: int = 4, tries: int = 40, start=None) -> list[np.ndarray]:
     """n random goals in the floor rectangle joined into a closed loop that keeps r clear of every footprint,
-    routed round fixtures through via points; a goal with no route from the previous one is resampled."""
+    routed round fixtures through via points; a goal with no route from the previous one (the first: from `start`,
+    when given) is resampled."""
     x0, y0, x1, y1 = floor
     goals: list[np.ndarray] = []
     legs: list[list[np.ndarray]] = []
@@ -223,15 +230,26 @@ def free_path(rng, floor, prints: Footprints, r: float, n: int = 4, tries: int =
             p = rng.uniform([x0, y0], [x1, y1])
             if prints.blocked(p, r):
                 continue
-            via = route(goals[-1], p, prints, r, floor) if goals else []
+            if goals:
+                via = route(goals[-1], p, prints, r, floor)
+            else:
+                via = [] if start is None or route(start, p, prints, r, floor) is not None else None
             if via is not None:
                 goals.append(p)
                 legs.append(via)
                 break
         else:
             break
-    if not goals:
-        return [np.array([(x0 + x1) / 2, (y0 + y1) / 2])]
+    if not goals:  # no draw was free (and reachable): stand on the free point nearest `start`, else the centre; with
+        # none free at r, on one free at the largest share of r (in kitchen_real_01 a door's keep-out and the base can
+        # leave none). Before, this was the centre unchecked: 0.52 m from the base centre in kitchen_real_01.
+        aim = np.array([(x0 + x1) / 2, (y0 + y1) / 2]) if start is None else np.asarray(start, dtype=float)
+        grid = np.stack(np.meshgrid(np.arange(x0, x1, PATH_SAMPLE), np.arange(y0, y1, PATH_SAMPLE)), -1).reshape(-1, 2)
+        for share in (1.0, 0.75, 0.5, 0.25, 0.0):
+            free = [p for p in grid if not prints.blocked(p, share * r)]
+            if free:
+                return [min(free, key=lambda p: float(np.linalg.norm(p - aim)))]
+        return [aim]
     back = route(goals[-1], goals[0], prints, r, floor) if len(goals) > 1 else []
     while back is None:
         goals.pop()
@@ -248,6 +266,17 @@ def _seg_dist(a, b, p) -> float:
     n = float(ab @ ab)
     t = 0.0 if n < 1e-12 else float(np.clip((p - a) @ ab / n, 0.0, 1.0))
     return float(np.linalg.norm(a + t * ab - p))
+
+
+def _base_block(base_xy, r: float, base_to=None) -> dict:
+    """The robot base, stretched along a mobile base's straight drive to base_to, as a footprint that, grown by a
+    walker's radius r, keeps the walker's centre CLEAR from the base centre at every point of the drive (the rule
+    the counter-stop loop's free points and the fridge stand points follow; CLEAR already counts the torso)."""
+    a = np.asarray(base_xy, dtype=float)
+    d = np.zeros(2) if base_to is None else np.asarray(base_to, dtype=float) - a
+    c, w = a + d / 2, 2 * max(CLEAR - r, 0.0)
+    return {"position": [float(c[0]), float(c[1]), 0.0], "size": [float(np.linalg.norm(d)) + w, w, 0.0],
+            "yaw": float(math.atan2(d[1], d[0]))}
 
 
 def _rot(yaw: float, v) -> np.ndarray:
@@ -431,7 +460,13 @@ class Walkers:
             visiting = self.visit is not None and i == self.visit["person"]
             pr = prints if visiting else avoid
             if front_y is None:
-                pts = free_path(rng, floor, pr, s["radius"])
+                # No counter stop: the loop keeps CLEAR of the base and a mobile base's drive, as the stop loop's free
+                # points and the fridge stand points do. kitchen_real_01's oven has no free strip; with fixtures alone,
+                # seed 7 started person_0 0.20 m from the base centre, inside the base at step 0 (-0.08 m).
+                # The fridge visitor's loop is drawn where it can be reached from the stand point: there the base can
+                # cut the floor in two, and a loop on the far side left legs to the fridge that cross it.
+                fp = pr if base_xy is None else pr.plus([_base_block(base_xy, s["radius"], base_to)])
+                pts = free_path(rng, floor, fp, s["radius"], start=self.visit["s1"] if visiting else None)
                 pause = [0.0] * len(pts)
             else:
                 pts, pause = _interaction_loop(rng, floor, base_xy, front_y, pr, s["radius"], base_to,
@@ -497,9 +532,16 @@ class Walkers:
         if base_xy is not None:
             block.append({"position": [base_xy[0], base_xy[1], 0.0], "size": [2 * CLEAR, 2 * CLEAR, 0.0], "yaw": 0.0})
         prints = Footprints(block)
+        tight = Footprints(list(fixtures or []) + [_base_block(base_xy, r)]) if base_xy is not None else prints
+
+        def leg(a, b):  # no route CLEAR + r from the base (an end inside that, or a tight room): keep CLEAR before
+            # going straight. On kitchen_real_01's floor walk the straight legs came 0.40 m from the base centre.
+            via = route(a, b, prints, r, floor)
+            return (route(a, b, tight, r, floor) if via is None else via) or []
+
         via_out = np.array([v["s1"][0], min(v["s1"][1] + 0.55, floor[3] - 0.4)])
-        out = [via_out] + (route(via_out, pts[0], prints, r, floor) or [])
-        back = route(pts[-1], v["s1"], prints, r, floor) or []
+        out = [via_out] + leg(via_out, pts[0])
+        back = leg(pts[-1], v["s1"])
         path = [v["s1"], v["s2"], v["s1"]] + out + list(pts) + back
         waits = [hold, v["look"], hold] + [0.0] * len(out) + list(pause) + [0.0] * len(back)
         faces = ["open", "look", "close"] + [None] * (len(out) + len(pts) + len(back))
