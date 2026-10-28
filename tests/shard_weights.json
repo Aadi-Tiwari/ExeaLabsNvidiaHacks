@@ -91,6 +91,7 @@
  "tests/test_roomplan.py": 0.0,
  "tests/test_robocasa_layout.py": 0.3,
  "tests/test_roomplan_coverage.py": 0.2,
+ "tests/test_roomplan_room_entry_points.py": 1.0,
  "tests/test_rotated_kitchen.py": 24.6,
  "tests/test_scan_accuracy_no_scan.py": 0.1,
  "tests/test_scan_fixtures.py": 4.4,

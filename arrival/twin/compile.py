@@ -396,3 +396,28 @@ def write_twin(twin: dict, twin_dir: str | Path) -> tuple[Path, Path]:
     twin_path.write_text(json.dumps(twin, indent=2))
     layout_path.write_text(yaml.safe_dump(layout_dict(twin), sort_keys=False, default_flow_style=None))
     return twin_path, layout_path
+
+
+def roomplan_twin(rp_path, room: str, seed: int = 0) -> dict:
+    """The twin of a RoomPlan export. RoomPlan captures no small objects: catalog objects are placed on a counter
+    top (seeded), never borrowed, and the seed is noted in the twin's provenance."""
+    from arrival.scan import roomplan
+
+    bundle = roomplan.load(Path(rp_path), room)
+    bundle["objects"] = place_default_objects(compile_twin(bundle), seed=seed)
+    twin = compile_twin(bundle)
+    if twin["objects"]:
+        note_seed(twin, "default_objects", seed)
+    return twin
+
+
+def room_twin(room: str, scans_dir="scans", seed: int = 0) -> dict:
+    """The twin of scans/<room>: its scan.json compiled, else a phone capture's roomplan.json built as `sim` and
+    `demo --from-roomplan` build it (objects placed with `seed`). teleop, retarget and check_layout read only scan.json
+    before, so a room `sim` ran on was "no scan for room" there. FileNotFoundError when the room has neither file."""
+    from arrival.scan.bundle import load_room
+
+    d = Path(scans_dir) / room
+    if not (d / "scan.json").is_file() and (d / "roomplan.json").is_file():
+        return roomplan_twin(d / "roomplan.json", room, seed)
+    return compile_twin(load_room(room, scans_dir))

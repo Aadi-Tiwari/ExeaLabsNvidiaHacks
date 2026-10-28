@@ -166,18 +166,10 @@ def cmd_doctor(a) -> int:
 
 
 def roomplan_twin(rp_path: Path, room: str, seed: int = 0) -> dict:
-    """The twin of a RoomPlan export. RoomPlan captures no small objects: catalog objects are placed on a counter
-    top (seeded), never borrowed, and the seed is noted in the twin's provenance."""
-    from arrival.export.provenance import note_seed
-    from arrival.scan import roomplan
-    from arrival.twin.compile import compile_twin, place_default_objects
+    """The twin of a RoomPlan export (arrival.twin.compile.roomplan_twin, shared with teleop and retarget)."""
+    from arrival.twin.compile import roomplan_twin as build
 
-    bundle = roomplan.load(rp_path, room)
-    bundle["objects"] = place_default_objects(compile_twin(bundle), seed=seed)
-    twin = compile_twin(bundle)
-    if twin["objects"]:
-        note_seed(twin, "default_objects", seed)
-    return twin
+    return build(rp_path, room, seed)
 
 
 def _load_twin(room: str, out: str | Path, scans: str | Path) -> dict:

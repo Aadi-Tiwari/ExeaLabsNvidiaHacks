@@ -164,11 +164,12 @@ def main(argv: list[str] | None = None) -> int:
             layout = yaml.safe_load(yaml.safe_dump(layout_dict(twin), sort_keys=False))
         elif a.room:
             from arrival.cli import resolve_scans
-            from arrival.scan.bundle import load_room
-            from arrival.twin.compile import compile_twin, layout_dict
+            from arrival.twin.compile import layout_dict, room_twin
             scans = resolve_scans(a.scans)
             src = scans / a.room / "scan.json"
-            twin = compile_twin(load_room(a.room, scans))
+            if not src.is_file() and (scans / a.room / "roomplan.json").is_file():
+                src = scans / a.room / "roomplan.json"  # a phone capture, built as `sim` builds it
+            twin = room_twin(a.room, scans)
             layout = yaml.safe_load(yaml.safe_dump(layout_dict(twin), sort_keys=False))
         else:
             d = Path(a.twin_dir)
