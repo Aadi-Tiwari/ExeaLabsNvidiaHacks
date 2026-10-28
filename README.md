@@ -385,7 +385,7 @@ Fine-tune GR00T N1.7, score in the twin   docs/GR00T-FINETUNE.md, docs/07-eval.m
 
 ## Join in: team plan for 30 people
 
-Everything below is open work. **To claim a task:** open a GitHub issue titled with its ID (e.g. `[CAP-3] Scan 5 kitchens`), assign yourself, and post the link in the team channel. One owner per task. If a task is bigger than a day, split it into issues.
+Each task ends with its status and to-do id (see [To-do](#to-do)); credit is by PR. **To claim an open task:** open a GitHub issue titled with its ID (e.g. `[CAP-3] Scan 5 kitchens`), assign yourself, and post the link in the team channel. One owner per task. If a task is bigger than a day, split it into issues.
 
 ### Teams at a glance
 
@@ -407,91 +407,78 @@ Pick leads first. Each lead keeps their team's tasks below up to date.
 
 LiDAR iPhones/iPads: iPhone 12 Pro or newer Pro models, or iPad Pro 2020+.
 
-- **CAP-1: Capture app.** Build the Apple RoomPlan sample ("Create a 3D model of an interior room") with an export button. It writes `CapturedRoom` JSON via `JSONEncoder` and the USDZ. Add AirDrop/share, then upload to `POST /jobs`.
-- **CAP-2: RGB-D frames.** Record ARKit RGB + depth frames + camera poses alongside RoomPlan (needed later for realism scoring and splats). Define the folder format in `docs/04-contracts.md`.
+- **CAP-1: Capture app.** Build the Apple RoomPlan sample ("Create a 3D model of an interior room") with an export button. It writes `CapturedRoom` JSON via `JSONEncoder` and the USDZ. Add AirDrop/share, then upload to `POST /jobs`. **Done in #43** (S16); field-tested on an iPhone 13 Pro Max (P1).
+- **CAP-2: RGB-D frames.** Record ARKit RGB + depth frames + camera poses alongside RoomPlan (needed later for realism scoring and splats). **Partly done:** the frame format, loader and validator landed in #90 (S19), and the app has a recorder (`FrameRecorder.swift`, issue #58), but P1 still lists the Swift RGB-D recorder as not done.
 - **CAP-3: Scan real rooms.** Scan **at least 10 kitchens** (straight run, L-shape, U-shape, galley, island) plus **5 non-kitchen rooms** (office, living room, bathroom, garage, dorm). For each one:
   - commit `scans/<room_id>/roomplan.json`, a `notes.md` (location type, phone model, iOS version, lighting, clutter level) and 2 reference photos;
   - **measure 3 distances with a tape measure** (counter length, counter height, sink width) and record them in `notes.md`.
   - Remove anything personal from the photos.
-- **CAP-4: Scan protocol.** Write `docs/SCANNING.md`: how to walk the room, speed, lighting, what to avoid (mirrors, glass, clutter), how to name rooms, consent for scanning other people's homes.
-- **CAP-5: Licenses.** Check the licenses of the two public scans in `tests/fixtures/roomplan/`, and replace them with our own scans if unclear.
+
+  **Partly done:** the intake tool landed in #87 (S19) and one real kitchen ran end to end (`tests/fixtures/roomplan/kitchen_real_01.json`, P1). The three measured, consented scans (P2) are open; no `scans/<room>/measurements.json` exists yet.
+- **CAP-4: Scan protocol.** Write `docs/SCANNING.md`: how to walk the room, speed, lighting, what to avoid (mirrors, glass, clutter), how to name rooms, consent for scanning other people's homes. **Done in #44** (S16).
+- **CAP-5: Licenses.** Check the licenses of the two public scans in `tests/fixtures/roomplan/`, and replace them with our own scans if unclear. **Done in #310** (P5): neither had a licence, so they were replaced with authored Apache 2.0 fixtures `office.json` and `study.json`.
 
 ### TWN: Twin & scan testing (4)
 
-- **TWN-1: LiDAR accuracy test.** Use the CAP-3 tape measurements to write a new test (planned as tests/test_lidar_accuracy.py, not in the repo yet) that compares twin dimensions with the tape measurements. Report the error per room and fail if it's over 5 cm.
-- **TWN-2: Scan regression suite.** Every scan under `scans/` must normalize, compile and render with **no overlapping fixtures, nothing below the floor, and closed walls**. Done: `tests/test_scans.py` runs every `scans/<room>/scan.json` and `roomplan.json` through normalize, compile, `layout.yaml`, a footprint overlap check (a sink or stove inset in its counter is allowed), a floor check, a closed-wall check (1 cm) and a MuJoCo build; the hero `scan.json` overlaps are an expected failure until TWN-6 lands. `python scripts/render_rooms.py` writes a top-down PNG per room to `out/renders/`. New rooms from CAP-3 are picked up with no test changes.
+- **TWN-1: LiDAR accuracy test.** Use the CAP-3 tape measurements to write a test that compares twin dimensions with the tape measurements. Report the error per room and fail if it's over 5 cm. **Partly done:** the harness and `tests/test_lidar_accuracy.py` landed in #92 (S19), 5 cm default tolerance; no real room has tape measurements yet (P2).
+- **TWN-2: Scan regression suite.** Every scan under `scans/` must normalize, compile and render with **no overlapping fixtures, nothing below the floor, and closed walls**. **Done in #10** (S02): `tests/test_scans.py` runs every `scans/<room>/scan.json` and `roomplan.json` through normalize, compile, `layout.yaml`, a footprint overlap check (a sink or stove inset in its counter is allowed), a floor check, a closed-wall check (1 cm) and a MuJoCo build; the hero `scan.json` overlaps are an expected failure until TWN-6 lands. `python scripts/render_rooms.py` writes a top-down PNG per room to `out/renders/`. New rooms from CAP-3 are picked up with no test changes.
 - **TWN-3: RoomPlan coverage.** Handle doors, windows, openings, `polygonCorners` floors, islands, multi-story `story`, and every object category Apple emits (`dishwasher`, `oven`, `washerDryer`, `storage`, `table`, …). Done: doors, windows and openings land in the bundle with their wall and `is_open`, `polygonCorners` floors set the floor extent, a merged multi-story export yields one story per twin, counter-height blocks clear of the walls become `island: true` counters, all 16 Apple categories have a fixture type and a default size, one test per category (`tests/test_roomplan_coverage.py`). Doors, windows and openings are also drawn in the sim on their wall as visual-only geoms: a closed door is a frame, a leaf and a knob; an open door retains its frame and dark recess and adds a leaf and knob swung 90 degrees toward the room centre, following `hinge: "left"` or `"right"` (default left jamb when omitted); an opening is a frame around a dark recess; a window is a frame, a sill, a pane and a mullion. They never collide, so physics and task outcomes do not change (`tests/test_openings_sim.py`). A wall that carries `curve` (`startAngle`, `endAngle`, `radius`) is replaced by straight chords every 15° (at least two) instead of being dropped or treated as one straight run (`tests/test_roomplan_coverage.py`). Left: non-kitchen categories (bed, sofa, bathtub, …) are a plain `box` in the layout because RoboCasa has no such fixture; the wall behind a doorway stays solid, so walkers and the mobile base cannot go through it; per-wall `polygonCorners` are ignored; no real multi-story export has been seen yet.
 - **TWN-4: RoboCasa-native layout.** Make `layout.yaml` load in real RoboCasa (half extents, `wall_side`, groups). Done for the hero kitchen and RoomPlan `kitchen_real_01` (G6, Oct 27, RoboCasa 1.0.1): `layout.yaml` as written loads in RoboCasa's `KitchenArena` but builds the wrong room (walls and floor read as half extents on the wrong side, every front facing its wall, the sink floating in a solid counter, the stove 15 cm into the floor); `arrival.twin.robocasa_layout` turns it into RoboCasa's own form, and both kitchens then build and compile to MuJoCo with every fixture centre within 2.5 cm horizontally, walls exact, fronts matching the twin, and no overlap the twin does not already have (`scripts/check_robocasa_layout.py`, [docs/results/robocasa-layout-2026-10-27](docs/results/robocasa-layout-2026-10-27/README.md)). Left: RoboCasa sets the sink's height (flush with the counter top, 5.5 cm below the hero twin's sink box), `layout.yaml` itself still uses the twin's form, and no robot or task ran in the built room.
-- **TWN-5: Object detection.** RoomPlan doesn't see mugs or bowls. Detect objects in CAP-2 photos (Nemotron Nano Omni via Token Factory, or any detector) and place them in the twin.
-- **TWN-6: Fix the sample kitchen.** Done: fridge, counters and stove now tile the north wall with no overlap, the bowl is on the counter instead of inside the fridge, and `tests/test_roomplan.py` checks footprints (see `docs/BUILD-LOG.md`).
+- **TWN-5: Object detection.** RoomPlan doesn't see mugs or bowls. Detect objects in CAP-2 photos (Nemotron Nano Omni via Token Factory, or any detector) and place them in the twin. **Partly done** (C4, issue #60): `arrival/twin/detect.py`; a live Nemotron VL run on rendered frames placed the mug 1.2 cm from its centre (`docs/results/live-detect-2026-10-26.json`). Real frames wait on P1.
+- **TWN-6: Fix the sample kitchen.** **Done in #5** (S01): fridge, counters and stove now tile the north wall with no overlap, the bowl is on the counter instead of inside the fridge, and `tests/test_roomplan.py` checks footprints (see `docs/BUILD-LOG.md`).
 
 ### SIM: Scene & realism (4)
 
 - **SIM-1: Kitchen visuals.** A recessed sink basin with a faucet, cabinet fronts with gaps and slim handles, toe-kick, countertop overhang, backsplash, stove burners, and a proper fridge. Code is in `arrival/sim/scene.py`. **Done in #2** (recessed fronts, slim handles, backsplash, sink with faucet, gas range, fridge with freezer door). Lighting and materials landed with SIM-2.
 - **SIM-2: Lighting & materials.** *Done (#21).* Key and fill lights, wood/stone/tile textures, and lighting variation that still matches the `dim/neutral/bright` axis.
-- **SIM-3: More moving parts.** Dishwasher door, oven door, microwave, faucet handle, upper cabinets, and drawers in every base cabinet, all on joints with names the policy can target. **Done except the extra drawer row:** oven door, dishwasher and microwave doors, the faucet lever and wall-cabinet doors are named joints with handle sites; `part_names()` in `arrival/sim/scene.py` lists them. A drawer row above the door bay would sit inside the MAN-2 door panel, so it was left out.
-- **SIM-4: More objects.** Plates, cups, bottles, pans, fruit, utensils, with realistic mass, friction and size variation. **Done:** cup, plate, bottle, pan, apple and spatula join the mug, bowl and sponge (`arrival/catalog/objects.py`), with mass scaled by volume, per-material friction and seeded size variation; the expert picks the cup, apple and bottle 4/4. The 1 cm spatula is pinched across its width with the pad tips just over the counter (L26) and goes counter to sink and wipes the counter.
-- **SIM-5: Non-kitchen rooms.** *Open here; PR #57 needs a rebase.* Twin and sim support for at least one office and one living room from CAP-3 scans.
-- **SIM-6: Splat appearance** *(stretch).* Gaussian splat of the scanned room composited with the sim. The design is in `docs/03-architecture.md`.
+- **SIM-3: More moving parts.** Dishwasher door, oven door, microwave, faucet handle, upper cabinets, and drawers in every base cabinet, all on joints with names the policy can target. **Done in #19 (S08) except the extra drawer row:** oven door, dishwasher and microwave doors, the faucet lever and wall-cabinet doors are named joints with handle sites; `part_names()` in `arrival/sim/scene.py` lists them. A drawer row above the door bay would sit inside the MAN-2 door panel, so it was left out.
+- **SIM-4: More objects.** Plates, cups, bottles, pans, fruit, utensils, with realistic mass, friction and size variation. **Done in #19** (S08): cup, plate, bottle, pan, apple and spatula join the mug, bowl and sponge (`arrival/catalog/objects.py`), with mass scaled by volume, per-material friction and seeded size variation; the expert picks the cup, apple and bottle 4/4. The 1 cm spatula is pinched across its width with the pad tips just over the counter (L26) and goes counter to sink and wipes the counter.
+- **SIM-5: Non-kitchen rooms.** Twin and sim support for at least one office and one living room from CAP-3 scans. **Done in #105** (L9, replaces #57): non-kitchen rooms with room-appropriate objects (book, remote, laptop).
+- **SIM-6: Splat appearance** *(stretch).* Gaussian splat of the scanned room composited with the sim. The design is in `docs/03-architecture.md`. **Open** (G8): the depth compositor `arrival/render/splat.py` landed in #194; no splat is trained.
 
 ### MAN: Robot & manipulation (5)
 
 - **MAN-1: Make the arm look and move like a Panda.** Real link shapes and proportions, a Franka-style hand, a low mount, IK biased to the Panda "ready" posture so the elbow doesn't flip, smooth min-jerk motion, and no clipping. Code is in `arrival/sim/robot.py` and `ik.py`. **Done in #2:** Panda-shaped visuals over the unchanged collision capsules, a nullspace pull toward the Panda home posture in IK, and min-jerk motion with via-point drawer pulls.
-- **MAN-2: Open doors.** Done (see `docs/BUILD-LOG.md`). Both cabinet doors open at 100%; the fridge door is not a task yet (MAN-5). Check with `python -m arrival sim --families open_door --episodes 4 --save-preview`.
-- **MAN-3: Mobile base.** *Open here; PRs #33 and #36 need a rebase, pick one.* Add an actuated base so `counter_to_counter` (about 2 m between pick point and target) is reachable, and add base joints to the state/action spec.
-- **MAN-4: Grasp everything.** Bowl done: a hollow bowl and a rim grasp (see `docs/BUILD-LOG.md`). Cups, apples and bottles are picked by the body. Plates are picked by the rim and pans by the handle (#31).
-- **MAN-5: New tasks.** Done: close drawer, close door, put the mug away in a drawer, wipe the counter with the sponge (`python -m arrival sim --families close_drawer,close_door,put_in_drawer,wipe_counter`). Open fridge landed (#78). Oven, dishwasher (open, load, unload) and faucet families run on the any-wall chain (L24, #106, which replaces #27).
-- **MAN-6: Real Franka model** *(optional; PR #25 needs a rebase).* Swap in the MuJoCo Menagerie Panda (Apache-2.0) behind a flag, keeping tests offline.
+- **MAN-2: Open doors.** **Done in #4 and #47** (S04, see `docs/BUILD-LOG.md`). Both cabinet doors open at 100%; the fridge opens too (#78, S07). Check with `python -m arrival sim --families open_door --episodes 4 --save-preview`.
+- **MAN-3: Mobile base.** Add an actuated base so `counter_to_counter` (about 2 m between pick point and target) is reachable, and add base joints to the state/action spec. **Done in #103** (L13, replaces #33 and #36): `--base mobile`, 11-float state and action; the fixed base stays the default.
+- **MAN-4: Grasp everything.** Bowl done: a hollow bowl and a rim grasp (see `docs/BUILD-LOG.md`). Cups, apples and bottles are picked by the body. Plates are picked by the rim and pans by the handle (#31). **Done in #11 and #31** (S05, S06).
+- **MAN-5: New tasks.** **Done in #11** (S05): close drawer, close door, put the mug away in a drawer, wipe the counter with the sponge (`python -m arrival sim --families close_drawer,close_door,put_in_drawer,wipe_counter`). Open fridge landed (#78). Oven, dishwasher (open, load, unload) and faucet families run on the any-wall chain (L24, #106, which replaces #27).
+- **MAN-6: Real Franka model** *(optional).* Swap in the MuJoCo Menagerie Panda (Apache-2.0) behind a flag, keeping tests offline. **Done in #107** (L25, replaces #25): `--arm menagerie`, meshes fetched by script.
 
 ### PPL: People & safety (2)
 
-- **PPL-1: Better humans.** Proportioned bodies with walking leg and arm swing, varied clothing colours and heights, and no clipping through counters.
+- **PPL-1: Better humans.** Proportioned bodies with walking leg and arm swing, varied clothing colours and heights, and no clipping through counters. **Done in #23 and #76** (S10).
 - **PPL-2: Interactions.** People who stop at the counter, open the fridge, and cross the robot's path. Add a safety metric (minimum robot–human distance) to the episode data, and drop episodes with contact. *Done: walkers pause at the counter, cross behind the base and open the fridge (#73); `arrival/sim/safety.py` records the distance, contact episodes are dropped, and the held fridge door is not counted as an arm contact.*
 
 ### POL: Policy, VLA & VLM (4)
 
-- **POL-1: VLM planner in the loop.** Done: `python -m arrival sim --planner vlm` runs `VLMPlanner` (Nemotron via Token Factory) inside `collect()`. Without a key it falls back to the rule parser. Responses cache in `out/cache/nemotron_cache.json`.
-- **POL-2: Instruction generation.** Done: `--instructions nemotron --split train|eval` draws varied wordings with a disjoint held-out set (`arrival/tasks/instructions.py`). The template path still keeps the wording and start-offset holdout from POL-4.
-- **POL-3: GR00T policy server.** Run GR00T N1.7 inference (H100 or L40S), connect `VLAClient` via `GR00T_POLICY_URL`, and run closed-loop episodes in the sim.
-- **POL-4: Closed-loop eval harness.** Score N episodes per task for any policy (success rate, time, collisions) in the scanned room. *Built: `python -m arrival eval` (`arrival/eval/harness.py`), see docs/07-eval.md. Arm-fixture contacts are counted. Still open: run it against a live GR00T server once POL-3 lands.*
+- **POL-1: VLM planner in the loop.** **Done in #3** (S15): `python -m arrival sim --planner vlm` runs `VLMPlanner` (Nemotron via Token Factory) inside `collect()`. Without a key it falls back to the rule parser. Responses cache in `out/cache/nemotron_cache.json`.
+- **POL-2: Instruction generation.** **Done in #3:** `--instructions nemotron --split train|eval` draws varied wordings with a disjoint held-out set (`arrival/tasks/instructions.py`). The template path still keeps the wording and start-offset holdout from POL-4.
+- **POL-3: GR00T policy server.** Run GR00T N1.7 inference (H100 or L40S), connect `VLAClient` via `GR00T_POLICY_URL`, and run closed-loop episodes in the sim. **Done** (G2, #83, #164): ran against real GR00T N1.7-3B on Oct 21 on one 96 GB GPU (`docs/ref/POL-3.md`).
+- **POL-4: Closed-loop eval harness.** Score N episodes per task for any policy (success rate, time, collisions) in the scanned room. **Done in #13 and #55** (S12): `python -m arrival eval` (`arrival/eval/harness.py`), see docs/07-eval.md. Arm-fixture contacts are counted. It scored the GR00T fine-tunes through the live server (G2).
 
 ### DAT: Data & training (3)
 
-- **DAT-1: GR00T modality config.** Write the config for our 7+1 embodiment, then confirm GR00T's real data loader reads `out/datasets/hero_kitchen_sim`.
-- **DAT-2: Fine-tune smoke test.** Run a 100-step GR00T N1.7 fine-tune on the sim dataset, then a full run. The command is in `docs/REFERENCE.md`.
-- **DAT-3: Evaluation.** Compare base GR00T, GR00T fine-tuned on generic RoboCasa data, and GR00T fine-tuned on our room. Use 50 episodes per cell on held-out poses and wordings, following the protocol in `docs/07-eval.md`.
-- **DAT-4: MimicGen / scale.** Generate thousands of physics demos per room from a few seeds, and track success and throughput. A native same-object SE(3) prototype now retargets recorded `counter_to_sink` rollouts with physics checks (`arrival/generate/se3_retarget.py`); upstream MimicGen integration and the 100-episode seed-set benchmark remain open (G7, issue #62).
+- **DAT-1: GR00T modality config.** Write the config for our 7+1 embodiment, then confirm GR00T's real data loader reads `out/datasets/hero_kitchen_sim`. **Done:** config in #38 (S14), real loader check in #165 (G1).
+- **DAT-2: Fine-tune smoke test.** Run a 100-step GR00T N1.7 fine-tune on the sim dataset, then a full run. The command is in `docs/REFERENCE.md`. **Done in #165** (G1): best fine-tune 39 of 48 against 26 of 48 for the clean-data baseline, small samples (`docs/07-eval.md`).
+- **DAT-3: Evaluation.** Compare base GR00T, GR00T fine-tuned on generic RoboCasa data, and GR00T fine-tuned on our room. Use 50 episodes per cell on held-out poses and wordings, following the protocol in `docs/07-eval.md`. **Open** (G3, G4): the base-GR00T and generic-RoboCasa cells have not run.
+- **DAT-4: MimicGen / scale.** Generate thousands of physics demos per room from a few seeds, and track success and throughput. **Partly done** (#89, #356): a native same-object SE(3) prototype now retargets recorded `counter_to_sink` rollouts with physics checks (`arrival/generate/se3_retarget.py`); upstream MimicGen integration and the 100-episode seed-set benchmark remain open (G7, issue #62).
 
 ### OPS: Nebius scale & backend (2)
 
-- **OPS-1: Upload worker.** Done locally: `python -m arrival work` turns a queued scan (RoomPlan export or `scan.json`) into a twin, a sim dataset and `out/jobs/<id>/dataset.zip`, with stage updates in `status.json` and `GET /jobs/<id>/download`. Several workers can share one queue (`claim.lock` and a heartbeat; a job whose worker died is requeued). A failed job is retried up to 2 times (`ARRIVAL_JOB_RETRIES` or `--retries`), but not for a bad upload, a request over a limit, a room the sim cannot use or a timeout; `status.json` counts `job_attempts` and keeps the earlier errors in `retry_errors`. A retry waits `ARRIVAL_JOB_RETRY_BACKOFF` seconds (default 5, doubling per attempt, capped at 300) before it can be claimed again. Left: running it on Nebius is OPS-2.
-- **OPS-2: Nebius fan-out.** Serverless Jobs (one shard of episodes per job) and Object Storage for datasets, with checkpoint and resume.
-- **OPS-3: Cost tracking.** Fill the `dollars` fields in the report from real Nebius usage per product.
+- **OPS-1: Upload worker.** **Done locally in #12 and #51** (S13): `python -m arrival work` turns a queued scan (RoomPlan export or `scan.json`) into a twin, a sim dataset and `out/jobs/<id>/dataset.zip`, with stage updates in `status.json` and `GET /jobs/<id>/download`. Several workers can share one queue (`claim.lock` and a heartbeat; a job whose worker died is requeued). A failed job is retried up to 2 times (`ARRIVAL_JOB_RETRIES` or `--retries`), but not for a bad upload, a request over a limit, a room the sim cannot use or a timeout; `status.json` counts `job_attempts` and keeps the earlier errors in `retry_errors`. A retry waits `ARRIVAL_JOB_RETRY_BACKOFF` seconds (default 5, doubling per attempt, capped at 300) before it can be claimed again. Left: running it on Nebius is OPS-2.
+- **OPS-2: Nebius fan-out.** Serverless Jobs (one shard of episodes per job) and Object Storage for datasets, with checkpoint and resume. **Partly done** (C1): `arrival fanout --backend nebius` is built, tested only against fakes of both APIs, never run on Nebius; not pursued for this submission.
+- **OPS-3: Cost tracking.** Fill the `dollars` fields in the report from real Nebius usage per product. **Partly done** (C3): the local time and cost report (#85) and `arrival cost` against the P3 teleop baseline (#127); dollar figures from real usage are open.
 
 ### DEM: Demo, web & QA (1 + everyone)
 
-- **DEM-1: Hosted page.** Deploy the web app, with a 3D or video viewer for each room and its dataset.
-- **DEM-2: Pitch video.** Re-render `scripts/make_demo_video.py` once SIM-1 and MAN-1 land, and add real scan footage from CAP.
-- **DEM-3: Release QA.** Before each demo, run a fresh-clone install, the full test suite, `sim` + `validate`, and check every README claim. Update the status table.
+- **DEM-1: Hosted page.** Deploy the web app, with a 3D or video viewer for each room and its dataset. **Partly done** (C2): the static demo site is live at https://arrival.exealabs.org (L23, #102, #195); the hosted upload demo is not.
+- **DEM-2: Pitch video.** Re-render `scripts/make_demo_video.py` once SIM-1 and MAN-1 land, and add real scan footage from CAP. **Partly done** (P4): the demo video was refreshed in #50, but `site/motion/pitch.mp4` is 24.4 s; the public YouTube video of at least a minute is open.
+- **DEM-3: Release QA.** Before each demo, run a fresh-clone install, the full test suite, `sim` + `validate`, and check every README claim. Update the status table. **Ongoing:** release QA in #29, claim checker `scripts/check_docs.py` (S21).
 
 ### Pull requests
 
-Status of this branch (`integrate`), Oct 19 2026. **Done:** CAP-1, CAP-4, TWN-2, TWN-3, TWN-6, SIM-1, SIM-2, SIM-3, SIM-4, MAN-1, MAN-2, MAN-4 (bowl, cup, apple, bottle, plates and pans), MAN-5 (close drawer/door, put in drawer, wipe, open fridge), PPL-1, PPL-2, POL-1, POL-2, POL-4 (harness; not yet run on a live GR00T), DAT-1 (config; not yet loaded by GR00T), OPS-1 (local). **Partial:** CAP-2 (format open), CAP-5 (licenses unchecked), TWN-4, DEM-1 (local page only), DEM-2, DEM-3, MAN-5 (dishwasher and faucet tasks landed later in #106). **Open:** CAP-3, TWN-1, TWN-5, SIM-5, SIM-6, MAN-3, MAN-6, POL-3, DAT-2, DAT-3, DAT-4, OPS-2, OPS-3. **Still needed for the hackathon:** GR00T fine-tune, the POL-3 policy server, and real scans (CAP-3).
-
-**Merged into `main`:** #1 MVP handoff · #2 SIM-1, MAN-1 · #3 POL-1, POL-2 · #4 MAN-2 · #5 TWN-6 · #9 DEM-3 PyAV fix · #10 TWN-2, TWN-3 · #11 MAN-5, MAN-4 · #12 OPS-1 · #13 POL-4, PPL-2 · #19 SIM-3, SIM-4 · #21 SIM-2 · #23 PPL-1 · #29 DEM-3 release QA · #31 MAN-4 plates and pans · #35 TAV-1 · #38 DAT-1 · #43 CAP-1 · #44 CAP-4 · #47 MAN-2 collision boxes · #50 DEM-2 · #51 OPS-1 atomic status · #52 validator · #55 POL-4 arm contacts · #71 MAN-1 wrist camera · #73 PPL-2 fridge walker · #76 PPL-1 walker stops · #78 MAN-5 open fridge.
-
-**Open, need a rebase onto `main` (they conflict in `collect.py`, `scene.py` or `people.py`):**
-
-| PR | Task | What it adds |
-|---|---|---|
-| #77 | SIM | Fixtures on any wall, tasks on scanned cabinets (includes #75 and #49); conflicts with the new walker code |
-| #57 | SIM-5 | A scanned office becomes a workable room |
-| #33 | MAN-3 | Mobile base behind `--base mobile` |
-| #36 | MAN-3 | Competing mobile base; pick one of #33 and #36 |
-| #27 | MAN-5 | Oven, dishwasher and faucet tasks |
-| #25 | MAN-6 | Menagerie Panda behind `--arm menagerie` |
-
-Closed without merging: #45, #46, #48, #53.
+The PRs that were waiting on a rebase on Oct 19 are all resolved: #77 (with #49 and #75) landed through #99 (L1), #57 through #105 (L9), #33 and #36 through #103 (L13), #27 through #106 (L24) and #25 through #107 (L25). GitHub shows #49, #75, #77 and #57 as merged and #33, #36, #27 and #25 as closed; #45, #46, #48 and #53 were closed without merging. Which PRs closed which to-do is in the [To-do](#to-do) list; who wrote them is in [docs/CONTRIBUTORS.md](docs/CONTRIBUTORS.md).
 
 ### Everyone: definition of done for a PR
 
