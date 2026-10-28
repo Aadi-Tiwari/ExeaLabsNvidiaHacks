@@ -65,11 +65,13 @@
      "owner_kind": "laptop",
      "pr": [
       4,
-      47
+      47,
+      338
      ],
      "authors": [
       "Aadi-Tiwari",
-      "aarochu"
+      "aarochu",
+      "vrun-systems26"
      ]
     },
     {
@@ -102,10 +104,13 @@
      "status": "done",
      "owner_kind": "laptop",
      "pr": [
-      78
+      78,
+      298,
+      342
      ],
      "authors": [
-      "Aadi-Tiwari"
+      "Aadi-Tiwari",
+      "vrun-systems26"
      ]
     },
     {
@@ -261,10 +266,12 @@
       87,
       90,
       92,
-      88
+      88,
+      393
      ],
      "authors": [
-      "AvnehSBhatia"
+      "AvnehSBhatia",
+      "vrun-systems26"
      ]
     },
     {
@@ -905,10 +912,12 @@
      "issue": 63,
      "note": "GR00T N1.7-3B fine-tuned on one 96 GB GPU and scored in the sim on identical trials. Best 39 of 48 (81%) against 26 of 48 for the clean-data baseline (paired sign test p = 0.007): clean data plus DART demos with the marginal drawer pulls removed. Self-reported in #165 and #63; small samples, and the base-GR00T and generic-RoboCasa cells (G3, G4) are not run, so `usefulness` stays null. Weights: https://huggingface.co/Ish1105/arrival-gr00t-n17-run4 (NVIDIA Open Model License, not the repo's Apache 2.0). The same card reports clean plus unfiltered DART at 22 of 48. The fine-tunes ran on one 96 GB GPU on Cosmos, not on Nebius.",
      "pr": [
-      165
+      165,
+      383
      ],
      "authors": [
-      "IshaanM05"
+      "IshaanM05",
+      "vrun-systems26"
      ]
     },
     {

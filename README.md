@@ -199,10 +199,10 @@ Merged PRs, grouped by what they do.
 | S01 | Sample kitchen tiles the wall with no overlapping fixtures | #5 | @Aadi-Tiwari |
 | S02 | Scan regression suite and full RoomPlan coverage, two real public exports | #10 | @Aadi-Tiwari |
 | S03 | Kitchen and Panda arm visuals; wrist camera framing and joint 7 off its stop | #2, #71 | @wwpatel, @Aadi-Tiwari |
-| S04 | Open drawer and open door, with collision boxes that match the drawn fronts | #4, #47 | @Aadi-Tiwari, @aarochu |
+| S04 | Open drawer and open door, with collision boxes that match the drawn fronts | #4, #47, #338 | @Aadi-Tiwari, @aarochu, @vrun-systems26 |
 | S05 | Close drawer, close door, put mug in drawer, wipe counter; a bowl the gripper can hold | #11 | @Aadi-Tiwari |
 | S06 | Plates by the rim and pans by the handle | #31 | @Aadi-Tiwari |
-| S07 | The arm opens the fridge: pull by the bar, push the inside face | #78 | @Aadi-Tiwari |
+| S07 | The arm opens the fridge: pull by the bar, push the inside face | #78, #298, #342 | @Aadi-Tiwari, @vrun-systems26 |
 | S08 | Oven, dishwasher, microwave and wall-cabinet doors, faucet lever, nine more objects | #19 | @Aadi-Tiwari |
 | S09 | Key, fill and window lights, tile, wood and stone materials | #21 | @Aadi-Tiwari |
 | S10 | Walking people: proportioned bodies, a gait, slow stops at the counter | #23, #76 | @Aadi-Tiwari |
@@ -214,7 +214,7 @@ Merged PRs, grouped by what they do.
 | S16 | iOS RoomPlan capture app and field scanning protocol | #43, #44 | @JmarbinGG, @aarochu |
 | S17 | CI workflow, Makefile and CPU Dockerfile; one-command demo pipeline | #82, #86 | @AvnehSBhatia |
 | S18 | Offline GR00T policy-server contract (mock server, shim, VLAClient fix) and loader conformance check | #83, #84 | @AvnehSBhatia |
-| S19 | Scan intake, RGB-D frame format, tape-measure accuracy harness, realism metrics | #87, #90, #92, #88 | @AvnehSBhatia |
+| S19 | Scan intake, RGB-D frame format, tape-measure accuracy harness, realism metrics | #87, #90, #92, #88, #393 | @AvnehSBhatia, @vrun-systems26 |
 | S20 | Time and cost report, seed-replay retargeting, appearance-variation stage with honest labels | #85, #89, #93 | @AvnehSBhatia |
 | S21 | Docs and README claim checker, release QA, PyAV fix, refreshed demo video | #91, #29, #9, #50 | @AvnehSBhatia, @Aadi-Tiwari, @IshaanM05, @aarochu |
 | S22 | Integration of 16 PRs and the sprint PRs #82-#93, plus the to-do docs | #80, #94, #1, #81, #95 | @AvnehSBhatia |
@@ -282,7 +282,7 @@ A GPU host with 40 GB or more, or a Linux box.
 
 | id | what | size | priority | status | PRs or issue | who |
 |---|---|---|---|---|---|---|
-| G1 | Real GR00T loader check and fine-tune on hero_kitchen_sim GR00T N1.7-3B fine-tuned on one 96 GB GPU and scored in the sim on identical trials. Best 39 of 48 (81%) against 26 of 48 for the clean-data baseline (paired sign test p = 0.007): clean data plus DART demos with the marginal drawer pulls removed. Self-reported in #165 and #63; small samples, and the base-GR00T and generic-RoboCasa cells (G3, G4) are not run, so `usefulness` stays null. Weights: https://huggingface.co/Ish1105/arrival-gr00t-n17-run4 (NVIDIA Open Model License, not the repo's Apache 2.0). The same card reports clean plus unfiltered DART at 22 of 48. The fine-tunes ran on one 96 GB GPU on Cosmos, not on Nebius. | M | must | Shipped | #165 | @IshaanM05 |
+| G1 | Real GR00T loader check and fine-tune on hero_kitchen_sim GR00T N1.7-3B fine-tuned on one 96 GB GPU and scored in the sim on identical trials. Best 39 of 48 (81%) against 26 of 48 for the clean-data baseline (paired sign test p = 0.007): clean data plus DART demos with the marginal drawer pulls removed. Self-reported in #165 and #63; small samples, and the base-GR00T and generic-RoboCasa cells (G3, G4) are not run, so `usefulness` stays null. Weights: https://huggingface.co/Ish1105/arrival-gr00t-n17-run4 (NVIDIA Open Model License, not the repo's Apache 2.0). The same card reports clean plus unfiltered DART at 22 of 48. The fine-tunes ran on one 96 GB GPU on Cosmos, not on Nebius. | M | must | Shipped | #165, #383 | @IshaanM05, @vrun-systems26 |
 | G2 | Real GR00T policy server: chunking, both camera keys, golden-file test Ran against real GR00T on Oct 21 (Isaac-GR00T dac54b3, N1.7-3B, one 96 GB GPU): /act returns 16-step action chunks for a request with both camera keys, and eval --policy vla scored the fine-tunes through it (docs/ref/POL-3.md). The wire-format golden test and the 8-float and 11-float schemas are done. | M | must | Shipped | #83, #164 | @AvnehSBhatia, Claude Code |
 | G3 | Three-cell held-out eval, 50 episodes per cell, Wilson intervals | L | must | Blocked | issue #64 | unassigned |
 | G4 | Generic-RoboCasa baseline dataset and fine-tune | M | must | Blocked | issue #64 | unassigned |
