@@ -61,14 +61,14 @@ final class FrameBundleWriter {
     /// optical axis, row-major `depthWidth` x `depthHeight` (0 or non-finite = no reading); `confidence` is the
     /// ARKit confidence level per depth pixel (0 low, 1 medium, 2 high), or nil. `cameraToWorld` is a
     /// row-major 4x4. Returns false, writing nothing, for a frame the loader would reject: a timestamp that does
-    /// not increase, or a non-finite pose or intrinsic.
+    /// not increase, a non-finite pose or intrinsic, or a nonpositive focal length.
     @discardableResult
     func add(timestamp: Double, rgbJPEG: Data, rgbWidth: Int, rgbHeight: Int,
              depth: [Float], depthWidth: Int, depthHeight: Int, confidence: [UInt8]?,
              intrinsics k: Intrinsics, cameraToWorld: [Double]) throws -> Bool {
         // JSONSerialization raises on NaN, and the loader rejects non-finite poses anyway
         guard timestamp > lastTimestamp, timestamp.isFinite, cameraToWorld.count == 16, cameraToWorld.allSatisfy(\.isFinite),
-              [k.fx, k.fy, k.cx, k.cy].allSatisfy(\.isFinite) else { return false }
+              [k.fx, k.fy, k.cx, k.cy].allSatisfy(\.isFinite), k.fx > 0, k.fy > 0 else { return false }
         if let s = rgbSize, s != (rgbWidth, rgbHeight) { throw BundleError.sizeChanged("RGB") }
         if let s = depthSize, s != (depthWidth, depthHeight) { throw BundleError.sizeChanged("depth") }
         guard depth.count == depthWidth * depthHeight else { throw BundleError.badDepth(depth.count, depthWidth, depthHeight) }
