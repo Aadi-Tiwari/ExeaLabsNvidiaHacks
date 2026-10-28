@@ -100,6 +100,33 @@ def test_zero_successes_is_a_failed_sim_with_counts(tmp_path, monkeypatch):
     assert statuses(row)["episodes"] == "not_run"
 
 
+@pytest.mark.parametrize("raises", [False, True])
+def test_failed_validation_skips_per_episode_checks(tmp_path, monkeypatch, raises):
+    import arrival.export.quality as quality
+    import arrival.export.validate as validator
+    import arrival.sim.collect as collect
+
+    ds = tmp_path / "dataset"
+    (ds / "meta").mkdir(parents=True)
+    (ds / "meta/info.json").write_text('{"arrival_physically_valid": true}')
+    rep = {"attempts": 1, "successes": 1, "human_contacts": 0}
+    monkeypatch.setattr(collect, "collect", lambda *a, **k: {"report_data": rep, "dataset": ds})
+
+    def invalid(*a):
+        if raises:
+            raise ValueError("broken dataset")
+        return ["missing video"]
+
+    monkeypatch.setattr(validator, "validate", invalid)
+    monkeypatch.setattr(quality, "check_episodes", lambda *a: pytest.fail("checked an invalid dataset"))
+    row = summary.run_room("hero_kitchen", tmp_path, SCANS, families=FAMS)
+    assert statuses(row)["validate"] == "failed"
+    assert statuses(row)["episodes"] == "not_run"
+    assert row["stages"]["episodes"]["detail"] == "validate failed"
+    assert row["dataset"] == str(ds)
+    assert ("broken dataset" if raises else "missing video") in row["stages"]["validate"]["detail"]
+
+
 def test_real_hero_kitchen_row_end_to_end(tmp_path):
     pytest.importorskip("mujoco")
     row = summary.run_room("hero_kitchen", tmp_path, SCANS, episodes=1, res=64, people=0, families=FAMS)
