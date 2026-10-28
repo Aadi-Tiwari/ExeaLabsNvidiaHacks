@@ -24,9 +24,11 @@ from arrival.twin.compile import compile_twin  # noqa: E402
 
 def load_scan(d: Path) -> dict:
     """scans/<room>/scan.json, or the roomplan.json that scripts/intake_scan.py lands a new scan with."""
-    if (d / "scan.json").is_file() or not (d / "roomplan.json").is_file():
+    if (d / "scan.json").is_file():
         return bundle.load_room(d.name, d.parent)
-    return roomplan.load(d / "roomplan.json", d.name)
+    if (d / "roomplan.json").is_file():
+        return roomplan.load(d / "roomplan.json", d.name)
+    raise FileNotFoundError(f"no scan.json or roomplan.json in {d}, so there is no twin to measure")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -46,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
         measured += 1
         try:
             res = compare(compile_twin(load_scan(d)), load_measurements(mfile))
-        except (MeasurementError, ValueError, KeyError) as e:
+        except (MeasurementError, ValueError, KeyError, OSError) as e:  # one bad room must not stop the others
             print(f"{d.name}: ERROR {e}")
             failed += 1
             continue
