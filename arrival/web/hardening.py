@@ -27,9 +27,14 @@ KEY_VALUE = re.compile(r"(?i)\b([A-Za-z0-9_]*(?:api[_-]?key|token|secret|passwor
 def safe_filename(name: str | None, default: str = "upload.bin", max_len: int = 80) -> str:
     """A display and bookkeeping name from a client-supplied one: no directories (either slash), no control
     characters, only ``A-Za-z0-9._() -``, no leading dots, at most ``max_len`` characters with the extension kept.
-    The name is never used to build a path (the upload is always stored as ``upload.bin``)."""
+    A name with no letter or digit left before its extension (``Кухня.json``, ``厨房.json``) keeps the extension on
+    the default's stem (``upload.json``). The name is never used to build a path (the upload is always stored as
+    ``upload.bin``)."""
     text = unicodedata.normalize("NFKC", name or "").replace("\\", "/").split("/")[-1]
     text = FILENAME_KEEP.sub("_", "".join(c for c in text if c.isprintable()))
+    stem, dot, ext = text.rpartition(".")
+    if dot and re.fullmatch(r"[A-Za-z0-9]{1,8}", ext) and not re.search(r"[A-Za-z0-9]", stem):
+        return f"{default.partition('.')[0]}.{ext}"  # the strip below would leave only "json", which has no extension
     text = re.sub(r"_{2,}", "_", text).strip(" ._") if text.strip(" .") else ""
     if not text or not re.search(r"[A-Za-z0-9]", text):
         return default

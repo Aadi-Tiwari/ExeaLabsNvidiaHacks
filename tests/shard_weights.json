@@ -124,5 +124,6 @@
  "tests/test_vlm_planner.py": 6.4,
  "tests/test_web.py": 5.3,
  "tests/test_web_room_placeholder_box.py": 0.4,
+ "tests/test_web_non_latin_filename.py": 0.3,
  "tests/test_worker.py": 12.5
 }
