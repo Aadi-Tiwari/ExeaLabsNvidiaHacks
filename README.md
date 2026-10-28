@@ -20,17 +20,17 @@ Pull requests opened against this repository, by author (merged, or consolidated
 
 | who | pull requests | some of what they did |
 |---|---|---|
-| @Aadi-Tiwari | 114 | Open doors: tilted grasp, clearance path, via-point pull; Sample kitchen: fridge, counters and stove tile the wall wit; Scan regression suite and full RoomPlan coverage |
+| @Aadi-Tiwari | 115 | Open doors: tilted grasp, clearance path, via-point pull; Sample kitchen: fridge, counters and stove tile the wall wit; Scan regression suite and full RoomPlan coverage |
 | @aarochu | 96 | CAP-4: Add field scanning protocol; DEM-3: Refresh release status and setup guidance; TWN: Avoid duplicate counters over scanned base cabinets |
 | @AvnehSBhatia (repo owner, with Claude Code) | 40 | Add tonight's MVP handoff; Integrate 16 open PRs, 40+ bug fixes, new web page, refreshe; Before the deadline: blocked items, laptop sprint, known bug |
-| @vrun-systems26 | 33 | SIM: open_fridge push follows the fixture's yaw (side-wall f; SIM: real kitchen cabinet doors work in a blind corner and o; TWN: hinge a fridge on the side with less room in front (rot |
-| @Anandb71 | 32 | close_door, open_oven: keep every arm joint off its stops; Draw RoomPlan doors, windows and openings in the sim as visu; Upload worker: retry a failed job a bounded number of times |
-| @rishith-c | 27 | CAP-2: Preserve complete frame archives when ZIP creation fa; CAP-1: Reject unsupported capture server URL schemes; CAP-1: Match iOS capture UI to Arrival and protect saved sur |
-| @amanx98 | 14 | [POL-2] Wire Nemotron VLMPlanner into sim colle…; Implement Tavily AI Research Agent for appliance manuals and; Mobile Manipulator Base & 100% Physics-Checked Counter-to-Co |
+| @Anandb71 | 39 | close_door, open_oven: keep every arm joint off its stops; Draw RoomPlan doors, windows and openings in the sim as visu; Upload worker: retry a failed job a bounded number of times |
+| @rishith-c | 37 | CAP-2: Preserve complete frame archives when ZIP creation fa; CAP-1: Reject unsupported capture server URL schemes; CAP-1: Match iOS capture UI to Arrival and protect saved sur |
+| @vrun-systems26 | 37 | SIM: open_fridge push follows the fixture's yaw (side-wall f; SIM: real kitchen cabinet doors work in a blind corner and o; TWN: hinge a fridge on the side with less room in front (rot |
+| @amanx98 | 15 | [POL-2] Wire Nemotron VLMPlanner into sim colle…; Implement Tavily AI Research Agent for appliance manuals and; Mobile Manipulator Base & 100% Physics-Checked Counter-to-Co |
 | @AKSHAJ-SHELL | 14 | Cabinet fronts collide where they are drawn; arm clipping te; Count arm-fixture contacts in eval; A scanned office becomes a room the arm can work in |
 | @JmarbinGG | 9 | iOS RoomPlan capture app: scan, share, upload to /jobs; Timed keyboard teleop baseline for the cost comparison; Single config loader, .env.example and secret redaction |
 | @IshaanM05 | 6 | DEM-3: pin video writer to the FFMPEG backend; DAT-1: GR00T N1.7 modality config for the sim Panda; POL-3: gr00t_shim run against real GR00T, plus GPU run notes |
-| @man-coding-j | 3 | Include arm-link bodies in walker safety yield under --base ; Object-centric SE(3) trajectory retargeting for counter_to_s; TWN-3: Draw visual door leaf and knob for open RoomPlan door |
+| @man-coding-j | 5 | Include arm-link bodies in walker safety yield under --base ; Object-centric SE(3) trajectory retargeting for counter_to_s; TWN-3: Draw visual door leaf and knob for open RoomPlan door |
 | @raunak2007 | 2 | Planner benchmark v2: more inventories, blind requests, reje; Planner prompt lists the room's families, not 9 of 15: unlis |
 | @wwpatel | 1 | SIM-1, MAN-1: kitchen and Panda arm visuals |
 | @rishith-c (fork branch) | 0 | Synchronized ego, wrist and exocentric capture, side-by-side preview, optional t |
