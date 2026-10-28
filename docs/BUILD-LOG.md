@@ -24,6 +24,8 @@ Deviations from the contract, one paragraph each.
 
 **Upload hardening.** `POST /jobs` streams the body to a temp file in 1 MB chunks, then finds the `scan` part by boundary scanning over an mmap (no `email` parser, no full in-memory copy). A body shorter than `Content-Length`, a missing closing boundary, an empty file, or no filename returns 400. The handler has a 30 s socket timeout. The room page links `out/datasets/<room>_sim` when it exists and shows its `arrival_generator`, `arrival_physically_valid`, `total_episodes` and families (`arrival_families` or `families`).
 
+**WEB: accept reordered multipart disposition parameters.** The upload parser searched for `name="..."` without a parameter boundary, so when `filename` came first it read the suffix of `filename` as the form-field name and rejected a valid scan. The name pattern now requires the start of a parameter, retaining case-insensitive matching and optional whitespace after a semicolon. Two real HTTP regressions put filename before name, including an uppercase parameter without a separating space; both returned HTTP 400 before the fix and now queue the exact original upload bytes. No website markup or styling changed.
+
 **`.env` for Token Factory.** `arrival.models.token_factory.config()` reads `.env` from the cwd or repo root with a small stdlib parser, only when `TOKEN_FACTORY_API_KEY` is unset, and never overrides set variables. Nothing else loads `.env`.
 
 **Scope change: MuJoCo allowed.** The project lead overrode docs/01-decisions.md: MuJoCo is now an optional `sim` extra and the scope includes simulation with drawers, doors and moving people (`arrival/sim/`, built separately). README documents it and lists the remaining gaps.

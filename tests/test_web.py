@@ -1020,3 +1020,23 @@ def test_npz_depth_disguised_as_npy_is_rejected(make, tmp_path):
     status, data, _ = _post(srv, [("scan", "hero.json", HERO_SCAN), ("frames", "frames.zip", blob)])
     assert status == 422 and data["code"] == "bad_depth" and data["field"] == "frames", data
     assert not list((out / "jobs").glob("*/status.json"))
+@pytest.mark.parametrize("disposition", [
+    'form-data; filename="scan.json"; name="scan"',
+    'form-data; filename="scan.json";NAME="scan"',
+])
+def test_upload_accepts_filename_before_field_name(server, disposition):
+    srv, out = server
+    boundary = "arrival-parameter-order"
+    payload = b'{"room_id":"uploaded"}'
+    body = (f"--{boundary}\r\nContent-Disposition: {disposition}\r\n"
+            "Content-Type: application/json\r\n\r\n").encode() + payload + f"\r\n--{boundary}--\r\n".encode()
+    conn = http.client.HTTPConnection("127.0.0.1", srv.server_address[1], timeout=10)
+    try:
+        conn.request("POST", "/jobs", body=body,
+                     headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+        response = conn.getresponse()
+        data = json.loads(response.read())
+        assert response.status == 202, data
+        assert (out / "jobs" / data["id"] / "upload.bin").read_bytes() == payload
+    finally:
+        conn.close()
