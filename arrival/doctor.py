@@ -97,8 +97,25 @@ def check_mujoco() -> Check:
     except ImportError:
         return Check("mujoco", "warn", "not installed; sim, eval and work need it: pip install -e '.[sim]' (demo and serve do not)")
     except Exception as e:  # noqa: BLE001 - a broken native library raises more than ImportError
-        return Check("mujoco", "fail", f"installed but does not import: {type(e).__name__}")
+        err = f"{type(e).__name__}: {e}" if str(e) else type(e).__name__
+        return Check("mujoco", "fail", f"installed but does not import: {err}")
     return Check("mujoco", "ok", getattr(mujoco, "__version__", _version("mujoco")))
+
+
+def _gl_hint(platform_name: str = sys.platform, gl: str | None = None) -> str:
+    """Return platform-aware configuration guidance for MuJoCo off-screen rendering."""
+    if platform_name == "win32":
+        candidates = ("glfw", "wgl")
+    elif platform_name == "darwin":
+        candidates = ("glfw", "cgl")
+    else:
+        candidates = ("egl", "osmesa")
+    if not gl:
+        return f"set MUJOCO_GL={' or '.join(candidates)}"
+    alts = [c for c in candidates if c != gl.strip().lower()]
+    if alts:
+        return f"MUJOCO_GL={gl} failed; try {' or '.join(alts)}"
+    return f"MUJOCO_GL={gl} failed; try unsetting MUJOCO_GL"
 
 
 def check_rendering() -> Check:
@@ -113,7 +130,8 @@ def check_rendering() -> Check:
     except ImportError:
         return Check("rendering", "info", "skipped (mujoco not installed)")
     except Exception as e:  # noqa: BLE001 - broken native library
-        return Check("rendering", "warn", f"skipped (mujoco import failed: {type(e).__name__})")
+        err = f"{type(e).__name__}: {e}" if str(e) else type(e).__name__
+        return Check("rendering", "warn", f"skipped (mujoco import failed: {err})")
 
     r = None
     try:
@@ -126,7 +144,7 @@ def check_rendering() -> Check:
         return Check("rendering", "ok", f"functional off-screen ({px.shape[0]}x{px.shape[1]}, backend: {backend})")
     except Exception as e:  # noqa: BLE001 - offscreen GL failure
         gl = os.environ.get("MUJOCO_GL")
-        hint = "set MUJOCO_GL=egl or osmesa" if not gl else f"MUJOCO_GL={gl} failed; try egl or osmesa"
+        hint = _gl_hint(sys.platform, gl)
         return Check("rendering", "warn", f"off-screen context failed ({type(e).__name__}: {e}); {hint}")
     finally:
         if r is not None:
