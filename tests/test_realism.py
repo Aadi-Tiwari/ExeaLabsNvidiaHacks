@@ -134,3 +134,20 @@ def test_side_by_side_png(tmp_path, ref):
     from PIL import Image
 
     assert Image.open(p).size == (SIZE[1] * 4, SIZE[0])
+
+
+@pytest.mark.parametrize("axis", [0, 1, 2])
+@pytest.mark.parametrize("direction", [-1, 1])
+@pytest.mark.parametrize("up_sign", [-1, 1])
+def test_look_at_parallel_up_produces_valid_pose(axis, direction, up_sign):
+    eye = np.array([1.0, 2.0, 3.0])
+    forward = np.eye(3)[axis] * direction
+    with np.errstate(divide="raise", invalid="raise"):
+        pose = look_at(eye, eye + forward, up=forward * up_sign)
+    assert np.isfinite(pose).all()
+    rotation = pose[:3, :3]
+    np.testing.assert_allclose(rotation.T @ rotation, np.eye(3), atol=1e-12)
+    assert np.linalg.det(rotation) == pytest.approx(1.0)
+    np.testing.assert_allclose(rotation[:, 2], forward)
+    np.testing.assert_allclose(pose[:3, 3], eye)
+    np.testing.assert_array_equal(pose[3], [0, 0, 0, 1])
