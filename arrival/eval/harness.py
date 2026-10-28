@@ -152,8 +152,9 @@ def table(report: dict) -> str:
     rate = "-" if t["success_rate"] is None else f"{t['success_rate']:.3f}"
     human = "-" if t["human_contacts"] is None else str(t["human_contacts"])
     arm = "-" if t["arm_contact_episodes"] is None else str(t["arm_contact_episodes"])
+    # blanks for the sim_s and wall_s columns (2 + 7 + 8), then for min_d_m and ik_err (9 + 8), as in the rows above
     lines.append(f"{'total':<20}{t['episodes']:>4}{t['successes']:>6}{rate:>7}  [{lo:.3f}, {hi:.3f}]"
-                 f"{'':>24}{human:>9}{'':>17}{arm:>9}")
+                 f"{'':>17}{human:>9}{'':>17}{arm:>9}")
     if t["errors"]:
         lines.append("Safety and sim time cover only observed episodes (obs); errors count as failures.")
     return "\n".join(lines)
