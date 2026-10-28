@@ -169,3 +169,11 @@ def test_paired_preview_png_preserves_matching_frame_pixels(tmp_path):
     np.testing.assert_array_equal(pair[32:, :32], ego[1])
     np.testing.assert_array_equal(pair[32:, 32:], exo[1])
     np.testing.assert_array_equal(ego[1, 0, 0], [160, 0, 0])
+
+
+def test_overview_preview_keeps_its_480x360_size(paired):
+    """`sim --save-preview` used to resize the 480x360 overview to 480x368 and print an imageio WARNING."""
+    _, root, _ = paired
+    with imageio.get_reader(root / "previews/hero_kitchen_sim_overview.mp4") as reader:
+        frame = reader.get_data(0)
+    assert frame.shape == (360, 480, 3)

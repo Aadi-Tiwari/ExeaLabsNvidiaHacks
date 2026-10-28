@@ -140,3 +140,10 @@ def test_site_todo_names_only_open_items(tmp_path):
         "site/js/sections.js:2: DAT-3 is not an item in site/data/todo.json"]
     js.write_text("    `<b>Server (G2).</b> Not run.`,\n    `<b>Scans (P1, G2).</b> Not run.`,\n", encoding="utf-8")
     assert check_docs.check_site_todo(tmp_path) == []
+
+
+def test_readme_quick_start_opens_previews_on_windows_too():
+    """README says the quick start runs as is on Windows, where `open` is not a command (PowerShell or cmd)."""
+    lines = [line for line in (REPO / "README.md").read_text(encoding="utf-8").splitlines()
+             if line.startswith("open ")]
+    assert lines and all("start " in line and "xdg-open" in line for line in lines)

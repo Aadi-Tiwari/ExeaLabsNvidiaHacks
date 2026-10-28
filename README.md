@@ -68,7 +68,7 @@ Run the simulation and look at what it recorded:
 ```bash
 python -m arrival sim --episodes 8 --people 2 --save-preview
 python -m arrival validate out/datasets/hero_kitchen_sim
-open out/previews/                        # contact sheet + overview video
+open out/previews/                        # contact sheet + overview video (Windows: start out\previews, Linux: xdg-open)
 ```
 
 Then browse it in the local page:

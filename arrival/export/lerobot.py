@@ -112,12 +112,14 @@ def video_info(h: int, w: int, c: int, fps: int) -> dict:
             "video.fps": fps, "video.channels": c, "video.is_depth_map": False, "has_audio": False}
 
 
-def write_video(path: Path, frames: np.ndarray, fps: int) -> None:
+def write_video(path: Path, frames: np.ndarray, fps: int, macro_block_size: int = 16) -> None:
+    """macro_block_size: imageio resizes a side that is not a multiple of it. Dataset videos keep 16 (check_video_size
+    guards them); a human preview may pass 2, the least yuv420p needs, so it keeps its own size."""
     import imageio.v2 as imageio
 
     path.parent.mkdir(parents=True, exist_ok=True)
     with imageio.get_writer(str(path), fps=fps, format="FFMPEG", codec="libx264", pixelformat="yuv420p",
-                            macro_block_size=16, ffmpeg_log_level="error") as w:
+                            macro_block_size=macro_block_size, ffmpeg_log_level="error") as w:
         for f in frames:
             w.append_data(f)
 
