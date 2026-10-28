@@ -1,0 +1,23 @@
+{
+ "fridge_93": {
+  "frames": 93,
+  "kept": 93,
+  "edge_corr_median": 0.767,
+  "edge_corr_min": 0.737,
+  "edge_corr_max": 0.789
+ },
+ "counter_to_sink_93": {
+  "frames": 93,
+  "kept": 93,
+  "edge_corr_median": 0.808,
+  "edge_corr_min": 0.773,
+  "edge_corr_max": 0.825
+ },
+ "open_drawer_93": {
+  "frames": 93,
+  "kept": 93,
+  "edge_corr_median": 0.811,
+  "edge_corr_min": 0.767,
+  "edge_corr_max": 0.824
+ }
+}
