@@ -270,10 +270,55 @@ def _bad(kind: str, item: dict, i: int, why: str):
     raise ScanBundleError(f"{kind} {i} ({item.get('identifier')!r}): {why}")
 
 
+def _wall_polygon(w: dict, i: int) -> dict:
+    """Fill/refine wall dimensions from local X (span), Y (height) bounds, without mutating input.
+
+    Local Z is the surface normal, not height. Keep valid larger dimensions; matching centred polygons leave
+    dimensions/transforms byte-for-byte alone. Recenter asymmetric bounds through the column-major transform.
+    """
+    corners = w.get("polygonCorners")
+    if corners is None or corners == []:
+        return w
+    if not isinstance(corners, list):
+        _bad("wall", w, i, "polygonCorners must be a list of finite local [x, y] or [x, y, z] points")
+    points = []
+    for k, corner in enumerate(corners):
+        if isinstance(corner, dict):
+            corner = [corner.get("x"), corner.get("y"), corner.get("z", 0.0)]
+        try:
+            point = numbers(corner)
+        except OverflowError:
+            point = None
+        if point is None or len(point) not in (2, 3):
+            _bad("wall", w, i, f"polygonCorners point {k} must have finite numeric x, y and optional z coordinates")
+        points.append(point)
+    if len(points) < 2:
+        return w
+    dim = numbers(w.get("dimensions"), 3) if w.get("dimensions") not in (None, []) else [0.0, 0.0, 0.0]
+    m = numbers(w.get("transform"), 16)
+    if dim is None or m is None:
+        return w  # the existing item checks name malformed dimensions/transforms
+    offsets, changed = [0.0, 0.0], False
+    for axis in (0, 1):
+        lo, hi = min(p[axis] for p in points), max(p[axis] for p in points)
+        span, centre = hi - lo, (hi + lo) / 2
+        matching = math.isclose(span, dim[axis], rel_tol=1e-9, abs_tol=1e-9)
+        if span > 0 and (dim[axis] <= 0 or (span > dim[axis] and not matching)):
+            dim[axis], offsets[axis], changed = span, centre, True
+        elif span > 0 and matching and not math.isclose(centre, 0.0, abs_tol=1e-9):
+            offsets[axis], changed = centre, True
+    if not changed:
+        return w
+    for row in range(3):
+        m[12 + row] += m[row] * offsets[0] + m[4 + row] * offsets[1]
+    return {**w, "dimensions": dim, "transform": m}
+
+
 def _clean(roomplan) -> dict:
     """Refuse an export the normalizer cannot read, with the offending item named. Returns the export with every
     list present (a missing or null list is empty). Checks only what the code below indexes or divides by:
-    a 16-number finite transform, finite dimensions, a floor polygon of [x, y, z] points, an integer story."""
+    a 16-number finite transform, finite dimensions, finite surface polygons and an integer story. Wall polygon
+    bounds can supply missing dimensions before the usual positive-length/height checks."""
     if not isinstance(roomplan, dict):
         raise ScanBundleError(f"a RoomPlan export is a JSON object, got {type(roomplan).__name__}")
     rooms = roomplan.get("rooms")
@@ -289,9 +334,13 @@ def _clean(roomplan) -> dict:
             items = scope[key] = scope.get(key) or []
             if not isinstance(items, list):
                 raise ScanBundleError(f"{key} must be a list, got {type(items).__name__}")
+            if key == "walls":
+                scope[key] = list(items)
             for i, item in enumerate(items):
                 if not isinstance(item, dict):
                     raise ScanBundleError(f"{key} {i}: expected an object, got {type(item).__name__}")
+                if key == "walls":
+                    item = scope[key][i] = _wall_polygon(item, i)
                 _check_item(key, i, item)
     return out
 
