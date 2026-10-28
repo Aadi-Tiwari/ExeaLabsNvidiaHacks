@@ -76,9 +76,11 @@ reference photos without EXIF, writes the notes and tape measurements and runs t
 Frame archives are built in a temporary file next to `frames.zip` and published only after the ZIP is
 complete and closed. If a frame cannot be read or writing fails, the unfinished temporary file is
 removed and any previous archive remains intact. Reopening the survey retries a missing archive.
+
 Server addresses must use HTTP or HTTPS. A bare LAN address such as `192.168.1.20:8000` defaults to
 HTTP; surrounding whitespace and trailing slashes are removed. HTTPS and server path prefixes are
 preserved. Other schemes, such as `ftp://`, are rejected before a connection is attempted.
+
 ## Visual style and UI checks
 
 The capture app shares the website's paper-and-ink palette, subtle drafting grid, serif headings,
