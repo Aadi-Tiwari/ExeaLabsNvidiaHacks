@@ -350,10 +350,10 @@ def cmd_fanout(a) -> int:
         print(f"fanout: {e}", file=sys.stderr)
         return EXIT_USAGE
     finally:
-        if a.backend == "nebius":  # remote jobs outlive this process unless cancelled
-            left = rec.cancel_open()
-            if left:
-                print(f"fanout: could not cancel Nebius jobs {left}; cancel them by hand", file=sys.stderr)
+        # remote jobs outlive this process unless cancelled, and so do the local backend's `arrival sim` children
+        left = rec.cancel_open()
+        if left:
+            print(f"fanout: could not cancel {a.backend} jobs {left}; cancel them by hand", file=sys.stderr)
     problems = validate(res["dataset"])
     for p in problems:
         print(f"INVALID: {p}", file=sys.stderr)
