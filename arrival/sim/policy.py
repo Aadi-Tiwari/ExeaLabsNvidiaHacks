@@ -22,6 +22,10 @@ from arrival.sim.robot import BASE_SPEED, BASE_TURN, FINGER_OPEN, HAND, HOME
 
 MINJERK_PEAK = 1.875  # peak over mean speed of a min-jerk move: sizes a base drive so it never exceeds BASE_SPEED
 STOP_CLEAR = 0.7  # the base waits while a person is this close ahead of it (0.12 pedestal + 0.17 torso + margin)
+DRIVE_LANE = 0.6  # ...and within this of the drive line. Driving, the robot reaches 0.35 m to either side of the base
+# centre (carrying arm included; hero and kitchen_real_01 counter_to_counter) and a torso is at most 0.142 m: a person
+# further out is beside the route, not on it. Waiting for one stalled hero counter_to_counter on a walker standing in
+# its crossing lane 0.69 m behind the base, at 84 deg to the drive
 
 
 class Policy:
@@ -571,12 +575,18 @@ class ScriptedExpert(Policy):
             self.fridge_replan = None  # an arm that cannot follow the hook is not helped by a new push plan
         a = self.plan[min(self.t, len(self.plan) - 1)]
         if self.last is not None and self.t < len(self.plan) and getattr(self.env, "mobile", False):
+            # A drive is the plan moving the base target, not the measured base being off it: the base servos sag
+            # 0.2 to 0.9 mm while the arm pulls (kitchen_real_01 open_oven), so measured against the pose every step
+            # of a task that never drives read as one, and a person standing within STOP_CLEAR froze the arm for
+            # 295 of 400 steps with the oven door at 0.16 rad
             cur = self.env.base_pose()[:2]
-            d = a[8:10] - cur
-            if np.linalg.norm(d) > 1e-5:  # about to drive: wait for anyone close in front, the plan resumes after
+            d = a[8:10] - self.last[8:10]
+            step = float(np.linalg.norm(d))
+            if step > 1e-5:  # about to drive: wait for anyone close in front, the plan resumes after
+                u = d / step
                 for p in self.env.people_xy:
                     v = np.asarray(p, dtype=float) - cur
-                    if np.linalg.norm(v) < STOP_CLEAR and v @ d > 0:
+                    if np.linalg.norm(v) < STOP_CLEAR and v @ u > 0 and abs(v[0] * u[1] - v[1] * u[0]) < DRIVE_LANE:
                         self.held += 1
                         return self.last
         self.last = a
