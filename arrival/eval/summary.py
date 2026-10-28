@@ -5,7 +5,8 @@ A stage that fails records the reason and the later stages are ``not_run``; noth
 Two columns are filled only when there is something real to put in them, and say so otherwise:
 
 * tape error: only when a ``measurements.json`` exists for the room, and flagged ``authored`` when the numbers were
-  derived from the scan itself rather than taken with a tape (hero_kitchen's are authored)
+  derived from the scan itself rather than taken with a tape (hero_kitchen's are authored). A failed comparison says
+  FAIL and why: a dimension over the tolerance, or one the twin has no value for (no sink in the scan)
 * realism: always ``null`` here. It needs held-out RGB-D frames of the room, which no room in this repo has.
 """
 
@@ -204,7 +205,14 @@ def to_markdown(summary: dict) -> str:
         elif t.get("max_abs_error_m") is None:
             tape = "n/a (no comparable dimensions)"
         else:
-            tape = (f"{t['max_abs_error_m'] * 100:.1f} cm max" + ("" if t["tape_measured"] else " (authored, not tape)"))
+            tape = f"{t['max_abs_error_m'] * 100:.1f} cm max"
+            if t.get("ok") is False:  # the max covers only the dimensions the twin has; one it lacks fails as well
+                missing = [k for k, err in (t.get("dimensions") or {}).items() if err is None]
+                why = [f"{', '.join(missing)} not in the twin"] if missing else []
+                if t["max_abs_error_m"] > t["tolerance_m"] or not missing:
+                    why.append(f"over the {t['tolerance_m'] * 100:.1f} cm tolerance")
+                tape += ", FAIL: " + ", ".join(why)
+            tape += "" if t["tape_measured"] else " (authored, not tape)"
         lines.append(f"| {r['room']} | {r.get('geometry_source') or '-'} | {_cell(st['normalize'])} | "
                      f"{_cell(st['compile'])} | {_cell(st['tasks'])} | {sim} | {_cell(st['validate'])} | "
                      f"{_cell(st['episodes'])} | {tape} | not measured |")
