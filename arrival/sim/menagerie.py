@@ -22,7 +22,11 @@ RENAMES = {"link0": "robot_base", "left_finger": "finger_l", "right_finger": "fi
 CLASSES = {"panda": "panda", "finger": "panda_finger", "visual": "panda_visual", "collision": "panda_collision"}
 FINGER_FORCE = 40
 HAND = {"flap_bar": 0.0084, "flap_up": 0.3,  # see robot.HAND
-        "door_z": 0.04, "door_push": 0.015}  # close_door: the closed fingertips reach 15 mm less than the procedural ones, so the push stands 15 mm nearer the bar
+        "door_z": 0.04, "door_push": 0.015,  # close_door: the closed fingertips reach 15 mm less than the procedural ones, so the push stands 15 mm nearer the bar
+        # open_oven: at the steepest flap tilt (1.35 rad) IK reaches the bar but the real hand's body meets the stove
+        # front 3.4 cm short of it, so the door never moved (0 of 6 over seeds 0, 3, 5 with 0 and 2 people); each
+        # flatter tilt opens it 6 of 6
+        "flap_tilts": {"open_oven": (0.0, 0.35, 0.7)}}
 PAD_FRICTION = {"friction": "2.0 0.05 0.001", "condim": "6"}  # same pads as robot.py's fingers
 FETCH_HINT = "Menagerie Panda not found; run: python scripts/fetch_menagerie.py"
 
