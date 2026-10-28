@@ -26,7 +26,7 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import unquote, urldefrag, urlsplit
 
-from arrival.web.app import ID_RE, PREVIEW_RE, make_server
+from arrival.web.app import ID_RE, PREVIEW_RE, make_server, room_scan
 
 ATTR_RE = re.compile(r"""(href|src)=(['"])(.*?)\2""", re.S)
 SCRIPT_RE = re.compile(r"<script>.*?</script>", re.S)
@@ -114,7 +114,7 @@ def _read(path: Path):
 def room_data(room: str, out_dir: Path, scans_dir: Path) -> dict:
     """The facts the room page shows, as JSON. Anything absent on disk is null, never invented."""
     twin = _read(out_dir / "twins" / room / "twin.json")
-    scan = _read(scans_dir / room / "scan.json") or {}
+    scan = (room_scan(scans_dir, room) or ({}, ""))[0]  # scan.json, else a phone capture's roomplan.json
     src = twin or scan
     datasets = {}
     for name in (room, f"{room}_sim"):
