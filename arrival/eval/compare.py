@@ -33,6 +33,8 @@ def load_rows(run: str | Path) -> list[dict]:
         missing = [k for k in need if not isinstance(r, dict) or k not in r]
         if missing:  # a LeRobot dataset's meta/episodes.jsonl has the same name
             raise CompareError(f"{path} is not an eval run's episodes.jsonl (row {i} has no {', '.join(missing)})")
+        if type(r["success"]) is not bool:
+            raise CompareError(f"{path}: row {i} success must be a bool")
         index = r["trial_index"]
         if type(index) is not int or index < 0:
             raise CompareError(f"{path}: row {i} trial_index must be a nonnegative integer")

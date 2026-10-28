@@ -113,3 +113,11 @@ def test_compare_refuses_mixed_checkpoints_in_one_run(tmp_path, mixed_in):
     path.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
     with pytest.raises(CompareError, match="mixes checkpoints"):
         compare(a, b)
+
+
+@pytest.mark.parametrize("outcome", [0, 1, 2, 0.5, "false", None])
+def test_compare_requires_boolean_success_outcomes(tmp_path, outcome):
+    a = write_run(tmp_path / "a", [outcome])
+    b = write_run(tmp_path / "b", [False])
+    with pytest.raises(CompareError, match="success.*bool"):
+        compare(a, b)
