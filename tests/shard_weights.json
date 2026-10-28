@@ -52,6 +52,7 @@
  "tests/test_joint_limits.py": 2.6,
  "tests/test_journal_record_shape.py": 0.2,
  "tests/test_layout_check.py": 0.1,
+ "tests/test_layout_check_bad_input.py": 0.2,
  "tests/test_lidar_accuracy.py": 0.0,
  "tests/test_lighting.py": 0.7,
  "tests/test_limit_request_types.py": 0.1,

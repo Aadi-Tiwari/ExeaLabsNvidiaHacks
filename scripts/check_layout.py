@@ -154,11 +154,12 @@ def main(argv: list[str] | None = None) -> int:
     inputs = [bool(a.twin_dir), bool(a.room), bool(a.roomplan)]
     if sum(inputs) != 1:
         p.error("give exactly one of twin folder, --room, or --roomplan")
+    src = None  # the file being read, named when it cannot be used
     try:
         if a.roomplan:
             from arrival.scan import roomplan
             from arrival.twin.compile import compile_twin, layout_dict
-            rp = Path(a.roomplan)
+            rp = src = Path(a.roomplan)
             twin = compile_twin(roomplan.load(rp, rp.stem))
             layout = yaml.safe_load(yaml.safe_dump(layout_dict(twin), sort_keys=False))
         elif a.room:
@@ -166,11 +167,15 @@ def main(argv: list[str] | None = None) -> int:
             from arrival.scan.bundle import load_room
             from arrival.twin.compile import compile_twin, layout_dict
             scans = resolve_scans(a.scans)
+            src = scans / a.room / "scan.json"
             twin = compile_twin(load_room(a.room, scans))
             layout = yaml.safe_load(yaml.safe_dump(layout_dict(twin), sort_keys=False))
         else:
             d = Path(a.twin_dir)
-            twin, layout = json.loads((d / "twin.json").read_text()), yaml.safe_load((d / "layout.yaml").read_text())
+            src = d / "twin.json"
+            twin = json.loads(src.read_text())
+            src = d / "layout.yaml"
+            layout = yaml.safe_load(src.read_text())
     except FileNotFoundError as e:
         if getattr(a, "room", None):
             from arrival.cli import resolve_scans
@@ -178,6 +183,10 @@ def main(argv: list[str] | None = None) -> int:
             scans = resolve_scans(a.scans)
             p.error(f"no scan for room {a.room!r} under {scans} ({rooms_hint(a.room, scans)}): {e}")
         p.error(str(e))
+    except (ValueError, yaml.YAMLError) as e:
+        # refused by the scan checks (ScanBundleError), or not JSON or YAML: an input that cannot be checked exits 2,
+        # like a missing one; it used to exit 1 with a traceback, the code of a layout that failed the check
+        p.error(f"{src}: {e}")
     res = check_layout(twin, layout)
     if a.json:
         print(json.dumps(res, indent=2))
