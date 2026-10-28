@@ -167,6 +167,30 @@ def test_real_hero_kitchen_row_end_to_end(tmp_path):
     assert row["realism"] is None and "not measured" in row["realism_note"]
 
 
+@pytest.mark.parametrize("has_fallback", [False, True])
+def test_explicit_scan_uses_its_adjacent_measurements(tmp_path, monkeypatch, has_fallback):
+    import arrival.sim.tasks as tasks
+
+    source = tmp_path / "external_room"
+    source.mkdir()
+    scan = source / "scan.json"
+    scan.write_text((SCANS / "hero_kitchen/scan.json").read_text())
+    measurements = json.loads((REPO / "tests/fixtures/measurements/hero_kitchen.json").read_text())
+    (source / "measurements.json").write_text(json.dumps(measurements))
+    scans = tmp_path / "other_scans"
+    if has_fallback:
+        fallback = scans / "external_room"
+        fallback.mkdir(parents=True)
+        (fallback / "measurements.json").write_text(json.dumps({**measurements, "sink_width_m": 99}))
+    monkeypatch.setattr(tasks, "make_tasks", lambda *a, **k: [])
+    row = summary.run_room(str(scan), tmp_path / "out", scans)
+    assert statuses(row)["compile"] == "ok"
+    assert row["tape"] is not None
+    assert row["tape"]["ok"] is True
+    assert row["tape"]["tape_measured"] is False
+    assert row["tape"]["max_abs_error_m"] == 0.0
+
+
 def test_roomplan_rows_flag_invented_objects(tmp_path, monkeypatch):
     import arrival.sim.tasks as tasks
 
