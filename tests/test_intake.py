@@ -234,3 +234,11 @@ def test_cli_no_go_points_at_check(tmp_path, photos, clean_plan, capsys):
     with pytest.raises(SystemExit) as e:
         cli.main(["kitchen_01", *scans])
     assert e.value.code == 2 and "--roomplan is required" in capsys.readouterr().err
+
+
+def test_reference_photo_pixels_must_decode(tmp_path):
+    photo = tmp_path / "reference.jpg"
+    Image.new("RGB", (64, 48), (50, 100, 150)).save(photo)
+    assert it._photo_problems(photo) == []
+    photo.write_bytes(photo.read_bytes()[:-20])
+    assert any("not a readable image" in problem for problem in it._photo_problems(photo))
