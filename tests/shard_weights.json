@@ -115,5 +115,6 @@
  "tests/test_variation.py": 5.3,
  "tests/test_vlm_planner.py": 6.4,
  "tests/test_web.py": 5.3,
+ "tests/test_web_non_latin_filename.py": 0.3,
  "tests/test_worker.py": 12.5
 }
