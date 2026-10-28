@@ -133,7 +133,7 @@ Token Factory is the Nebius service Arrival runs on, live: one OpenAI-compatible
 - **The training language writes itself.** `nvidia/Nemotron-3_5-Lightning` writes varied training wordings and a held-out evaluation set for each task family, where the offline path uses fixed templates. The planner got 52 of 54 of those wordings right, the keyword parser 47.
 - **Scan frames are read without hand labels.** `nvidia/Nemotron-3.5-Super-VL` finds the small objects that RoomPlan does not report: on rendered frames of the twin it found the mug in every frame that has one and nothing in the empty ones, and the mug was placed 1.2 cm from its true centre.
 - **Live research reaches the planner.** Tavily's findings for each scanned appliance go into the Nemotron prompt (`sim --planner vlm --tavily`), so the fridge plan knows the door opens with at most 66.7 N.
-- **Fast to iterate.** No rate limit was hit in more than 150 calls in about ten minutes; answers are cached under `out/cache/`, so re-runs cost nothing; and with no key every path falls back offline and says so, so the 1,700-test suite needs no key.
+- **Fast to iterate.** No rate limit was hit in more than 150 calls in about ten minutes; answers are cached under `out/cache/`, so re-runs cost nothing; and with no key every path falls back offline and says so, so the 2,100-test suite needs no key.
 
 The evidence is committed: `docs/results/live-apis-2026-10-26.json`, `docs/results/planner-benchmark-2026-10-26.json` and `docs/results/live-detect-2026-10-26.json`. Re-run them with `python scripts/smoke_live_apis.py` and `python scripts/planner_benchmark.py`.
 
