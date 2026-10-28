@@ -242,3 +242,19 @@ def test_reference_photo_pixels_must_decode(tmp_path):
     assert it._photo_problems(photo) == []
     photo.write_bytes(photo.read_bytes()[:-20])
     assert any("not a readable image" in problem for problem in it._photo_problems(photo))
+@pytest.mark.parametrize("failure", ["encoding", "io"])
+def test_scan_validation_collects_unreadable_notes_problem(tmp_path, monkeypatch, failure):
+    notes = tmp_path / "notes.md"
+    notes.write_bytes(b"\xff" if failure == "encoding" else b"synthetic notes")
+    if failure == "io":
+        original = Path.read_text
+
+        def unreadable(path, *args, **kwargs):
+            if path == notes:
+                raise PermissionError("synthetic read failure")
+            return original(path, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "read_text", unreadable)
+    problems = it.validate_scan_dir(tmp_path)
+    assert any("notes.md" in problem and "cannot be read" in problem for problem in problems)
+    assert any("measurements.json is missing" in problem for problem in problems)
