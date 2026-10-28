@@ -602,7 +602,7 @@ def fridge_xml(f: dict) -> str:
             + "</body></body>")
 
 
-BOWL_WALL = 0.006  # wall thickness; the closed fingers (12 mm apart at the pads) pinch the rim
+BOWL_WALL = 0.016  # wall thickness, wider than the 12 mm the closed pads leave, so they squeeze it at any rim angle
 PLATE_RIM, PLATE_FLOOR = 0.018, 0.005  # a thick rolled rim the closed pads (12 mm apart) can squeeze; thin floor
 
 

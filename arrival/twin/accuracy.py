@@ -9,10 +9,12 @@ measurements.json:
 How each dimension is read off the compiled twin (all metres):
   counter_length_m  the longest contiguous counter run. The pieces are the scanned `counter` fixtures that are
                     not islands, not dining tables and not synthesized (a synthesized counter was never seen by
-                    the scanner). A built-in stove or dishwasher no taller than a counter (+5 cm) counts as part
-                    of the run, because the worktop is measured across it. Two pieces join when their long axes
-                    are parallel (0.05 rad), their centres are within LATERAL of each other across the run and
-                    the gap along it is at most ADJACENT_GAP (a 5 cm overlap is tolerated). The length is the
+                    the scanner), and the floor-standing `storage` cabinets at counter height that stand within
+                    ISLAND_CLEARANCE of a wall (RoomPlan has no counter category: those are its base cabinets).
+                    A built-in stove or dishwasher no taller than a counter (+5 cm) counts as part of the run,
+                    because the worktop is measured across it. Two pieces join when their long axes are parallel
+                    (0.05 rad), their centres are within LATERAL of each other across the run and the gap
+                    along it is at most ADJACENT_GAP (a 5 cm overlap is tolerated). The length is the
                     extent of the run along its axis. Pieces at another angle never join, so each leg of an
                     L or U is its own run and the longest leg is the one compared; a second counter elsewhere
                     in the room is another run and loses unless it is longer. Ties go to the lower fixture id.
@@ -29,7 +31,8 @@ import json
 import math
 from pathlib import Path
 
-from arrival.twin.compile import ADJACENT_GAP, COUNTER_HEIGHT, to_local
+from arrival.twin.compile import (ADJACENT_GAP, COUNTER_HEIGHT, ISLAND_CLEARANCE, is_counter_host, to_local,
+                                  wall_distance)
 
 DEFAULT_TOLERANCE_M = 0.05
 REQUIRED = ("counter_length_m", "counter_height_m", "sink_width_m")
@@ -64,12 +67,21 @@ def load_measurements(path: str | Path) -> dict:
     return data
 
 
+def _is_counter(f: dict, walls: list[dict]) -> bool:
+    """A scanned counter piece. Apple's RoomPlan has no counter category: a real export's base cabinets are
+    `storage` at counter height (`is_counter_host`), and those count too unless they stand clear of every wall,
+    where the block is an island, which is never measured."""
+    if f["type"] == "counter":
+        return not (f.get("island") or f.get("default_config_name") == "dining"
+                    or f.get("source_category") == "synthesized")
+    return is_counter_host(f) and not (walls and wall_distance(f, walls) > ISLAND_CLEARANCE)
+
+
 def _pieces(twin: dict) -> list[dict]:
     out = []
+    walls = twin.get("walls", [])
     for f in twin["fixtures"]:
-        if f["type"] == "counter":
-            if f.get("island") or f.get("default_config_name") == "dining" or f.get("source_category") == "synthesized":
-                continue
+        if _is_counter(f, walls):
             out.append(f)
         elif f["type"] in BUILT_IN and f["size"][2] <= COUNTER_HEIGHT + BUILT_IN_HEIGHT_SLACK:
             out.append(f)
@@ -110,7 +122,7 @@ def counter_runs(twin: dict) -> list[dict]:
         for m in members:
             c = to_local(m["position"][:2], ref)[0]
             spans.append((c - m["size"][0] / 2, c + m["size"][0] / 2))
-        counters = [m for m in members if m["type"] == "counter"]
+        counters = [m for m in members if m["type"] not in BUILT_IN]
         if counters:  # a run of a lone stove is not a counter
             runs.append({"length": max(s[1] for s in spans) - min(s[0] for s in spans),
                          "members": [m["id"] for m in members], "counters": counters})

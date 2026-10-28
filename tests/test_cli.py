@@ -234,3 +234,79 @@ def test_families_help_lists_every_sim_family(command, capsys):
     out = capsys.readouterr().out
     assert [f for f in SIM_FAMILIES if f not in out] == []
     assert [f.strip() for f in cli.FAMILY_NAMES.split(",")] == list(SIM_FAMILIES)
+
+
+def test_retarget_missing_room_is_usage_error(tmp_path, capsys):
+    pytest.importorskip("mujoco")
+    assert cli.main(["retarget", "--room", "no_such_room", "--out", str(tmp_path)]) == cli.EXIT_USAGE
+    err = capsys.readouterr().err
+    assert "no scan for room 'no_such_room'" in err
+
+
+@pytest.mark.parametrize("args,expected_msg", [
+    (["--attempts", "0"], "--attempts must be >= 1"),
+    (["--attempts", "-2"], "--attempts must be >= 1"),
+    (["--seed", "-1"], "--seed must be >= 0"),
+    (["--res", "0"], "--res must be a positive multiple of 16"),
+    (["--res", "50"], "--res must be a positive multiple of 16"),
+])
+def test_retarget_numerical_bounds(tmp_path, capsys, args, expected_msg):
+    pytest.importorskip("mujoco")
+    assert cli.main(["retarget", *args, "--out", str(tmp_path)]) == cli.EXIT_USAGE
+    assert expected_msg in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("args,expected_msg", [
+    (["--method", "se3", "--family", "open_drawer"], "--method se3 currently supports 'counter_to_sink' only"),
+    (["--method", "se3", "--baseline"], "--baseline is only supported with --method seed_replay"),
+    (["--method", "seed_replay", "--source", "dummy.json"], "--source is only supported with --method se3"),
+    (["--method", "seed_replay", "--family", "bogus"], "unknown family 'bogus'"),
+])
+def test_retarget_method_mismatches(tmp_path, capsys, args, expected_msg):
+    pytest.importorskip("mujoco")
+    assert cli.main(["retarget", *args, "--out", str(tmp_path)]) == cli.EXIT_USAGE
+    assert expected_msg in capsys.readouterr().err
+
+
+def test_retarget_invalid_source_is_usage_error(tmp_path, capsys):
+    pytest.importorskip("mujoco")
+    bad_source = tmp_path / "bad.json"
+    bad_source.write_text("[]")
+    assert cli.main(["retarget", "--source", str(bad_source), "--out", str(tmp_path)]) == cli.EXIT_USAGE
+    err = capsys.readouterr().err
+    assert f"invalid --source {bad_source}" in err
+
+
+def test_retarget_se3_dispatch(tmp_path, capsys, monkeypatch):
+    pytest.importorskip("mujoco")
+    called = []
+
+    def fake_generate(twin, out_dir, source=None, attempts=6, seed=0, res=64):
+        called.append((twin["room_id"], attempts, seed, res))
+        return {"report_data": {"attempts": attempts, "successes": attempts, "rows": []}}
+
+    monkeypatch.setattr("arrival.generate.se3_retarget.generate", fake_generate)
+    rc = cli.main(["retarget", "--room", "hero_kitchen", "--method", "se3",
+                  "--attempts", "3", "--seed", "5", "--res", "32", "--out", str(tmp_path)])
+    assert rc == cli.EXIT_OK
+    assert called == [("hero_kitchen", 3, 5, 32)]
+    out = capsys.readouterr().out
+    assert '"successes": 3' in out
+
+
+def test_retarget_seed_replay_dispatch(tmp_path, capsys, monkeypatch):
+    pytest.importorskip("mujoco")
+    called = []
+
+    def fake_retarget(twin, out_dir, attempts=6, seed=0, res=64, family="counter_to_sink", baseline=False):
+        called.append((twin["room_id"], attempts, seed, res, family, baseline))
+        return {"report_data": {"attempts": attempts, "successes": attempts, "rows": []}}
+
+    monkeypatch.setattr("arrival.generate.retarget.retarget", fake_retarget)
+    rc = cli.main(["retarget", "--room", "hero_kitchen", "--method", "seed_replay",
+                  "--family", "counter_to_sink", "--attempts", "4", "--seed", "2",
+                  "--res", "64", "--baseline", "--out", str(tmp_path)])
+    assert rc == cli.EXIT_OK
+    assert called == [("hero_kitchen", 4, 2, 64, "counter_to_sink", True)]
+    out = capsys.readouterr().out
+    assert '"successes": 4' in out
