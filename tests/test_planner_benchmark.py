@@ -86,8 +86,12 @@ def test_scores_rejections_and_keeps_v1_keys(tmp_path, monkeypatch):
     assert sum(r == "super" for r, _ in seen) == len(rep["rows"]) == 18 + 15 + 3 + 20 + 20
     assert sum(r == "lightning" for r, _ in seen) == 9 == rep["live_calls"]["wordings"]
     assert all(p == {"temperature": 0} for r, p in seen if r == "super")
-    prompt = rep["planner_system_prompt"]  # LISTED is what the prompt names, and only that
-    assert all(f in prompt for f in bench.LISTED) and not any(fam in prompt for fam in bench.UNLISTED_ROOM)
+    from arrival.sim.tasks import room_families
+
+    twins = bench.room_twins()  # each row was offered its room's families (fixed base), recorded per row
+    assert all(r["offered_families"] == list(room_families(twins[r["inventory"]])) for r in rep["rows"])
+    assert "move_on_table" not in rep["rows"][0]["offered_families"]  # the first row is in the hero kitchen
+    assert set(bench.LISTED) | set(bench.UNLISTED_ROOM) == set(SIM_FAMILIES)
     assert all(r["live_call"] and r["calls"] == 1 for r in rep["rows"])
 
     g, ind = rep["summary"]["generated"], rep["summary"]["indirect"]
@@ -106,7 +110,10 @@ def test_scores_rejections_and_keeps_v1_keys(tmp_path, monkeypatch):
 
     oos = rep["summary"]["out_of_scope"]
     assert oos["family"] is None and oos["nemotron_right"] is None
-    assert oos["confusion"]["nemotron"] == {"out_of_scope": {"open_fridge": 20}}
+    # the stub answers the fridge; the office has none, so its 6 are rejected as a family its prompt did not offer
+    assert oos["confusion"]["nemotron"] == {"out_of_scope": {"open_fridge": 14, "rejected": 6}}
+    assert oos["reject_reasons"] == {"family_not_offered": 6}
+    assert all(r["offerable"] is None for r in rep["rows"] if r["set"] == "out_of_scope")  # no label to offer
     assert rep["summary"]["unlisted_families"]["family"]["nemotron"]["k"] == 0
 
     blind_s = rep["summary"]["blind"]  # all rows, then only the row whose family the prompt lists
