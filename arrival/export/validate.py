@@ -147,7 +147,12 @@ def validate(root: str | Path) -> list[str]:
             errors.append(f"missing {name}")
             cursor += length
             continue
-        t = pq.read_table(path)
+        try:
+            t = pq.read_table(path)
+        except (OSError, pa.ArrowException) as exc:
+            errors.append(f"{name}: cannot read parquet ({exc})")
+            cursor += length
+            continue
         for c, dt in DTYPES.items():
             if c not in t.column_names:
                 errors.append(f"{name}: missing column {c}")

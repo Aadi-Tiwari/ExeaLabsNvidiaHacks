@@ -351,6 +351,7 @@ def test_writer_rejects_video_pixel_coercion_before_writing(tmp_path):
 
 @pytest.mark.parametrize("size", [0, -1, True, 2.5, "1000", None])
 def test_validator_reports_invalid_chunk_size_without_crashing(tmp_path, size):
+def test_validator_reports_unreadable_parquet_and_continues(tmp_path):
     import numpy as np
 
     modality = {"state": {"arm": {"start": 0, "end": 2}},
@@ -367,3 +368,13 @@ def test_validator_reports_invalid_chunk_size_without_crashing(tmp_path, size):
     info_path.write_text(json.dumps(info))
     errors = validate(root)
     assert any("chunks_size" in error and "positive integer" in error for error in errors)
+    for _ in range(2):
+        writer.add_episode(np.zeros((2, 2)), np.zeros((2, 2)), np.arange(2) / 20, "task", True)
+    writer.finish(2)
+    root = tmp_path / "ds"
+    assert validate(root) == []
+    corrupt = root / "data/chunk-000/episode_000000.parquet"
+    corrupt.write_bytes(b"PAR1truncated")
+    errors = validate(root)
+    assert any("episode_000000.parquet" in error and "cannot read" in error for error in errors)
+    assert not any("index is not continuous" in error for error in errors)
