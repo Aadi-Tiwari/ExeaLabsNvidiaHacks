@@ -1065,3 +1065,9 @@ def test_preview_normal_ranges_keep_existing_behavior(make, value, code, expecte
     status, body, response = _fetch(srv, "/previews/test.png", headers={"Range": value})
     assert status == code and body == expected
     assert response.getheader("Content-Range") == content_range
+def test_invalid_manifest_encoding_is_a_validation_response(make):
+    srv, out = make()
+    blob = _zip_of({"frames_manifest.json": b"\xff"})
+    status, data, _ = _post(srv, [("scan", "hero.json", HERO_SCAN), ("frames", "frames.zip", blob)])
+    assert status == 422 and data["code"] == "bad_json" and data["field"] == "frames", data
+    assert not _job_dirs(out)

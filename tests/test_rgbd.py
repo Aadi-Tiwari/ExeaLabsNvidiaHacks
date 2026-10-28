@@ -151,3 +151,9 @@ def test_oversized_numbers_raise_manifest_error(tmp_path, field, code):
     with pytest.raises(rgbd.ManifestError) as error:
         rgbd.load_manifest(root)
     assert error.value.code == code
+@pytest.mark.parametrize("content", [b"\xff", b'{"room_id":"\xff"}'])
+def test_manifest_invalid_utf8_is_a_bad_json_error(tmp_path, content):
+    (tmp_path / rgbd.MANIFEST_NAME).write_bytes(content)
+    with pytest.raises(rgbd.ManifestError) as error:
+        rgbd.load_manifest(tmp_path)
+    assert error.value.code == "bad_json"
