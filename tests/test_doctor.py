@@ -7,7 +7,8 @@ from unittest.mock import patch
 import pytest
 
 from arrival import cli, doctor
-from arrival.doctor import Check, check_core, check_disk, check_env, check_ffmpeg, check_mujoco, check_python, exit_code, render, render_json, run_checks
+import sys
+from arrival.doctor import Check, _gl_hint, check_core, check_disk, check_env, check_ffmpeg, check_mujoco, check_python, check_rendering, exit_code, render, render_json, run_checks
 
 
 def test_check_python():
@@ -42,6 +43,26 @@ def test_check_core():
     assert "not installed" in fake_chk[0].detail
 
 
+def test_gl_hint():
+    # Linux defaults and overrides
+    assert _gl_hint("linux", None) == "set MUJOCO_GL=egl or osmesa"
+    assert _gl_hint("linux", "egl") == "MUJOCO_GL=egl failed; try osmesa"
+    assert _gl_hint("linux", "osmesa") == "MUJOCO_GL=osmesa failed; try egl"
+    assert _gl_hint("linux", "invalid") == "MUJOCO_GL=invalid failed; try egl or osmesa"
+
+    # Windows defaults and overrides
+    assert _gl_hint("win32", None) == "set MUJOCO_GL=glfw or wgl"
+    assert _gl_hint("win32", "wgl") == "MUJOCO_GL=wgl failed; try glfw"
+    assert _gl_hint("win32", "glfw") == "MUJOCO_GL=glfw failed; try wgl"
+    assert _gl_hint("win32", "egl") == "MUJOCO_GL=egl failed; try glfw or wgl"
+
+    # macOS defaults and overrides
+    assert _gl_hint("darwin", None) == "set MUJOCO_GL=glfw or cgl"
+    assert _gl_hint("darwin", "cgl") == "MUJOCO_GL=cgl failed; try glfw"
+    assert _gl_hint("darwin", "glfw") == "MUJOCO_GL=glfw failed; try cgl"
+    assert _gl_hint("darwin", "egl") == "MUJOCO_GL=egl failed; try glfw or cgl"
+
+
 def test_check_mujoco():
     chk = check_mujoco()
     assert chk.name == "mujoco"
@@ -56,7 +77,71 @@ def test_check_mujoco():
     with patch("builtins.__import__", side_effect=RuntimeError("DLL failed to load")):
         res = check_mujoco()
         assert res.status == "fail"
-        assert "RuntimeError" in res.detail
+        assert "RuntimeError: DLL failed to load" in res.detail
+
+    with patch("builtins.__import__", side_effect=RuntimeError("invalid value for environment variable MUJOCO_GL: egl")):
+        res = check_mujoco()
+        assert res.status == "fail"
+        assert "invalid value for environment variable MUJOCO_GL: egl" in res.detail
+
+
+def test_check_rendering(monkeypatch):
+    chk = check_rendering()
+    assert chk.name == "rendering"
+    assert chk.status in ("ok", "warn", "info")
+    if chk.status == "ok":
+        assert "functional off-screen" in chk.detail
+
+    # When mujoco is missing
+    with patch.dict("sys.modules", {"mujoco": None}):
+        with patch("builtins.__import__", side_effect=ImportError("No module named 'mujoco'")):
+            res = check_rendering()
+            assert res.status == "info"
+            assert "skipped (mujoco not installed)" in res.detail
+
+    # When mujoco native library import fails, exception message is preserved
+    with patch("builtins.__import__", side_effect=RuntimeError("DLL failed to load")):
+        res = check_rendering()
+        assert res.status == "warn"
+        assert "skipped (mujoco import failed: RuntimeError: DLL failed to load)" in res.detail
+
+    # When invalid MUJOCO_GL causes import failure, invalid value shows up in message
+    with patch("builtins.__import__", side_effect=RuntimeError("invalid value for environment variable MUJOCO_GL: egl")):
+        res = check_rendering()
+        assert res.status == "warn"
+        assert "invalid value for environment variable MUJOCO_GL: egl" in res.detail
+
+    # When off-screen renderer raises an error
+    import mujoco
+    with patch.object(mujoco, "Renderer", side_effect=RuntimeError("gladLoadGL error")):
+        monkeypatch.delenv("MUJOCO_GL", raising=False)
+        res = check_rendering()
+        assert res.status == "warn"
+        assert "off-screen context failed" in res.detail
+        if sys.platform == "win32":
+            assert "set MUJOCO_GL=glfw or wgl" in res.detail
+        elif sys.platform == "darwin":
+            assert "set MUJOCO_GL=glfw or cgl" in res.detail
+        else:
+            assert "set MUJOCO_GL=egl or osmesa" in res.detail
+
+    # When MUJOCO_GL is configured but fails
+    with patch.object(mujoco, "Renderer", side_effect=RuntimeError("Context creation failed")):
+        if sys.platform.startswith("linux"):
+            monkeypatch.setenv("MUJOCO_GL", "egl")
+            res = check_rendering()
+            assert res.status == "warn"
+            assert "MUJOCO_GL=egl failed; try osmesa" in res.detail
+        elif sys.platform == "win32":
+            monkeypatch.setenv("MUJOCO_GL", "wgl")
+            res = check_rendering()
+            assert res.status == "warn"
+            assert "MUJOCO_GL=wgl failed; try glfw" in res.detail
+        elif sys.platform == "darwin":
+            monkeypatch.setenv("MUJOCO_GL", "cgl")
+            res = check_rendering()
+            assert res.status == "warn"
+            assert "MUJOCO_GL=cgl failed; try glfw" in res.detail
 
 
 def test_check_ffmpeg():
@@ -202,6 +287,7 @@ def test_run_checks_integration(tmp_path):
     checks = run_checks(out_dir=tmp_path)
     assert isinstance(checks, list)
     assert any(c.name == "python" for c in checks)
+    assert any(c.name == "rendering" for c in checks)
     assert any(c.name == "disk" for c in checks)
     assert any(c.name == "ffmpeg" for c in checks)
 
