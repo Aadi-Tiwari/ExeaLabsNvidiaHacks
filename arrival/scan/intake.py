@@ -123,6 +123,7 @@ def _is_heif(path: Path) -> bool:
 def _photo_problems(path: Path) -> list[str]:
     try:
         with Image.open(path) as im:
+            im.load()
             exif = im.getexif()
             if GPS_IFD in exif or exif.get_ifd(GPS_IFD):
                 return [f"{path.name} carries an EXIF GPS tag"]
