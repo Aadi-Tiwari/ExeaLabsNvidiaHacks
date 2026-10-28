@@ -91,6 +91,7 @@
  "tests/test_se3_retarget.py": 25.8,
  "tests/test_shards.py": 45.9,
  "tests/test_sim.py": 151.8,
+ "tests/test_sim_split_needs_nemotron.py": 0.1,
  "tests/test_smoke_hosted.py": 3.6,
  "tests/test_smoke_live_apis.py": 0.1,
  "tests/test_splat_composite.py": 0.1,

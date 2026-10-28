@@ -248,6 +248,11 @@ def cmd_sim(a) -> int:
     if not (math.isfinite(dart) and dart >= 0):  # -1 and nan ran with no noise but were written to info.json
         print("--dart must be a finite number >= 0 (0 = off)", file=sys.stderr)
         return EXIT_USAGE
+    if getattr(a, "split", "train") == "eval" and getattr(a, "instructions", "template") != "nemotron":
+        # only the generated wordings have an eval split; the template run was the train split labelled eval
+        print("--split eval needs --instructions nemotron: the template wordings have no eval split for sim "
+              "(eval --holdout holds theirs out)", file=sys.stderr)
+        return EXIT_USAGE
     if getattr(a, "tavily", False) and getattr(a, "planner", "rule") != "vlm":
         # only VLMPlanner reads the research; with the rule planner the lookups ran and changed nothing
         print("--tavily needs --planner vlm: the research only goes into the Nemotron planner's prompt", file=sys.stderr)
@@ -718,7 +723,8 @@ def build_parser() -> argparse.ArgumentParser:
     m.add_argument("--instructions", choices=["template", "nemotron"], default="template",
                    help="Instruction source: template (fixed wordings) or nemotron (varied wordings with train/eval split)")
     m.add_argument("--split", choices=["train", "eval"], default="train",
-                   help="Dataset instruction split: train or held-out eval")
+                   help="with --instructions nemotron: draw the train or the held-out eval wordings "
+                        "(the template wordings have no split here; eval --holdout holds theirs out)")
     m.add_argument("--base", choices=["fixed", "mobile"], default="fixed",
                    help="mobile: the pedestal drives (MAN-3); counter_to_counter becomes reachable")
     m.add_argument("--arm", choices=["procedural", "menagerie"], default="procedural",
