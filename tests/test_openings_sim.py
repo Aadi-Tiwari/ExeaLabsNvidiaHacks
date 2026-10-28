@@ -1,6 +1,6 @@
 """TWN-3 leftover: the doors, windows and openings a RoomPlan export carries are drawn in the sim, on their wall, as
-visual-only geoms. A closed door is a frame, a wood leaf and a knob; an open door and an opening are a frame around a
-dark recess; a window is a frame, a sill, a pane and a mullion. They never collide, so physics does not change."""
+visual-only geoms. An open door adds a swung leaf and knob to its frame and recess; a window is a frame, a sill,
+a pane and a mullion. They never collide, so physics does not change."""
 
 import copy
 import json
@@ -25,7 +25,7 @@ HERO_BASE = (1.3, 1.0, 0.75)
 PORTAL = re.compile(r"(door|window|opening)(\d+)_(\w+)$")
 PORTAL_TAG = re.compile(r'<geom name="(?:door|window|opening)\d+_\w+"[^>]*/>')
 PARTS = {"closed": {"jamb0", "jamb1", "head", "leaf", "knob"},
-         "open": {"jamb0", "jamb1", "head", "recess"},
+         "open": {"jamb0", "jamb1", "head", "recess", "leaf", "knob"},
          "window": {"jamb0", "jamb1", "head", "sill", "pane", "mullion"},
          "opening": {"jamb0", "jamb1", "head", "recess"},
          "raised": {"jamb0", "jamb1", "head", "sill", "recess"}}  # an opening above the floor (a pass-through)
@@ -134,6 +134,8 @@ def _check_on_wall(m, d, geoms: dict, wall: dict, extent, zs):
     half_t = max(wall["thickness"], 0.05) / 2
     lo, hi = np.full(2, np.inf), np.full(2, -np.inf)
     for part, g in geoms.items():
+        if "recess" in geoms and part in ("leaf", "knob"):
+            continue  # swung door parts leave the wall plane; checked separately below
         c, h = _in_wall(m, d, g, wall)
         assert abs(c[1]) < TOL, part  # on the wall's centre line
         proud = h[1] - half_t  # past each face of the drawn wall
@@ -160,7 +162,7 @@ def test_each_portal_gets_its_parts(synthetic):
     m = _model(synthetic)
     got = {key: set(parts) for key, parts in _portal_geoms(m).items()}
     assert got == {key: PARTS[e[1]] for key, e in EXPECTED.items()}
-    assert sum(len(p) for p in got.values()) == 5 + 4 + 6 + 4 + 5 + 4
+    assert sum(len(p) for p in got.values()) == 5 + 6 + 6 + 4 + 5 + 4
 
 
 def test_portals_lie_on_their_wall(synthetic):
@@ -189,7 +191,7 @@ def test_authored_fixtures_draw_every_portal_on_its_wall(name, counts):
         p = twin[f"{kind}s"][k]
         wall = walls[p["wall_id"]]
         if kind == "door":
-            assert ("leaf" in parts) == (not p["is_open"])
+            assert {"leaf", "knob"} <= parts.keys()
         start, end = np.array(wall["start"]), np.array(wall["end"])
         u = (np.array(p["position"][:2]) - start) @ (end - start) / np.linalg.norm(end - start)
         (w, _, h), zc = p["size"], p["position"][2]
@@ -217,11 +219,41 @@ def test_portal_geoms_never_collide(synthetic, office):
         assert all(m.geom_bodyid[g] == 0 for g in gs)  # on the world body: no mass, no new body or joint
 
 
+@pytest.mark.parametrize("wall_id,inward", [("north", (0, -1)), ("south", (0, 1)),
+                                           ("east", (-1, 0)), ("west", (1, 0))])
+@pytest.mark.parametrize("hinge", [None, "left", "right"])
+def test_open_leaf_and_knob_swing_from_the_selected_jamb(synthetic, wall_id, inward, hinge):
+    twin = copy.deepcopy(synthetic)
+    wall = next(w for w in twin["walls"] if w["id"] == wall_id)
+    a, b = np.array(wall["start"]), np.array(wall["end"])
+    along, normal = (b - a) / np.linalg.norm(b - a), np.array(inward)
+    centre = (a + b) / 2
+    door = {"wall_id": wall_id, "size": [1.0, 0.0, 2.0], "position": [*centre, 1.0], "is_open": True}
+    if hinge is not None:
+        door["hinge"] = hinge
+    twin.update(doors=[door], windows=[], openings=[])
+    m = _model(twin)
+    d = mujoco.MjData(m)
+    mujoco.mj_forward(m, d)
+    parts = _portal_geoms(m)[("door", 0)]
+    assert set(parts) == PARTS["open"]
+    leaf, knob = parts["leaf"], parts["knob"]
+    for g in (leaf, knob):
+        assert m.geom_contype[g] == m.geom_conaffinity[g] == 0
+        assert m.geom_bodyid[g] == 0
+    # Trim is 5 cm: the 90 cm leaf starts at the chosen inner jamb edge, perpendicular to the wall.
+    hinge_pos = centre + (0.45 if hinge == "right" else -0.45) * along
+    np.testing.assert_allclose(d.geom_xpos[leaf][:2], hinge_pos + 0.45 * normal, atol=1e-4)
+    np.testing.assert_allclose(d.geom_xmat[leaf].reshape(3, 3)[:2, 0], normal, atol=1e-6)
+    np.testing.assert_allclose(d.geom_xpos[knob][:2], hinge_pos + 0.83 * normal, atol=1e-4)
+    assert abs(d.geom_xmat[knob].reshape(3, 3)[:2, 2] @ along) == pytest.approx(1.0, abs=1e-6)
+
+
 def test_rest_of_the_scene_is_unchanged(office):
     """Strip the portal geoms from the MJCF and what is left is the scene built without doors, windows or openings."""
     for kw in ({}, {"n_people": 2, "seed": 3}):
         full, bare = build_mjcf(office, BASE, **kw), build_mjcf(_bare(office), BASE, **kw)
-        assert len(PORTAL_TAG.findall(full)) == 15 and not PORTAL_TAG.findall(bare)
+        assert len(PORTAL_TAG.findall(full)) == 17 and not PORTAL_TAG.findall(bare)
         assert PORTAL_TAG.sub("", full) == bare
 
 
@@ -231,14 +263,19 @@ def test_rooms_without_portals_get_none():
     assert not _portal_geoms(_model(hero, HERO_BASE))
 
 
-def test_physics_is_unchanged(office):
+@pytest.mark.parametrize("hinge", ["left", "right"])
+def test_physics_is_unchanged(office, hinge):
     """A cup dropped through the closed door's knob falls to the floor, no contact ever involves a portal geom, and
     with the arm driven at random every joint and object follows the same trajectory, to the bit, as in the room
     without doors and windows."""
-    knob = _model(office).geom("door0_knob").pos
     twin = copy.deepcopy(office)
+    twin["doors"][1]["hinge"] = hinge
+    m0 = _model(twin)
+    knob, open_knob = m0.geom("door0_knob").pos, m0.geom("door1_knob").pos
     twin["objects"].append({"id": "cup_drop", "catalog_id": "cup", "label": "cup", "size": [0.07, 0.07, 0.09],
                             "position": [float(knob[0]), 0.09, float(knob[2])], "yaw": 0.0})  # the room is y > 0
+    twin["objects"].append({"id": "cup_open", "catalog_id": "cup", "label": "cup", "size": [0.07, 0.07, 0.09],
+                            "position": open_knob.tolist(), "yaw": 0.0})
     runs = []
     for t in (twin, _bare(twin)):
         m = _model(t)
@@ -257,6 +294,27 @@ def test_physics_is_unchanged(office):
     (with_portals, cup), (without, _) = runs
     assert np.array_equal(with_portals, without)
     assert cup[2] == pytest.approx(0.045, abs=0.003)  # resting on the floor, its 9 cm height halved
+
+
+def test_pick_task_and_safety_are_identical_with_open_door_visuals():
+    from arrival.sim.collect import SimEnv, run_episode
+    from arrival.sim.policy import ScriptedExpert
+    from arrival.sim.tasks import finish_task, make_tasks
+
+    twin = compile_twin(load_room("hero_kitchen", SCANS))
+    twin["doors"] = [{"wall_id": "wall_north", "size": [0.8, 0.0, 2.0], "position": [1.0, 0.0, 1.0],
+                      "is_open": True, "hinge": "right"}]
+    task = finish_task(make_tasks(twin, ["counter_to_sink"], 1, seed=0, people=1, log=lambda *_: None)[0])
+    episodes = []
+    for t in (twin, _bare(twin)):
+        with SimEnv(t, task, res=32, cameras=()) as env:
+            episodes.append(run_episode(env, ScriptedExpert(), task))
+    before, after = episodes
+    assert before["success"] and after["success"]
+    assert np.array_equal(before["states"], after["states"])
+    assert np.array_equal(before["actions"], after["actions"])
+    assert before["safety"] == after["safety"]
+    assert before["people_xy"] == after["people_xy"]
 
 
 def test_authored_door_without_ids_goes_on_the_nearest_wall():
@@ -280,7 +338,7 @@ def test_portals_show_in_renders(office):
         m = mujoco.MjModel.from_xml_string(build_mjcf(t, BASE).replace("</worldbody>", cam))
         d = mujoco.MjData(m)
         mujoco.mj_forward(m, d)
-        r = mujoco.Renderer(m, 96, 128)
+        r = mujoco.Renderer(m, 64, 64)
         try:
             shots = []
             for c in ("overview", "behind"):
