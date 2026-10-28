@@ -181,6 +181,29 @@ def test_bad_token_is_an_error_without_the_token(nebius, monkeypatch):
     assert "wrong-token" not in str(e.value)
 
 
+def test_a_reply_that_is_not_a_json_object_is_a_shard_error(nebius, monkeypatch):
+    # a proxy's HTML page with HTTP 200 on one cancel must not stop cancel_open before the other paid job
+    import arrival.jobs.nebius as neb
+
+    jobs = nebius["make"](hold={0, 1})
+    be = NebiusBackend()
+    first, second = be.submit(CFG, 0), be.submit(CFG, 1)
+    real, garbled = neb._http, iter([b"<html>gateway</html>"])
+
+    def http(method, url, body=None, headers=None, timeout=60.0):
+        if url.endswith("/ai/v1/jobs/cancel"):
+            reply = next(garbled, None)
+            if reply is not None:
+                return 200, reply
+        return real(method, url, body, headers, timeout)
+
+    monkeypatch.setattr(neb, "_http", http)
+    assert be.cancel_open() == [first] and jobs.cancelled == [second]
+    monkeypatch.setattr(neb, "_http", lambda *a, **k: (200, b"[]"))
+    with pytest.raises(ShardError, match="not a JSON object"):
+        be.poll(first)
+
+
 @needs_sim
 @pytest.mark.render  # `reference` runs shards as subprocesses, where --no-render's patch does not reach
 def test_failed_shard_resumes_to_the_uninterrupted_episode_set(nebius, reference, tmp_path):

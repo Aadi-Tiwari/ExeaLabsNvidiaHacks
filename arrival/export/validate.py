@@ -147,7 +147,12 @@ def validate(root: str | Path) -> list[str]:
             errors.append(f"missing {name}")
             cursor += length
             continue
-        t = pq.read_table(path)
+        try:
+            t = pq.read_table(path)
+        except (OSError, pa.ArrowException) as exc:
+            errors.append(f"{name}: cannot read parquet ({exc})")
+            cursor += length
+            continue
         for c, dt in DTYPES.items():
             if c not in t.column_names:
                 errors.append(f"{name}: missing column {c}")
@@ -166,11 +171,12 @@ def validate(root: str | Path) -> list[str]:
             errors.append(f"{name}: index is not continuous from {cursor}")
         if set(cols.get("episode_index", [ep])) != {ep}:
             errors.append(f"{name}: episode_index column != {ep}")
-        tis = set(cols.get("task_index", []))
-        if not tis <= set(task_ids):
-            errors.append(f"{name}: task_index {sorted(tis - set(task_ids))} not in tasks.jsonl")
-        elif any(task_ids[i] not in e.get("tasks", []) for i in tis):
-            errors.append(f"{name}: task_index does not match episodes.jsonl tasks")
+        for column in ("task_index", "annotation.human.task_description"):
+            tis = set(cols.get(column, []))
+            if not tis <= set(task_ids):
+                errors.append(f"{name}: {column} {sorted(tis - set(task_ids))} not in tasks.jsonl")
+            elif any(task_ids[i] not in e.get("tasks", []) for i in tis):
+                errors.append(f"{name}: {column} does not match episodes.jsonl tasks")
         done = cols.get("next.done", [])
         if done and (done[-1] is not True or any(done[:-1])):
             errors.append(f"{name}: next.done must be true on the last row only")

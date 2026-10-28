@@ -174,3 +174,24 @@ def test_script_reads_an_intake_scan_with_only_roomplan_json(tmp_path, capsys):
     scan_accuracy.main([str(d)])
     out = capsys.readouterr().out
     assert "1 room(s) measured" in out and "intake_room" in out
+
+
+def test_real_roomplan_base_cabinets_are_counters():
+    # RoomPlan has no counter category: a real export's base cabinets are `storage`. kitchen_real_01 used to fail
+    # with "no scanned counter to measure"; its run is two cabinets with the dishwasher between them.
+    from arrival.scan import roomplan
+
+    twin = compile_twin(roomplan.load(REPO / "tests" / "fixtures" / "roomplan" / "kitchen_real_01.json", "k"))
+    dims = extract_dimensions(twin)
+    assert dims["counter_length_m"] == pytest.approx(2.293, abs=0.001)
+    assert dims["counter_height_m"] == pytest.approx(0.912, abs=0.001)
+    assert sorted(m[:4] for m in counter_runs(twin)[0]["members"]) == ["1179", "CC64", "F8CD"]
+
+
+def test_storage_island_and_tall_storage_are_not_counters():
+    walls = [{"id": "w", "start": [0, 0], "end": [6, 0], "height": 2.4, "thickness": 0.1}]
+    base = {"id": "base", "category": "storage", "size": [1.2, 0.6, 0.9], "position": [1.0, 0.35, 0.45], "yaw": 0}
+    block = {"id": "block", "category": "storage", "size": [2.5, 0.9, 0.9], "position": [3.0, 2.5, 0.45], "yaw": 0}
+    pantry = {"id": "pantry", "category": "storage", "size": [0.6, 0.6, 2.1], "position": [3.0, 0.35, 1.05], "yaw": 0}
+    runs = counter_runs(_twin([base, block, pantry], walls))
+    assert [r["members"] for r in runs] == [["base"]]

@@ -118,6 +118,25 @@ def test_failed_and_abandoned_attempts_count_time_but_write_no_baseline(twin, tm
     assert [r["ended_by"] for r in rows] == ["judge", "give_up"] and not any(r["success"] for r in rows)
 
 
+def test_max_ik_error_is_the_largest_of_the_attempt_not_the_last(twin, tmp_path, monkeypatch):
+    # the row kept the last solve's error: a target driven 1.6 m up out of reach and back logged the error at the end
+    errs = []
+    solve = teleop.ik.solve
+
+    def spy(*a, **k):
+        q, err = solve(*a, **k)
+        errs.append(err)
+        return q, err
+
+    monkeypatch.setattr(teleop.ik, "solve", spy)
+    frames = [["R"]] * 40 + [["F"]] * 40 + [["x"]]
+    teleop.run(twin, frames, tmp_path, operator_usd_per_hour=36.0, target_successes=1, res=64, realtime=False,
+               clock=_clock(), log=QUIET)
+    row = json.loads((tmp_path / "reports" / "hero_kitchen_teleop_attempts.jsonl").read_text().splitlines()[0])
+    assert max(errs) > errs[-1] + 0.1
+    assert row["max_ik_error_m"] == pytest.approx(max(errs), abs=1e-4)
+
+
 @pytest.mark.parametrize("extra, why", [
     (["--operator-usd-per-hour", "nan"], "finite"),
     (["--operator-usd-per-hour", "40", "--setup-usd", "inf"], "finite"),

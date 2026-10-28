@@ -3,10 +3,10 @@
  "repo": "AvnehSBhatia/ExeaLabsNvidiaHacks",
  "source": "README to-do, refreshed after #251, #252 and #302 put PRs #201-#301 on main. Submission fields re-checked against https://nebiusglobalaihackathon.devpost.com/ and the official rules on 2026-10-25.",
  "counts": {
-  "done": 64,
+  "done": 65,
   "review": 0,
   "todo": 1,
-  "blocked": 15,
+  "blocked": 14,
   "total": 80
  },
  "prs": {
@@ -914,11 +914,15 @@
     {
      "id": "G2",
      "title": "Real GR00T policy server: chunking, both camera keys, golden-file test",
-     "status": "blocked",
+     "status": "done",
      "owner_kind": "gpu",
      "size": "M",
      "priority": "must",
-     "note": "Wire-format golden test and the 8-float and 11-float schemas are done. The shim has not run against a real GR00T server.",
+     "pr": [
+      83,
+      164
+     ],
+     "note": "Ran against real GR00T on Oct 21 (Isaac-GR00T dac54b3, N1.7-3B, one 96 GB GPU): /act returns 16-step action chunks for a request with both camera keys, and eval --policy vla scored the fine-tunes through it (docs/ref/POL-3.md). The wire-format golden test and the 8-float and 11-float schemas are done.",
      "authors": [
       "AvnehSBhatia",
       "Claude Code"
@@ -979,6 +983,10 @@
      "owner_kind": "gpu",
      "size": "L",
      "priority": "should",
+     "pr": [
+      356
+     ],
+     "note": "Native object-centric SE(3) retargeting of counter_to_sink landed in #356 (arrival/generate/se3_retarget.py, physics-checked, small runs). Upstream MimicGen is not integrated (arrival/generate/mimicgen.py only probes for RoboCasa), and issue #62's seed-set and 100-episode benchmark has not run.",
      "issue": 62,
      "authors": []
     },
@@ -989,6 +997,10 @@
      "owner_kind": "gpu",
      "size": "L",
      "priority": "should",
+     "pr": [
+      194
+     ],
+     "note": "The depth compositor landed in #194 (arrival/render/splat.py: a static view and the moving geometry, same camera, by depth). No Gaussian splat is trained and no scan appearance is captured yet.",
      "issue": 61,
      "authors": []
     }
@@ -1089,6 +1101,10 @@
      "owner_kind": "cloud",
      "size": "M",
      "priority": "nice",
+     "pr": [
+      93
+     ],
+     "note": "The restyle stage and its Cosmos client landed in #93 (arrival/render/variation.py, SIM-7a): about 10% of frames, edge and mask checks, honest labels. It has run only against a local mock server, never a real Cosmos endpoint.",
      "issue": 70,
      "authors": []
     }

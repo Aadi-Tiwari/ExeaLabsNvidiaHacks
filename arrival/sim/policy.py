@@ -620,8 +620,11 @@ class VLMPlanner:
         self._offline = False  # set by the first network failure so later tasks skip the 60 s timeout
 
     def _cache_key(self, instruction: str, objects: list[str], fixtures: list[str],
-                   research_context: str | None = None) -> str:
-        base = f"{instruction.strip().lower()}::{sorted(objects)}::{sorted(fixtures)}"
+                   research_context: str | None = None, families: tuple[str, ...] | None = None) -> str:
+        # the families offered are part of the question: a plan cached under another offer (the 9-family prompt,
+        # another room's list) never answers
+        offered = "|".join(families or self._offered_families())
+        base = f"{instruction.strip().lower()}::{sorted(objects)}::{sorted(fixtures)}::families={offered}"
         if research_context:
             return f"{base}::tavily={hashlib.sha1(research_context.encode()).hexdigest()[:12]}"  # hash() is salted per process
         return base
@@ -645,13 +648,29 @@ class VLMPlanner:
             self.log(f"[sim] VLMPlanner: warning, could not write cache to {self.cache_path}: {e}")
 
     @staticmethod
-    def _parse_plan(txt: str, objects: list[str], fixtures: list[str]) -> dict:
-        """First JSON object in the reply, checked against the known families, objects and fixtures."""
+    def _offered_families(twin: dict | None = None) -> tuple[str, ...]:
+        """The families whose fixture the twin has (arrival.sim.tasks.room_families), or all of SIM_FAMILIES without a
+        twin. The prompt offers these and _parse_plan accepts only these; it once offered 9 of 15 everywhere."""
+        from arrival.sim.tasks import SIM_FAMILIES, room_families
+
+        return (room_families(twin) if twin else ()) or SIM_FAMILIES
+
+    @staticmethod
+    def _system_prompt(families: tuple[str, ...] | None = None) -> str:
+        families = families or VLMPlanner._offered_families()
+        return "Return only JSON: {\"family\": one of " + "|".join(families) + ", \"object\": id|null, \"target\": id|null}"
+
+    @staticmethod
+    def _parse_plan(txt: str, objects: list[str], fixtures: list[str], families: tuple[str, ...] | None = None) -> dict:
+        """First JSON object in the reply, checked against the known families (and, when given, the ones the prompt
+        offered), objects and fixtures."""
         from arrival.sim.tasks import SIM_FAMILIES
 
         plan, _ = json.JSONDecoder().raw_decode(txt[txt.index("{"):])
         if not isinstance(plan, dict) or plan.get("family") not in SIM_FAMILIES:
             raise ValueError(f"plan has no known family: {plan!r}")
+        if families is not None and plan["family"] not in families:
+            raise ValueError(f"plan family {plan['family']!r} is not offered in this room")
         if plan.get("object") in fixtures and plan.get("target") in (None, plan["object"]):
             plan["object"], plan["target"] = None, plan["object"]  # "open the fridge" names the fridge as its object
         if plan.get("object") is not None and plan["object"] not in objects:
@@ -661,10 +680,11 @@ class VLMPlanner:
         return {"family": plan["family"], "object": plan.get("object"), "target": plan.get("target")}
 
     def plan(self, instruction: str, objects: list[str], fixtures: list[str],
-             research_context: str | None = None) -> dict:
+             research_context: str | None = None, twin: dict | None = None) -> dict:
         from arrival.models.token_factory import TokenFactoryNotConfigured, complete
 
-        key = self._cache_key(instruction, objects, fixtures, research_context)
+        offered = self._offered_families(twin)
+        key = self._cache_key(instruction, objects, fixtures, research_context, offered)
         if key in self._cache:
             self.source = "cache"
             return dict(self._cache[key])
@@ -676,10 +696,9 @@ class VLMPlanner:
             user_payload = {"instruction": instruction, "objects": objects, "fixtures": fixtures}
             if research_context:
                 user_payload["research_context"] = research_context
-            txt = complete([{"role": "system", "content": "Return only JSON: {\"family\": one of counter_to_sink|"
-                             "counter_to_counter|open_drawer|open_door|close_drawer|close_door|put_in_drawer|wipe_counter|open_fridge, \"object\": id|null, \"target\": id|null}"},
+            txt = complete([{"role": "system", "content": self._system_prompt(offered)},
                             {"role": "user", "content": json.dumps(user_payload)}], role="super", temperature=0)
-            plan = self._parse_plan(txt, objects, fixtures)
+            plan = self._parse_plan(txt, objects, fixtures, offered)
             self.source = "token_factory"
             self._cache[key] = plan
             self._save_cache()

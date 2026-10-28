@@ -104,6 +104,14 @@ def test_people_keep_off_the_drive_and_the_base_waits_for_them(hero_twin):
     assert pol.held > 0  # a person crossed in front of the drive and the base waited (36 steps at this seed)
 
 
+def test_mobile_base_opens_door_without_human_contact(hero_twin):
+    task = _task(hero_twin, "open_door", seed=3, people=2, mobile=True)
+    with SimEnv(hero_twin, task, res=32, base="mobile") as env:
+        ep = run_episode(env, ScriptedExpert(), task)
+    assert ep["success"] and not ep["safety"]["human_contact"], (ep["detail"], ep["safety"])
+    assert ep["safety"]["min_human_distance_m"] > 0.0
+
+
 # ---- on top of the any-wall pre-flight (L1, L2) ----
 
 def test_preflight_checks_the_drive_spot_and_the_whole_path(hero_twin):

@@ -40,6 +40,16 @@ def test_defaults_and_empty_values(clean_env, monkeypatch):
     assert config.get("TOKEN_FACTORY_API_KEY") is None
 
 
+def test_an_empty_variable_does_not_hide_the_dotenv_value(clean_env, monkeypatch):
+    # `export TAVILY_API_KEY=` or an undefined CI secret leaves the variable set but empty; the reader skipped every
+    # name already in the environment, so get() found no key while `arrival doctor` said "set in .env"
+    (clean_env / ".env").write_text("TAVILY_API_KEY=tvly-from-file\nTOKEN_FACTORY_API_KEY=from-file\n")
+    monkeypatch.setenv("TAVILY_API_KEY", "")
+    monkeypatch.setenv("TOKEN_FACTORY_API_KEY", "from-env")
+    assert config.get("TAVILY_API_KEY") == "tvly-from-file"
+    assert config.get("TOKEN_FACTORY_API_KEY") == "from-env"  # a variable with a value still wins
+
+
 def test_dotenv_can_be_turned_off(clean_env, monkeypatch):
     (clean_env / ".env").write_text("COSMOS_URL=http://cosmos\n")
     monkeypatch.setenv("ARRIVAL_DOTENV", "0")
