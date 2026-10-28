@@ -895,7 +895,7 @@ def build_parser() -> argparse.ArgumentParser:
     u.add_argument("--out", default="out", help="the subset goes to <out>/datasets/<room>_sim")
     u.add_argument("--families", default="", help="comma list of families to keep (default: all)")
     u.add_argument("--min-drawer-opening", type=float, default=None, metavar="M",
-                   help="drop open_drawer episodes whose final drawer opening is under M metres (a clean pull ends at 0.2997, so 0.28 keeps every clean demo)")
+                   help="drop open_drawer episodes whose final drawer opening is under M metres (a clean pull ends at 0.3063, so 0.28 keeps every clean demo)")
     u.set_defaults(fn=cmd_subset)
     r = sub.add_parser("research", help="Tavily AI research on kitchen appliances and safety guidelines")
     r.add_argument("--room", default="hero_kitchen")

@@ -2,6 +2,7 @@
 coreModel blob and every frame were left out). It was the first real kitchen through the pipeline, and it showed
 that RoomPlan objects face their local +Z: before the fix every cabinet, appliance and fridge faced its wall, the
 robot's stand spots fell outside the room and the job ended 'unsupported layout'."""
+import copy
 from pathlib import Path
 
 import numpy as np
@@ -99,3 +100,24 @@ def test_tasks_get_stand_spots_inside_the_room(twin):
                        log=log.append, preflight=pre)
     assert tasks, log
     assert not any("outside the room" in str(r) for r in pre.get("reasons", [])), pre.get("reasons")
+
+
+def test_cup_stays_in_the_pads_on_the_way_to_the_dishwasher(twin):
+    # the cup rolled along the 20 mm pads during the carry and squeezed out at the pad edge, 9 mm off centre, just
+    # above the rack (eval --base fixed --people 2 --seed 5, sim_load_dishwasher_0000); 30 mm pads keep it
+    pytest.importorskip("mujoco")
+    from arrival.sim.collect import SimEnv, run_episode
+    from arrival.sim.policy import ScriptedExpert
+    from arrival.twin.compile import place_default_objects
+
+    twin = copy.deepcopy(twin)
+    place_default_objects(twin, seed=0)  # what eval does for a scan with no objects
+    dw = _cabinet(twin, "F8CDA831")["id"]
+    task = {"family": "load_dishwasher", "fixture": dw, "handle": f"{dw}_door_handle", "joint": f"{dw}_door",
+            "source": "11793D80-8BE3-45F9-AF2F-34068D45F7C2", "object_id": "cup_1", "object_label": "cup",
+            "instruction": "Put the cup in the dishwasher.", "wording_index": 0, "lighting": "dim", "holdout": False,
+            "people": 2, "seed": 10006000, "split": "train", "start": [2.362921, 2.0457010000328166, 0.971950395],
+            "task_id": "sim_load_dishwasher_0000"}
+    with SimEnv(twin, task, res=32, cameras=()) as env:
+        ep = run_episode(env, ScriptedExpert(), task)
+    assert ep["success"], ep["detail"]
