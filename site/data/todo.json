@@ -972,6 +972,7 @@
      "issue": 69,
      "note": "Built in real RoboCasa 1.0.1 (Oct 27): layout.yaml as written loads but RoboCasa reads its walls, floor, fronts and sink differently; arrival.twin.robocasa_layout converts it, and the hero kitchen and RoomPlan kitchen_real_01 then build with every fixture centre within 2.5 cm horizontally and no added overlap (scripts/check_robocasa_layout.py, docs/results/robocasa-layout-2026-10-27). The sink height is RoboCasa's (flush with the counter top).",
      "authors": [
+      "vrun-systems26",
       "AvnehSBhatia",
       "Claude Code"
      ]
