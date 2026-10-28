@@ -210,3 +210,16 @@ def test_embodiment_with_a_base_needs_the_slice(mcopy):
         d["action"].pop("base")
     edit_json(mcopy / "meta" / "modality.json", drop)
     assert "base_slice" in codes(check_loader(mcopy))  # dof_base 3 in embodiment.json, no base slice in modality.json
+
+
+@pytest.mark.parametrize("shape", ["truncated", "broadcast"])
+def test_episode_stats_wrong_shape_is_reported(copy, shape):
+    path = copy / "meta" / "episodes_stats.jsonl"
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    mean = rows[0]["stats"]["action"]["mean"]
+    rows[0]["stats"]["action"]["mean"] = mean[:3] if shape == "truncated" else [mean]
+    path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    res = check_loader(copy)
+    assert not res["ok"]
+    assert any(e["code"] == "stats_mismatch" and "episodes_stats.jsonl episode 0 action.mean" in e["msg"]
+               for e in res["errors"])
