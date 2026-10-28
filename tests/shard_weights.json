@@ -44,6 +44,7 @@
  "tests/test_intake_duplicate_measures.py": 0.1,
  "tests/test_ios_bundle.py": 5.4,
  "tests/test_ios_scan.py": 5.1,
+ "tests/test_ios_zip_inputs.py": 2.3,
  "tests/test_job_upload_arguments.py": 0.1,
  "tests/test_job_upload_length.py": 0.1,
  "tests/test_jobs_ops.py": 3.6,

@@ -164,11 +164,19 @@ final class FrameBundleWriter {
 enum ZipWriter {
     enum ZipError: LocalizedError {
         case tooLarge
-        var errorDescription: String? { "The frames bundle is too large to zip (over 4 GB or 65535 files)." }
+        case notDirectory
+        var errorDescription: String? {
+            switch self {
+            case .tooLarge: return "The frames bundle is too large to zip (over 4 GB or 65535 files)."
+            case .notDirectory: return "The frames archive source must be a directory."
+            }
+        }
     }
 
     static func zip(folder: URL, to output: URL) throws {
         let fm = FileManager.default
+        let source = try folder.resourceValues(forKeys: [.isDirectoryKey])
+        guard source.isDirectory == true else { throw ZipError.notDirectory }
         let base = folder.standardizedFileURL.path
         var files: [(name: String, url: URL)] = []
         if let walker = fm.enumerator(at: folder, includingPropertiesForKeys: [.isRegularFileKey]) {
