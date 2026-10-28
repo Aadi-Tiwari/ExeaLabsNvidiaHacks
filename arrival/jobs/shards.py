@@ -9,7 +9,8 @@ v2 dataset whose episode indices, task indices, frame indices and stats are rebu
 
 A run also keeps a journal (`<out>/progress/<room>_sim.jsonl`): one line per finished task, written after that task's
 episode files, so `--resume` can skip what is done, drop the files of the task a kill interrupted and carry on. A
-journal from a run with different settings is refused rather than mixed in."""
+journal from a run with different settings, or in another twin (the scan was edited since), is refused rather than
+mixed in."""
 
 from __future__ import annotations
 
@@ -25,7 +26,11 @@ from arrival.export.lerobot import chunk_of
 SHARD_RE = re.compile(r"^(\d+)/(\d+)$")
 SHARD_DIR_RE = re.compile(r"^\d+of\d+$")
 FINGERPRINT_KEYS = ("room", "families", "episodes", "seed", "people", "policy", "planner", "split", "instructions",
-                    "base", "arm", "res", "shard", "exec_noise", "cameras")
+                    "base", "arm", "res", "shard", "exec_noise", "cameras", "twin")
+# twin keys that say where the twin came from or what the planner is told, not what room is simulated: the
+# provenance carries the code sha and dirty flag, and each Tavily note's `source` is the live API on the first run
+# and the cache on the next
+TWIN_UNHASHED = ("provenance", "tavily_research")
 SKIP_REASONS_KEPT = 50
 # the shard fields that must agree across shards (index and task_range differ by design)
 SHARED_SHARD_KEYS = ("count", "total_tasks", "episodes", "seed", "families", "people", "policy", "planner", "split",
@@ -54,6 +59,14 @@ def shard_range(total: int, i: int, n: int) -> tuple[int, int]:
 
 def shard_dir(out_dir: str | Path, i: int, n: int) -> Path:
     return Path(out_dir) / "shards" / f"{i}of{n}"
+
+
+def twin_sha256(twin: dict) -> str:
+    """sha256 of the room a run simulates (the twin less TWIN_UNHASHED), so a resume can tell an edited scan from a
+    recompile of the same one."""
+    from arrival.export.provenance import canonical_sha256
+
+    return canonical_sha256({k: v for k, v in twin.items() if k not in TWIN_UNHASHED})
 
 
 # ---- journal ----
@@ -90,8 +103,8 @@ class Journal:
                 saved = rows[0].get("fingerprint")
                 if isinstance(saved, dict):
                     saved = {**saved, "exec_noise": saved.get("exec_noise") or 0.0}  # journals from before DART have none
-                if isinstance(saved, dict):
-                    saved = {"cameras": ["ego_view", "wrist"], **saved}
+                if isinstance(saved, dict):  # journals from before the twin hash have none: they resume as before
+                    saved = {"cameras": ["ego_view", "wrist"], "twin": fp["twin"], **saved}
                 if saved != fp:
                     diff = sorted(k for k in set(fp) | set(saved or {}) if (saved or {}).get(k) != fp.get(k))
                     raise ShardError(f"--resume: the saved progress in {self.path} is for a run with different "
