@@ -1070,6 +1070,9 @@ def test_invalid_manifest_encoding_is_a_validation_response(make):
     blob = _zip_of({"frames_manifest.json": b"\xff"})
     status, data, _ = _post(srv, [("scan", "hero.json", HERO_SCAN), ("frames", "frames.zip", blob)])
     assert status == 422 and data["code"] == "bad_json" and data["field"] == "frames", data
+    assert not _job_dirs(out)
+
+
 @pytest.mark.parametrize("location", ["central", "local", "both"])
 def test_invalid_utf8_zip_entry_name_returns_archive_error(make, location):
     import struct

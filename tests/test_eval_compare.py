@@ -100,6 +100,9 @@ def test_compare_requires_integer_trial_identity(tmp_path, index):
     rows[0]["trial_index"] = index
     path.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
     with pytest.raises(CompareError, match="trial_index"):
+        compare(a, b)
+
+
 @pytest.mark.parametrize("mixed_in", ["a", "b"])
 def test_compare_refuses_mixed_checkpoints_in_one_run(tmp_path, mixed_in):
     a = write_run(tmp_path / "a", [False, True], checkpoint="checkpoint_a")
