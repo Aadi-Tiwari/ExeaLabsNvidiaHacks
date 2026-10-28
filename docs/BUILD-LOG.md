@@ -22,7 +22,7 @@ Deviations from the contract, one paragraph each.
 
 **`--scans` default.** A relative `--scans` that does not exist in the cwd resolves against the repo root (`arrival.cli.resolve_scans`). A missing room or a missing `roomplan.json` exits with a message naming the path.
 
-**Room summaries refuse colliding output identifiers.** Explicit scan names such as a-b.json and a_b.json normalize to the same room id and previously overwrote each other's twin and dataset artifacts. Summaries now resolve all inputs and reject duplicate ids before running any room; the CLI reports a usage error with both names. Regression coverage includes punctuation and case collisions and verifies no output is created.
+**Room summaries refuse colliding output identifiers.** Explicit scan names such as a-b.json and a_b.json normalize to the same room id and previously overwrote each other's twin and dataset artifacts. Summaries now resolve all inputs and reject duplicate output paths, including hero_kitchen versus ./hero_kitchen, before running any room; the CLI reports a usage error with both names. Regression coverage includes punctuation and case collisions and verifies no output is created.
 
 **Upload hardening.** `POST /jobs` streams the body to a temp file in 1 MB chunks, then finds the `scan` part by boundary scanning over an mmap (no `email` parser, no full in-memory copy). A body shorter than `Content-Length`, a missing closing boundary, an empty file, or no filename returns 400. The handler has a 30 s socket timeout. The room page links `out/datasets/<room>_sim` when it exists and shows its `arrival_generator`, `arrival_physically_valid`, `total_episodes` and families (`arrival_families` or `families`).
 
