@@ -120,6 +120,9 @@ def test_compare_requires_boolean_success_outcomes(tmp_path, outcome):
     a = write_run(tmp_path / "a", [outcome])
     b = write_run(tmp_path / "b", [False])
     with pytest.raises(CompareError, match="success.*bool"):
+        compare(a, b)
+
+
 @pytest.mark.parametrize("changed_run", ["a", "b"])
 def test_compare_refuses_paired_family_disagreement(tmp_path, changed_run):
     a = write_run(tmp_path / "a", [True, False])

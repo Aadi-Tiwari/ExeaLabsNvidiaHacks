@@ -423,6 +423,21 @@ def test_validator_reports_null_vector_rows(tmp_path, column, row):
     modality = {"state": {"arm": {"start": 0, "end": 2}},
                 "action": {"arm": {"start": 0, "end": 2, "absolute": True}},
                 "annotation": {"human.task_description": {}}}
+    writer = _writer(tmp_path, modality=modality)
+    writer.add_episode(np.zeros((2, 2)), np.zeros((2, 2)), np.arange(2) / 20, "task", True)
+    writer.finish(1)
+    root = tmp_path / "ds"
+    assert validate(root) == []
+    path = root / "data/chunk-000/episode_000000.parquet"
+    table = pq.read_table(path)
+    values = table.column(column).to_pylist()
+    values[row] = None
+    table = table.set_column(table.schema.get_field_index(column), column,
+                             pa.array(values, type=pa.list_(pa.float32())))
+    pq.write_table(table, path)
+    assert any(column in error for error in validate(root))
+
+
 @pytest.mark.parametrize("group", ["state", "action"])
 @pytest.mark.parametrize(("field", "value"), [
     ("start", None), ("start", "0"), ("start", 0.5), ("end", True), ("slice", None),
@@ -438,14 +453,6 @@ def test_validator_reports_invalid_modality_before_sorting(tmp_path, group, fiel
     writer.finish(1)
     root = tmp_path / "ds"
     assert validate(root) == []
-    path = root / "data/chunk-000/episode_000000.parquet"
-    table = pq.read_table(path)
-    values = table.column(column).to_pylist()
-    values[row] = None
-    table = table.set_column(table.schema.get_field_index(column), column,
-                             pa.array(values, type=pa.list_(pa.float32())))
-    pq.write_table(table, path)
-    assert any(column in error for error in validate(root))
     path = root / "meta/modality.json"
     data = json.loads(path.read_text())
     if field == "slice":
