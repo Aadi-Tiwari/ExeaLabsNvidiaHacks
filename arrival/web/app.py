@@ -794,12 +794,17 @@ class Handler(BaseHTTPRequestHandler):
                 f"<div class='chips mt'>{_chip('physically valid: ' + str(ok_).lower(), 'ok' if ok_ else 'bad')}</div>")
         else:
             headline = ""
+        # the box is about the scripted placeholder in out/datasets/<room>. A room whose only dataset is the
+        # physics-checked sim one has no placeholder, and the box told it not to fine-tune on its data right above
+        # a headline that says physically valid: true
+        placeholder_warn = "" if sim_dir.is_dir() and not ds_exists else (
+            f"<div class='warn'><strong class='mono'>arrival_physically_valid: {valid_text}</strong>"
+            f"<br>{esc(PLACEHOLDER_NOTE)} Do not fine-tune on it while this flag is false.</div>")
 
         body = (
             f"<p class='crumb'><a href='/'>← All rooms</a></p><h1>{esc(room)}</h1>"
             f"<p class='muted'>geometry_source: <code>{esc(scan.get('geometry_source', 'unknown'))}</code></p>"
-            f"<div class='warn'><strong class='mono'>arrival_physically_valid: {valid_text}</strong>"
-            f"<br>{esc(PLACEHOLDER_NOTE)} Do not fine-tune on it while this flag is false.</div>"
+            + placeholder_warn
             + headline
             + "<h2>Previews</h2>" + preview_html
             + "<h2>Fixtures</h2>" + fx_table
