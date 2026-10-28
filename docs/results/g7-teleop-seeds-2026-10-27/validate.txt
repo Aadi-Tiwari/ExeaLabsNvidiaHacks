@@ -1,3 +1,3 @@
-OK: C:/Users/rchil/Downloads/g7-run/datasets/hero_kitchen_se3_retarget: 104 episodes, 61894 frames, 5 tasks, 1 chunk(s), 208 videos, video_policy=all, physically_valid=True
+OK: out/g7/datasets/hero_kitchen_se3_retarget: 104 episodes, 61894 frames, 5 tasks, 1 chunk(s), 208 videos, video_policy=all, physically_valid=True
 C:\Users\rchil\Downloads\g7-run\datasets\hero_kitchen_se3_retarget: 104 episodes, 0 flagged, 104 ok (checks: unreadable, nonfinite, zero_motion, stuck_arm, length_outlier, joint_at_limit, blank_video)
   not checked: carried_object_tilt (object pose is not recorded in the dataset); wrist_useful_pixels (only frame uniformity is measured (blank_video), not what the wrist camera sees)
