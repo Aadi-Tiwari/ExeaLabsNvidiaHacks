@@ -89,7 +89,7 @@ def test_mobile_base_reaches_the_far_counter(hero_twin):
     assert g[1:][moving].max() < 0.01  # the base only moves with the gripper closed on the object
 
 
-def test_people_keep_off_the_drive_and_the_base_waits_for_them(hero_twin):
+def test_people_keep_off_the_drive_route(hero_twin):
     task = _task(hero_twin, "counter_to_counter", seed=3, people=2, mobile=True)
     env = SimEnv(hero_twin, task, res=32, base="mobile")
     pol = ScriptedExpert()
@@ -101,7 +101,56 @@ def test_people_keep_off_the_drive_and_the_base_waits_for_them(hero_twin):
         for p in path:
             t = float(np.clip((p - a) @ (b - a) / ((b - a) @ (b - a)), 0.0, 1.0))
             assert np.linalg.norm(a + t * (b - a) - p) >= 0.6 - 1e-6
-    assert pol.held > 0  # a person crossed in front of the drive and the base waited (36 steps at this seed)
+    # The crossing lanes run beside the route, so nobody stands in the drive lane and the base never waits here (on
+    # main it waited 49 steps for a walker 0.69 m off the drive line); a person on the route still holds it below
+    assert pol.held == 0
+
+
+def test_a_parked_mobile_base_never_waits_for_people(hero_twin):
+    """Only a drive in the plan makes the expert wait for people. The base servos sag under the arm's pull, and
+    kitchen_real_01's mobile open_oven, open_fridge and open_dishwasher read that sag as a drive: a person standing
+    still within STOP_CLEAR froze the arm until the step budget ran out. Here a ring of people 0.5 m around the base
+    is in front of any sag."""
+    from arrival.sim.tasks import finish_task
+
+    task = finish_task(_task(hero_twin, "open_oven", seed=1, mobile=True))
+    env = SimEnv(hero_twin, task, res=32, base="mobile", cameras=())
+    pol = ScriptedExpert()
+    pol.reset(env, task)
+    sag = 0.0
+    for _ in range(len(pol.plan) + 20):
+        b = env.base_pose()
+        sag = max(sag, float(np.linalg.norm(b[:2] - env.base0[:2])))
+        env.people_xy = [b[:2] + 0.5 * np.array([np.cos(a), np.sin(a)]) for a in np.linspace(0, 2 * np.pi, 8, endpoint=False)]
+        env.step(np.asarray(pol.act(env.obs()), dtype=float))
+    ok, detail = env.success(task)
+    env.close()
+    assert sag > 1e-5  # the base did sag, so the old measured-pose check would have read a drive
+    assert pol.held == 0 and ok, (pol.held, detail)
+
+
+def test_the_base_waits_for_a_person_on_the_route_not_beside_it(hero_twin):
+    """A person within STOP_CLEAR ahead and within DRIVE_LANE of the drive line holds the drive; one as close but
+    0.65 m off the line (a walker in its crossing lane) does not."""
+    from arrival.sim.policy import DRIVE_LANE, STOP_CLEAR
+
+    task = _task(hero_twin, "counter_to_counter", seed=1, mobile=True)
+    held = {}
+    for name, (ahead, side) in {"on the route": (0.5, 0.0), "beside it": (0.2, 0.65)}.items():
+        assert np.hypot(ahead, side) < STOP_CLEAR and (side < DRIVE_LANE) == (name == "on the route")
+        env = SimEnv(hero_twin, task, res=32, base="mobile", cameras=())
+        pol = ScriptedExpert()
+        pol.reset(env, task)
+        u = env.drive_to[:2] - env.base0[:2]
+        u /= np.linalg.norm(u)
+        n = np.array([-u[1], u[0]])
+        for _ in range(len(pol.plan) + 20):
+            env.people_xy = [env.base_pose()[:2] + ahead * u + side * n]
+            env.step(np.asarray(pol.act(env.obs()), dtype=float))
+        held[name] = (pol.held, pol.t, len(pol.plan))
+        env.close()
+    assert held["on the route"][0] > 0 and held["on the route"][1] < held["on the route"][2]  # never got to drive
+    assert held["beside it"][0] == 0 and held["beside it"][1] >= held["beside it"][2], held  # drove and finished
 
 
 def test_mobile_base_opens_door_without_human_contact(hero_twin):
